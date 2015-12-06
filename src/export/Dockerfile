@@ -12,14 +12,16 @@ RUN npm install -g tl@0.4.0 \
           tilelive-bridge@2.2.1 \
           tilelive-mapnik@0.6.17
 
-# custom tm2source project
-VOLUME /data/tm2source
-ENV SOURCE_PROJECT_DIR=/data/tm2source
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        python \
+        python-pip \
+    && rm -rf /var/lib/apt/lists/*
 
-# destination for exported vector tiles
-VOLUME /data/export
-ENV EXPORT_DIR=/data/export
+VOLUME /data/tm2source /data/export
+ENV SOURCE_PROJECT_DIR=/data/tm2source EXPORT_DIR=/data/export TILELIVE_BIN=tl
 
-COPY export.sh /usr/src/app/export.sh
+COPY requirements.txt /usr/src/app/requirements.txt
+RUN pip install -r requirements.txt
+COPY . /usr/src/app/
 
-CMD ["/usr/src/app/export.sh"]
+CMD ["/usr/src/app/export-local.sh"]
