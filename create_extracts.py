@@ -2,7 +2,7 @@
 """Generate jobs for rendering tiles in pyramid and list format in JSON format
 
 Usage:
-  create_extracts.py bbox <source_file> <tsv_file> [--patch-from=<patch-src>]  [--upload] [--concurrency=<concurrency>] [--target-dir=<target-dir>]
+  create_extracts.py bbox <source_file> <csv_file> [--patch-from=<patch-src>]  [--upload] [--concurrency=<concurrency>] [--target-dir=<target-dir>]
   create_extracts.py zoom-level <source_file> --max-zoom=<max-zoom> [--upload] [--target-dir=<target-dir>]
   create_extracts.py (-h | --help)
   create_extracts.py --version
@@ -107,8 +107,8 @@ def update_metadata(mbtiles_file, metadata):
     conn.close()
 
 
-def parse_extracts(tsv_file):
-    with open(args['<tsv_file>'], "r") as file_handle:
+def parse_extracts(csv_file):
+    with open(args['<csv_file>'], "r") as file_handle:
         reader = csv.DictReader(file_handle, delimiter=',',)
         for row in reader:
             yield Extract(
@@ -176,7 +176,7 @@ if __name__ == '__main__':
 
     if args['bbox']:
         process_count = int(args['--concurrency'])
-        extracts = list(parse_extracts(args['<tsv_file>']))
+        extracts = list(parse_extracts(args['<csv_file>']))
         pool = ProcessPool(process_count)
         pool.map(process_extract, extracts)
         pool.close()
@@ -184,7 +184,7 @@ if __name__ == '__main__':
 
     if args['zoom-level']:
         max_zoom_level = int(args['--max-zoom'])
-        extract = Extract('world_z0-z{}'.format(max_zoom_level),
+        extract = Extract('planet_z0-z{}'.format(max_zoom_level),
                           country=None,
                           city=None,
                           left=-180,
