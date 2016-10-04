@@ -109,7 +109,7 @@ def update_metadata(mbtiles_file, metadata):
 
 def parse_extracts(tsv_file):
     with open(args['<tsv_file>'], "r") as file_handle:
-        reader = csv.DictReader(file_handle, delimiter='\t', )
+        reader = csv.DictReader(file_handle, delimiter=',',)
         for row in reader:
             yield Extract(
                 row['extract'],
