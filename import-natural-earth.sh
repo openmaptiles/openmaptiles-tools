@@ -3,7 +3,7 @@ set -o errexit
 set -o pipefail
 set -o nounset
 
-source sql.sh
+readonly PGCONN="dbname=$POSTGRES_DB user=$POSTGRES_USER host=$POSTGRES_HOST password=$POSTGRES_PASSWORD port=5432"
 
 function import_natural_earth() {
     echo "Importing Natural Earth to PostGIS"
