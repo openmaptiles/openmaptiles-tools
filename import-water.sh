@@ -7,13 +7,17 @@ readonly WATER_POLYGONS_FILE="$IMPORT_DATA_DIR/water_polygons.shp"
 readonly SIMPLIFIED_WATER_POLYGONS_FILE="$IMPORT_DATA_DIR/simplified_water_polygons.shp"
 
 function exec_psql() {
-    PG_PASSWORD=$OSM_PASSWORD psql --host="$DB_HOST" --port=5432 --dbname="$OSM_DB" --username="$OSM_USER"
+    PGPASSWORD=$POSTGRES_PASSWORD psql --host="$POSTGRES_HOST" --port="$POSTGRES_PORT"--dbname="$POSTGRES_DB" --username="$POSTGRES_USER"
 }
 
 function import_shp() {
     local shp_file=$1
     local table_name=$2
     shp2pgsql -s 3857 -I -g geometry "$shp_file" "$table_name" | exec_psql | hide_inserts
+}
+
+function hide_inserts() {
+    grep -v "INSERT 0 1"
 }
 
 function drop_table() {
