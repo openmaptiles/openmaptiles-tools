@@ -1,4 +1,4 @@
-# Export MBTiles from TM2Source
+# Generate Vector Tiles from TM2Source
 
 *This is a work in progress towards OSM2VectorTiles v3.0*
 
@@ -18,5 +18,5 @@ docker run --rm \
     -e POSTGRES_HOST="127.0.0.1" \
     -e POSTGRES_DB="osm" \
     -e POSTGRES_PORT="5432" \
-    osm2vectortiles/export-mbtiles
+    osm2vectortiles/generate-vectortiles
 ```

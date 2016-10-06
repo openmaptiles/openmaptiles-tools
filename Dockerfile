@@ -12,17 +12,8 @@ RUN npm install -g \
           tilelive-bridge@2.3.x \
           tilelive-mapnik@0.6.x
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
-        python \
-        python-pip \
-        python-dev \
-    && rm -rf /var/lib/apt/lists/
-
 VOLUME /tm2source /export
 ENV SOURCE_PROJECT_DIR=/tm2source EXPORT_DIR=/export TILELIVE_BIN=tl
 
-COPY requirements.txt /usr/src/app/requirements.txt
-RUN pip install -r requirements.txt
 COPY . /usr/src/app/
-
 CMD ["/usr/src/app/export-local.sh"]
