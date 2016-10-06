@@ -61,8 +61,6 @@ function clean_natural_earth() {
     drop_table 'ne_10m_rivers_lake_centerlines'
     drop_table 'ne_10m_rivers_lake_centerlines_scale_rank'
     drop_table 'ne_10m_rivers_north_america'
-    drop_table 'ne_10m_roads'
-    drop_table 'ne_10m_roads_north_america'
     drop_table 'ne_10m_time_zones'
     drop_table 'ne_10m_urban_areas'
     drop_table 'ne_10m_urban_areas_landscan'
