@@ -55,10 +55,7 @@ function clean_natural_earth() {
     drop_table 'ne_10m_railroads'
     drop_table 'ne_10m_railroads_north_america'
     drop_table 'ne_10m_reefs'
-    drop_table 'ne_10m_rivers_europe'
-    drop_table 'ne_10m_rivers_lake_centerlines'
     drop_table 'ne_10m_rivers_lake_centerlines_scale_rank'
-    drop_table 'ne_10m_rivers_north_america'
     drop_table 'ne_10m_time_zones'
     drop_table 'ne_10m_urban_areas_landscan'
     drop_table 'ne_10m_admin_1_states_provinces_lakes_shp'
@@ -105,7 +102,6 @@ function clean_natural_earth() {
     drop_table 'ne_110m_geographic_lines'
     drop_table 'ne_110m_populated_places'
     drop_table 'ne_110m_populated_places_simple'
-    drop_table 'ne_110m_rivers_lake_centerlines'
     drop_table 'ne_110m_admin_0_countries'
     drop_table 'ne_110m_admin_1_states_provinces_lines'
     drop_table 'ne_110m_admin_1_states_provinces_shp'
@@ -119,7 +115,6 @@ function clean_natural_earth() {
     drop_table 'ne_50m_playas'
     drop_table 'ne_50m_populated_places'
     drop_table 'ne_50m_populated_places_simple'
-    drop_table 'ne_50m_rivers_lake_centerlines'
     drop_table 'ne_50m_rivers_lake_centerlines_scale_rank'
 
     echo "VACUUM;" | sqlite3 "$NATURAL_EARTH_DB"
