@@ -60,7 +60,6 @@ function clean_natural_earth() {
     drop_table 'ne_10m_rivers_lake_centerlines_scale_rank'
     drop_table 'ne_10m_rivers_north_america'
     drop_table 'ne_10m_time_zones'
-    drop_table 'ne_10m_urban_areas'
     drop_table 'ne_10m_urban_areas_landscan'
     drop_table 'ne_10m_admin_1_states_provinces_lakes_shp'
     drop_table 'ne_10m_admin_1_states_provinces_shp'
@@ -122,7 +121,6 @@ function clean_natural_earth() {
     drop_table 'ne_50m_populated_places_simple'
     drop_table 'ne_50m_rivers_lake_centerlines'
     drop_table 'ne_50m_rivers_lake_centerlines_scale_rank'
-    drop_table 'ne_50m_urban_areas'
 
     echo "VACUUM;" | sqlite3 "$NATURAL_EARTH_DB"
 }
