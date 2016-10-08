@@ -30,7 +30,6 @@ function clean_natural_earth() {
     drop_table 'ne_10m_geography_regions_polys'
     drop_table 'ne_10m_admin_0_boundary_lines_map_units'
     drop_table 'ne_10m_admin_0_boundary_lines_maritime_indicator'
-    drop_table 'ne_10m_admin_0_countries'
     drop_table 'ne_10m_admin_0_label_points'
     drop_table 'ne_10m_antarctic_ice_shelves_lines'
     drop_table 'ne_10m_coastline'
