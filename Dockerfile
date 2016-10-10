@@ -1,28 +1,29 @@
-FROM osm2vectortiles/postgis
+FROM golang:1.7
 MAINTAINER "Lukas Martinelli <me@lukasmartinelli.ch>"
 
-RUN apt-get -y update \
- && apt-get -y --no-install-recommends install \
-        python python-yaml \
-        git ca-certificates \
-        libboost-dev libboost-system-dev \
-        libboost-filesystem-dev libexpat1-dev zlib1g-dev \
-        libbz2-dev libpq-dev lua5.2 \
-        liblua5.2-dev \
+RUN DEBIAN_FRONTEND=noninteractive apt-get update && \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+      libprotobuf-dev \
+      libleveldb-dev \
+      libgeos-dev \
+      postgresql-client \
+      osmctools \
+      --no-install-recommends \
+ && ln -s /usr/lib/libgeos_c.so /usr/lib/libgeos.so \
  && rm -rf /var/lib/apt/lists/*
 
-WORKDIR /opt/osm2pgsql
-RUN git clone https://github.com/openstreetmap/osm2pgsql.git /opt/osm2pgsql \
- && git checkout 0.90.1
-RUN mkdir build \
- && (cd build && cmake .. && make && make install)
+WORKDIR $GOPATH/src/github.com/omniscale/imposm3
+RUN go get github.com/tools/godep \
+ && git clone https://github.com/osm2vectortiles/imposm3 \
+        $GOPATH/src/github.com/omniscale/imposm3 \
+ && go get \
+ && go install
 
-
+VOLUME /import /cache /mapping
 ENV IMPORT_DIR=/import \
-	CLEARTABLES_DIR=/opt/cleartables
+    IMPOSM_CACHE_DIR=/cache \
+    MAPPING_YAML=/mapping/mapping.yaml
 
-VOLUME /opt/cleartables /import
 WORKDIR /usr/src/app
-COPY import_osm.sh /usr/src/app/
-
+COPY . /usr/src/app/
 CMD ["./import_osm.sh"]

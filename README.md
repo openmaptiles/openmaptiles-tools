@@ -26,7 +26,7 @@ You also need to mount the ClearTables osm2pgsql style you want to use and mount
 ```bash
 docker run --rm \
     -v ./:/import \
-    -v ./ClearTables:/opt/cleartables \
+    -v ./:/mapping \
     -e POSTGRES_USER="osm" \
     -e POSTGRES_PASSWORD="osm" \
     -e POSTGRES_HOST="127.0.0.1" \
