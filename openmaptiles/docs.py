@@ -4,10 +4,13 @@ from __future__ import (absolute_import, division, print_function,
 from .tileset import Tileset
 
 
-def collect_documentation(tileset_filename):
+def collect_documentation(tileset_filename, layer_filter=None):
     tileset = Tileset.parse(tileset_filename)
     markdown_doc = ''
     for layer in tileset.layers:
+
+        if layer_filter and layer_filter != layer['layer']['id']:
+            continue
 
         markdown_doc += "\n## {layer_id}\n\n{desc}".format(
             layer_id=layer['layer']['id'], desc=layer['layer']['description'])

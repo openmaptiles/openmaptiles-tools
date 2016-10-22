@@ -39,3 +39,11 @@ Takes a tileset definition and collects all SQL referenced in the layer definiti
 ```
 generate-sql <tileset>
 ```
+
+### Generate Markdown Documentation
+
+Takes a tileset definition and generates Markdown documentation.
+
+```
+generate-doc <tileset>
+```

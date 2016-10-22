@@ -1,12 +1,13 @@
 #!/usr/bin/env python
 """
 Usage:
-  generate-doc <tileset>
+  generate-doc <tileset> [--layer=<layer>] 
   generate-doc --help
   generate-doc --version
 Options:
   --help              Show this screen.
   --version           Show version.
+  --layer=<layer>     Documentation for single layer.
 """
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
@@ -19,5 +20,5 @@ from openmaptiles.docs import collect_documentation
 
 if __name__ == '__main__':
     args = docopt(__doc__, version=openmaptiles.__version__)
-    markdown = collect_documentation(args['<tileset>'])
+    markdown = collect_documentation(args['<tileset>'], args['--layer'])
     print(markdown)
