@@ -46,6 +46,10 @@ class Layer(object):
     def __getitem__(self, attr):
         if attr in self.definition:
             return self.definition[attr]
+        elif attr == "fields":
+            return {}
+        elif attr == "description":
+            return ""
         else:
             raise KeyError
 

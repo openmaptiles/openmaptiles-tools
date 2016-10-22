@@ -1,0 +1,23 @@
+#!/usr/bin/env python
+"""
+Usage:
+  generate-doc <tileset>
+  generate-doc --help
+  generate-doc --version
+Options:
+  --help              Show this screen.
+  --version           Show version.
+"""
+from __future__ import (absolute_import, division, print_function,
+                        unicode_literals)
+
+from docopt import docopt
+
+import openmaptiles
+from openmaptiles.docs import collect_documentation
+
+
+if __name__ == '__main__':
+    args = docopt(__doc__, version=openmaptiles.__version__)
+    markdown = collect_documentation(args['<tileset>'])
+    print(markdown)

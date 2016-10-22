@@ -5,13 +5,15 @@ from OpenMapTiles layers.
 
 ## Install
 
-Install the Python package.
+You need Python 2 or Python 3 installed on your system.
 
 ```
 pip install openmaptiles-tools
+# As long as we are not published to PyPI you can install directly from git
+pip install git+https://github.com/openmaptiles/openmaptiles-tools
 ```
 
-## Tools
+## Usage
 
 ### Generate TM2Source Projects for Mapbox Studio Classic
 
