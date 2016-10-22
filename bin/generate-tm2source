@@ -1,0 +1,36 @@
+#!/usr/bin/env python
+"""
+Usage:
+  generate-tm2source <tileset> [--host=<host>] [--port=<port>] [--database=<dbname>] [--user=<user>] [--password=<pw>]
+  generate-tm2source --help
+  generate-tm2source --version
+Options:
+  --help              Show this screen.
+  --version           Show version.
+  --host=<host>       PostGIS host.
+  --port=<port>       PostGIS port.
+  --database=<dbname> PostGIS database name.
+  --user=<user>       PostGIS user.
+  --password=<pw>     PostGIS password.
+"""
+from __future__ import (absolute_import, division, print_function,
+                        unicode_literals)
+
+from docopt import docopt
+import yaml
+
+import openmaptiles
+from openmaptiles.tmsource import DbParams, generate_tm2source
+
+
+if __name__ == '__main__':
+    args = docopt(__doc__, version=openmaptiles.__version__)
+    db_params = DbParams(
+        dbname=args['--database'],
+        port=int(args['--port']),
+        user=args['--user'],
+        password=args['--password'],
+        host=args['--host']
+    )
+    tm2 = generate_tm2source(args['<tileset>'], db_params)
+    print(yaml.safe_dump(tm2))

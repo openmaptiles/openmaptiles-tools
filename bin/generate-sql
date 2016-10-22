@@ -1,0 +1,23 @@
+#!/usr/bin/env python
+"""
+Usage:
+  generate-sql <tileset>
+  generate-sql --help
+  generate-sql --version
+Options:
+  --help              Show this screen.
+  --version           Show version.
+"""
+from __future__ import (absolute_import, division, print_function,
+                        unicode_literals)
+
+from docopt import docopt
+
+import openmaptiles
+from openmaptiles.sql import collect_sql
+
+
+if __name__ == '__main__':
+    args = docopt(__doc__, version=openmaptiles.__version__)
+    sql = collect_sql(args['<tileset>'])
+    print(sql)
