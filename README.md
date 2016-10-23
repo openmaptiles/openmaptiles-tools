@@ -1,4 +1,4 @@
-# Import OSM into PostGIS using imposm3 [![Docker Automated buil](https://img.shields.io/docker/automated/openmaptiles/import-osm.svg)]()
+# Import OSM into PostGIS using imposm3 [![Docker Automated buil](https://img.shields.io/docker/automated/openmaptiles/import-osm.svg)](https://hub.docker.com/r/openmaptiles/import-osm/)
 
 This Docker image will import an OSM PBF file using [imposm3](https://github.com/omniscale/imposm3) and
 a [custom mapping configuration](https://imposm.org/docs/imposm3/latest/mapping.html).
