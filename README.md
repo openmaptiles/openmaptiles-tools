@@ -1,4 +1,4 @@
-# postgis
+# postgis [![Docker Automated buil](https://img.shields.io/docker/automated/openmaptiles/postgis.svg)]()
 
 A custom PostgreSQL Docker image based off GEOS 3.5 and PostGIS 2.2.
 
@@ -11,15 +11,15 @@ and mount our local directory `./data` as storage.
 
 ```bash
 docker run \
-    -v ./data://var/lib/postgresql/data \
+    -v $(pwd)/data:/var/lib/postgresql/data \
     -e POSTGRES_DB="osm" \
     -e POSTGRES_USER="osm" \
     -e POSTGRES_PASSWORD="osm" \
-    -d osm2vectortiles/postgis
+    -d openmaptiles/postgis
 ```
 
 ## Build
 
 ```bash
-docker build -t osm2vectortiles/postgis .
+docker build -t openmaptiles/postgis .
 ```
