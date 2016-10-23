@@ -1,7 +1,7 @@
-# Import SQL files into PostgreSQL
+# Import SQL files into PostgreSQL [![Docker Automated buil](https://img.shields.io/docker/automated/openmaptiles/import-sql.svg)](https://hub.docker.com/r/openmaptiles/import-sql/)
 
 This Docker image will import all SQL files in a direcotry into PostgreSQL.
-It will also create all helper functions from [postgis-vt-util(https://github.com/mapbox/postgis-vt-util)] for creating
+It will also create all helper functions from [postgis-vt-util](https://github.com/mapbox/postgis-vt-util) for creating
 vector tiles.
 
 ## Usage
@@ -16,4 +16,3 @@ docker run --rm \
     -e POSTGRES_PORT="5432" \
     openmaptiles/import-sql
 ```
-
