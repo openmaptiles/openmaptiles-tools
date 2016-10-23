@@ -1,7 +1,7 @@
-# Import OpenStreetMap into PostGIS using osm2pgsql and ClearTables
+# Import OSM into PostGIS using imposm3 [![Docker Automated buil](https://img.shields.io/docker/automated/openmaptiles/import-osm.svg)]()
 
-This Docker image will import an OSM PBF file using [osm2pgsql](http://wiki.openstreetmap.org/wiki/Osm2pgsql) and
-the [ClearTables osm2pgsql style](https://github.com/ClearTables/ClearTables).
+This Docker image will import an OSM PBF file using [imposm3](https://github.com/omniscale/imposm3) and
+a [custom mapping configuration](https://imposm.org/docs/imposm3/latest/mapping.html).
 
 ## Usage
 
@@ -10,18 +10,14 @@ the [ClearTables osm2pgsql style](https://github.com/ClearTables/ClearTables).
 Use [Geofabrik](http://download.geofabrik.de/index.html) and choose the extract
 of your country or region. Download it and put it into the directory.
 
-### Clone ClearTables
-
-Now clone your desired version of [ClearTables](https://github.com/ClearTables/ClearTables).
-
-```bash
-git clone https://github.com/ClearTables/ClearTables.git
-```
-
 ### Import
 
-The **import-osm** Docker container will take the first PBF file in the volume mounted to the `/import` folder and import it using osm2pgsql.
-You also need to mount the ClearTables osm2pgsql style you want to use and mount it to `/opt/cleartables`.
+The **import-osm** Docker container will take the first PBF file in the volume mounted to the `/import` folder and import it using imposm3 using the mapping file from the `$MAPPING_YAML` (default `/mapping/mapping.yaml`).
+
+Volumes:
+ - Mount your PBFs into the `/import` folder
+ - Mount your `mapping.yaml` into the `/mapping` folder
+ - If you want to use diff mode mountn a persistent location to the `/cache` folder for later reuse
 
 ```bash
 docker run --rm \
@@ -32,6 +28,6 @@ docker run --rm \
     -e POSTGRES_HOST="127.0.0.1" \
     -e POSTGRES_DB="osm" \
     -e POSTGRES_PORT="5432" \
-    osm2vectortiles/import-osm
+    openmaptiles/import-osm
 ```
 
