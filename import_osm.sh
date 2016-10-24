@@ -4,11 +4,19 @@ set -o pipefail
 set -o nounset
 
 readonly PG_CONNECT="postgis://$POSTGRES_USER:$POSTGRES_PASSWORD@$POSTGRES_HOST/$POSTGRES_DB"
+readonly DIFF_MODE=${DIFF_MODE:-true}
 
 
 function import_pbf() {
     local pbf_file="$1"
-    echo "Importing in diff mode"
+    local diff_flag=""
+    if [ "$DIFF_MODE" = true ]; then
+        diff_flag="-diff"
+        echo "Importing in diff mode"
+    else
+        echo "Importing in normal mode"
+    fi
+
     imposm3 import \
         -connection "$PG_CONNECT" \
         -mapping "$MAPPING_YAML" \
@@ -16,7 +24,7 @@ function import_pbf() {
         -cachedir "$IMPOSM_CACHE_DIR" \
         -read "$pbf_file" \
         -deployproduction \
-        -write -diff
+        -write $diff_flag
 }
 
 function import_osm_with_first_pbf() {
