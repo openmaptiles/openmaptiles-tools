@@ -10,9 +10,11 @@ setup(
         'bin/generate-tm2source',
         'bin/generate-imposm3',
         'bin/generate-sql',
+        'bin/generate-doc',
     ],
     install_requires=[
       'docopt',
       'pyyaml',
+      'graphviz',
     ],
 )

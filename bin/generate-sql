@@ -20,4 +20,4 @@ from openmaptiles.sql import collect_sql
 if __name__ == '__main__':
     args = docopt(__doc__, version=openmaptiles.__version__)
     sql = collect_sql(args['<tileset>'])
-    print(sql)
+    print(sql.encode('utf-8'))

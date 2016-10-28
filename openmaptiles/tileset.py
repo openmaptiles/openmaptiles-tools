@@ -1,6 +1,7 @@
 import sys
 import yaml
 import os.path
+import codecs
 
 
 class Layer(object):
@@ -30,7 +31,7 @@ class Layer(object):
                         schema_path
                     )
 
-                with open(schema_path, 'r') as f:
+                with codecs.open(schema_path, 'r', 'utf-8') as f:
                     yield f.read()
 
         return Layer(layer_filename, layer,

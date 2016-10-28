@@ -1,13 +1,13 @@
 #!/usr/bin/env python
 """
 Usage:
-  generate-doc <tileset> [--layer=<layer>] 
+  generate-doc <layer-definition> [--diagram=<filename>]
   generate-doc --help
   generate-doc --version
 Options:
-  --help              Show this screen.
-  --version           Show version.
-  --layer=<layer>     Documentation for single layer.
+  --help               Show this screen.
+  --version            Show version.
+  --diagram=<filename> Generate mapping diagram and save in file.
 """
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
@@ -15,10 +15,20 @@ from __future__ import (absolute_import, division, print_function,
 from docopt import docopt
 
 import openmaptiles
+
+from openmaptiles.tileset import Layer
 from openmaptiles.docs import collect_documentation
+from openmaptiles.diagram import generate_table_mapping_diagram
 
 
 if __name__ == '__main__':
     args = docopt(__doc__, version=openmaptiles.__version__)
-    markdown = collect_documentation(args['<tileset>'], args['--layer'])
+    layer = Layer.parse(args['<layer-definition>'])
+    markdown = collect_documentation(layer, diagram=args['--diagram'])
     print(markdown)
+
+    if args['--diagram']:
+        # TODO: Can we do better than take the first one?
+        mapping_config = layer.imposm_mappings[0]
+        graph = generate_table_mapping_diagram(mapping_config)
+        graph.render(filename=args['--diagram'])
