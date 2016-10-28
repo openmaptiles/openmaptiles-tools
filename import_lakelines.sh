@@ -9,9 +9,6 @@ function import_geojson() {
     local geojson_file=$1
     local table_name=$2
 
-    drop_table "$table_name"
-    echo "$geojson_file"
-
     PGCLIENTENCODING=UTF8 ogr2ogr \
     -f Postgresql \
     -s_srs EPSG:4326 \
