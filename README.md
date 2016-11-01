@@ -1,4 +1,5 @@
 # Import Water from OpenStreetMapData into PostGIS
+[![Docker Automated build](https://img.shields.io/docker/automated/openmaptiles/import-osm.svg?maxAge=2592000)]() [![](https://images.microbadger.com/badges/image/openmaptiles/import-osm.svg)](https://microbadger.com/images/openmaptiles/import-osm)
 
 This is a Docker image to import and simplify water polygons from [OpenStreetMapData](http://openstreetmapdata.com/) using *shp2pgsql* into a PostGIS database.
 The Shapefiles are already baked into the container to make distribution and execution easier.
@@ -14,5 +15,5 @@ docker run --rm \
     -e POSTGRES_HOST="127.0.0.1" \
     -e POSTGRES_DB="osm" \
     -e POSTGRES_PORT="5432" \
-    osm2vectortiles/import-water
+    openmaptiles/import-water
 ```
