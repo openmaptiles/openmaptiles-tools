@@ -1,4 +1,5 @@
-# Import Natural Earth into PostGIS [![Docker Automated build](https://img.shields.io/docker/automated/osm2vectortiles/import-natural-earth.svg?maxAge=2592000)]()
+# Import Natural Earth into PostGIS
+[![Docker Automated build](https://img.shields.io/docker/automated/osm2vectortiles/import-natural-earth.svg?maxAge=2592000)]() [![](https://images.microbadger.com/badges/image/openmaptiles/import-natural-earth.svg)](https://microbadger.com/images/openmaptiles/import-natural-earth)
 
 This is a Docker image to import a subset of [NaturalEarth](https://img.shields.io/docker/automated/jrottenberg/ffmpeg.svg
 ) using *ogr2ogr* into a PostGIS database.
@@ -16,5 +17,5 @@ docker run --rm \
     -e POSTGRES_HOST="127.0.0.1" \
     -e POSTGRES_DB="osm" \
     -e POSTGRES_PORT="5432" \
-    osm2vectortiles/import-natural-earth
+    openmaptiles/import-natural-earth
 ```
