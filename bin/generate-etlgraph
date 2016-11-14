@@ -18,8 +18,8 @@ from docopt import docopt
 #sys.path.insert(0, '~/openmaptiles/openmaptiles-tools/openmaptiles')
 #from tileset import Tileset
 #from tileset import Layer
-#import openmaptiles
 
+import openmaptiles
 from openmaptiles.tileset import Tileset
 from openmaptiles.tileset import Layer
 #from openmaptiles.docs import collect_documentation
