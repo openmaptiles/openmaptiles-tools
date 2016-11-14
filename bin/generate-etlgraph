@@ -1,27 +1,29 @@
 #!/usr/bin/env python
 """
 Usage:
-  generate-etlgraph <layer-definition> 
+  generate-etlgraph <layer-definition>
   generate-etlgraph --help
   generate-etlgraph --version
 Options:
   --help                Show this screen.
   --version             Show version.
-
 """
+
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
+import os
+import os.path
+import distutils.spawn
 
 from docopt import docopt
 
 import openmaptiles
-from openmaptiles.tileset import Tileset
 from openmaptiles.tileset import Layer
 
 def collect_etldot(layer):
     dot = ('digraph G\n'
            '{\n'
-           '/* generated from the source code ( etldoc: ) */ \n'    
+           '/* generated from the source code [ by generate-etlgraph  v' + openmaptiles.__version__ +'}  */ \n'
            'rankdir=LR;\n')
 
     layer_name = layer['layer']['id']
@@ -29,26 +31,66 @@ def collect_etldot(layer):
     dot += "subgraph cluster_"+layer_name+ " {\n"
     dot += '  style=filled;\n'
     dot += '  color=lightblue;\n'
-    dot += '\n'         
+    dot += '\n'
     for mappingstr in layer.imposm_mappings_str:
-            for line in mappingstr.splitlines():
-                sline = line.strip(' \t\n\r')           
-                if( sline[:9]=='# etldoc:' ):
-                    dot += sline [9:].strip(' \t\n\r')+'\n'
+        for line in mappingstr.splitlines():
+            sline = line.strip(' \t\n\r')
+            if sline[:9] == '# etldoc:':
+                dot += sline[9:].strip(' \t\n\r')+'\n'
 
     for schema in layer.schemas:
         for line in schema.splitlines():
             sline = line.strip(' \t\n\r')
-            if( sline[:10]=='-- etldoc:' ):
-                dot += sline [10:].strip(' \t\n\r')+'\n'
+            if sline[:10] == '-- etldoc:':
+                dot += sline[10:].strip(' \t\n\r')+'\n'
     dot += '}\n'
-        
-    dot+='\n}\n'
+
+    dot += '\n}\n'
     return dot
 
 
 if __name__ == '__main__':
     args = docopt(__doc__, version=openmaptiles.__version__)
     layer = Layer.parse(args['<layer-definition>'])
-    etldoc=collect_etldot(layer)
-    print(etldoc)
+
+    layer_path, layer_filename = os.path.split(args['<layer-definition>'])
+
+    # add a prefix for a new .dot,.png,.svg file
+    dotbasefile = os.path.join(layer_path, 'etl_' + layer_filename.split('.')[0])
+
+    dot_filename = dotbasefile + '.dot'
+    old_dot = ''
+
+    layer = Layer.parse(args['<layer-definition>'])
+    etldoc = collect_etldot(layer)
+
+    # IF exists THEN read the old .dot content
+    if os.path.isfile(dot_filename):
+        with open(dot_filename, 'r') as dot_file_r:
+            old_dot = dot_file_r.read()
+            dot_file_r.close()
+
+    # Content is changed ?
+    if etldoc.strip(' \t\n\r') == old_dot.strip(' \t\n\r'):
+        print ('Not changed dotfile :'+layer['layer']['id'])
+        print ('')
+    else:
+        if old_dot == '':
+            print ('Create dotfile : '+layer['layer']['id'])
+        else:
+            print ('Update dotfile: '+layer['layer']['id'])
+
+        # Write a new dot file
+        with open(dot_filename, 'wb') as dot_file_w:
+            dot_file_w.write(etldoc)
+            dot_file_w.close()
+
+        # Generate svg
+        if distutils.spawn.find_executable('dot'):
+            ## temporary: the png is removed , because the svg file size is 10% of the png ,
+            # os.system('dot -Tpng %s.dot -o %s.png' % (dotbasefile, dotbasefile))
+            os.system('dot -Tsvg %s.dot -o %s.svg' % (dotbasefile, dotbasefile))
+            print ('Generated : %s (.dot .svg) ' % (dotbasefile))
+        else:
+            print ('Warning: Could not find the `dot` command, check the graphviz installation!')
+        print ('')
