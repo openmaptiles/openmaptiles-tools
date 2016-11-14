@@ -12,6 +12,7 @@ Options:
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 import os
+import sys
 import os.path
 import distutils.spawn
 
@@ -81,9 +82,16 @@ if __name__ == '__main__':
             print ('Update dotfile: '+layer['layer']['id'])
 
         # Write a new dot file
-        with open(dot_filename, 'wb') as dot_file_w:
-            dot_file_w.write(etldoc)
-            dot_file_w.close()
+        if sys.version_info >= (3, 0):
+            # python3 >=
+            with open(dot_filename, 'wt', encoding='utf-8') as dot_file_w:
+                dot_file_w.write(etldoc)
+                dot_file_w.close()
+        else:
+            # python 2.7
+            with open(dot_filename,'wb') as dot_file_w:
+                dot_file_w.write(etldoc.encode("utf-8"))
+                dot_file_w.close()
 
         # Generate svg
         if distutils.spawn.find_executable('dot'):
