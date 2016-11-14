@@ -14,44 +14,37 @@ from __future__ import (absolute_import, division, print_function,
 
 from docopt import docopt
 
-#import sys
-#sys.path.insert(0, '~/openmaptiles/openmaptiles-tools/openmaptiles')
-#from tileset import Tileset
-#from tileset import Layer
-
 import openmaptiles
 from openmaptiles.tileset import Tileset
 from openmaptiles.tileset import Layer
-#from openmaptiles.docs import collect_documentation
-#from openmaptiles.diagram import generate_table_mapping_diagram
 
 def collect_etldot(layer):
-    sql = ('digraph G\n'
+    dot = ('digraph G\n'
            '{\n'
            '/* generated from the source code ( etldoc: ) */ \n'    
            'rankdir=LR;\n')
 
     layer_name = layer['layer']['id']
-    sql += '\n'
-    sql += "subgraph cluster_"+layer_name+ " {\n"
-    sql += '  style=filled;\n'
-    sql += '  color=lightblue;\n'
-    sql += '\n'         
+    dot += '\n'
+    dot += "subgraph cluster_"+layer_name+ " {\n"
+    dot += '  style=filled;\n'
+    dot += '  color=lightblue;\n'
+    dot += '\n'         
     for mappingstr in layer.imposm_mappings_str:
             for line in mappingstr.splitlines():
                 sline = line.strip(' \t\n\r')           
                 if( sline[:9]=='# etldoc:' ):
-                    sql += sline [9:].strip(' \t\n\r')+'\n'
+                    dot += sline [9:].strip(' \t\n\r')+'\n'
 
     for schema in layer.schemas:
         for line in schema.splitlines():
             sline = line.strip(' \t\n\r')
             if( sline[:10]=='-- etldoc:' ):
-                sql += sline [10:].strip(' \t\n\r')+'\n'
-    sql += '}\n'
+                dot += sline [10:].strip(' \t\n\r')+'\n'
+    dot += '}\n'
         
-    sql+='\n}\n'
-    return sql
+    dot+='\n}\n'
+    return dot
 
 
 if __name__ == '__main__':
@@ -59,4 +52,3 @@ if __name__ == '__main__':
     layer = Layer.parse(args['<layer-definition>'])
     etldoc=collect_etldot(layer)
     print(etldoc)
-
