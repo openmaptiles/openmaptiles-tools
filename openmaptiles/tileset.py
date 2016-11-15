@@ -23,6 +23,21 @@ class Layer(object):
 
                 yield parse_file(mapping_path)
 
+        def parse_imposm_mappings_str():
+            for data_source in layer.get('datasources', []):
+                if data_source['type'] != 'imposm3':
+                    continue
+
+                mapping_path = data_source['mapping_file']
+                if not os.path.isabs(mapping_path):
+                    mapping_path = os.path.join(
+                        os.path.dirname(layer_filename),
+                        mapping_path
+                    )
+
+                with codecs.open(mapping_path, 'r', 'utf-8') as f:
+                    yield f.read()
+
         def parse_schemas():
             for schema_path in layer.get('schema', []):
                 if not os.path.isabs(schema_path):
@@ -36,12 +51,14 @@ class Layer(object):
 
         return Layer(layer_filename, layer,
                      list(parse_imposm_mappings()),
+                     list(parse_imposm_mappings_str()),                     
                      list(parse_schemas()))
 
-    def __init__(self, filename, definition, mappings=[], schemas=[]):
+    def __init__(self, filename, definition, mappings=[], mappings_str=[], schemas=[]):
         self.filename = filename
         self.definition = definition
         self.imposm_mappings = mappings
+        self.imposm_mappings_str = mappings_str        
         self.schemas = schemas
 
     def __getitem__(self, attr):

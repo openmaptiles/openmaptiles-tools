@@ -47,3 +47,27 @@ Takes a tileset definition and generates Markdown documentation.
 ```
 generate-doc <tileset>
 ```
+
+### Generate ETL (Extract-Transform-Load ) graph 
+
+Takes a source code from the imposm3 mapping file and the SQL postprocessing code , 
+nad parsing for the `etldoc:` graphviz based comments, and generate an svg file.
+The `.dot` and the `.svg` filename prefix is `etl_`
+
+```
+generate-etlgraph <tileset>
+generate-etlgraph layers/landcover/landcover.yaml
+generate-etlgraph layers/railway/railway.yaml
+```
+
+example:
+
+input command: ` generate-etlgraph layers/landcover/landcover.yaml `
+output fies:
+- `layers/landcover/etl_landcover.dot`
+- `layers/landcover/etl_landcover.svg`
+
+
+
+
+
