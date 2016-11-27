@@ -19,6 +19,11 @@ RUN go get github.com/tools/godep \
  && go get \
  && go install
 
+RUN go get github.com/julien-noblet/download-geofabrik \
+ && go install  github.com/julien-noblet/download-geofabrik \
+ && download-geofabrik update
+
+
 VOLUME /import /cache /mapping
 ENV IMPORT_DIR=/import \
     IMPOSM_CACHE_DIR=/cache \
