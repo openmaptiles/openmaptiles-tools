@@ -30,8 +30,12 @@ lat_min=$( cat osmstat.txt | grep "lat min:" |cut -d":" -f 2 )
 lat_max=$( cat osmstat.txt | grep "lat max:" |cut -d":" -f 2 )
 timestamp_max=$( cat osmstat.txt | grep "timestamp max:" |cut -d" " -f 3 )
 
+echo "--------------------------------------------"
 echo BBOX: "$lon_min,$lat_min,$lon_max,$lat_max"
 echo TIMESTAMP MAX = $timestamp_max
+echo QUICKSTART_MIN_ZOOM: "$QUICKSTART_MIN_ZOOM"
+echo QUICKSTART_MAX_ZOOM: "$QUICKSTART_MAX_ZOOM"
+echo "--------------------------------------------"
 
 cat > $DOCKER_COMPOSE_FILE  <<- EOM
 version: "2"
@@ -41,6 +45,8 @@ services:
       BBOX: "$lon_min,$lat_min,$lon_max,$lat_max"
       OSM_MAX_TIMESTAMP : "$timestamp_max"
       OSM_AREA_NAME: "$AREA"
-      MIN_ZOOM: "0"
-      MAX_ZOOM: "7"
+      MIN_ZOOM: "$QUICKSTART_MIN_ZOOM"
+      MAX_ZOOM: "$QUICKSTART_MAX_ZOOM"
 EOM
+
+
