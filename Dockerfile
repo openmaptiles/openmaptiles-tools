@@ -12,17 +12,19 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update && \
  && ln -s /usr/lib/libgeos_c.so /usr/lib/libgeos.so \
  && rm -rf /var/lib/apt/lists/*
 
-WORKDIR $GOPATH/src/github.com/omniscale/imposm3
-RUN go get github.com/tools/godep \
- && git clone https://github.com/osm2vectortiles/imposm3 \
-        $GOPATH/src/github.com/omniscale/imposm3 \
- && go get \
- && go install
-
+# add   github.com/julien-noblet/download-geofabrik
 RUN go get github.com/julien-noblet/download-geofabrik \
  && go install  github.com/julien-noblet/download-geofabrik \
  && download-geofabrik update
 
+# add   github.com/osm2vectortiles/imposm3
+WORKDIR $GOPATH/src/github.com/omniscale/imposm3
+RUN go get github.com/tools/godep \
+ && git clone --quiet --depth 1 https://github.com/osm2vectortiles/imposm3 \
+        $GOPATH/src/github.com/omniscale/imposm3 \
+ && make update_version \
+ && go get \
+ && go install
 
 VOLUME /import /cache /mapping
 ENV IMPORT_DIR=/import \
