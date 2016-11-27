@@ -24,7 +24,8 @@ RUN go get github.com/tools/godep \
         $GOPATH/src/github.com/omniscale/imposm3 \
  && make update_version \
  && go get \
- && go install
+ && go install \
+ && imposm3 version
 
 VOLUME /import /cache /mapping
 ENV IMPORT_DIR=/import \
