@@ -1,31 +1,41 @@
 FROM golang:1.7
 MAINTAINER "Lukas Martinelli <me@lukasmartinelli.ch>"
 
-RUN DEBIAN_FRONTEND=noninteractive apt-get update && \
-    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
-      libprotobuf-dev \
-      libleveldb-dev \
+
+ENV PG_MAJOR 9.5
+RUN apt-key adv --keyserver ha.pool.sks-keyservers.net --recv-keys B97B0AFCAA1A47F044F244A07FCC7D46ACCC4CF8 \
+ && echo 'deb http://apt.postgresql.org/pub/repos/apt/ jessie-pgdg main' $PG_MAJOR > /etc/apt/sources.list.d/pgdg.list \
+ && echo "deb http://httpredir.debian.org/debian jessie-backports main contrib" > /etc/apt/sources.list.d/backports.list \
+ && DEBIAN_FRONTEND=noninteractive apt-get update \
+ && DEBIAN_FRONTEND=noninteractive apt-get  -t jessie-backports install -y --no-install-recommends \
       libgeos-dev \
-      postgresql-client \
+      libleveldb-dev \
+      libprotobuf-dev \
       osmctools \
-      --no-install-recommends \
+ && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+      postgresql-client-$PG_MAJOR \
  && ln -s /usr/lib/libgeos_c.so /usr/lib/libgeos.so \
  && rm -rf /var/lib/apt/lists/*
 
 # add   github.com/julien-noblet/download-geofabrik
 RUN go get github.com/julien-noblet/download-geofabrik \
  && go install  github.com/julien-noblet/download-geofabrik \
- && download-geofabrik update
-
-# add   github.com/osm2vectortiles/imposm3
-WORKDIR $GOPATH/src/github.com/omniscale/imposm3
-RUN go get github.com/tools/godep \
+ && download-geofabrik update \
+ # add  github.com/lukasmartinelli/pgclimb
+ && go get github.com/lukasmartinelli/pgclimb \
+ && go install github.com/lukasmartinelli/pgclimb \
+ # add   github.com/osm2vectortiles/imposm3
+ && mkdir -p $GOPATH/src/github.com/omniscale/imposm3 \
+ && cd  $GOPATH/src/github.com/omniscale/imposm3 \
+ && go get github.com/tools/godep \
  && git clone --quiet --depth 1 https://github.com/osm2vectortiles/imposm3 \
         $GOPATH/src/github.com/omniscale/imposm3 \
  && make update_version \
  && go get \
  && go install \
- && imposm3 version
+ && imposm3 version \
+ && rm -rf $GOPATH/src/ \
+ && rm -rf $GOPATH/pkg/
 
 VOLUME /import /cache /mapping
 ENV IMPORT_DIR=/import \
@@ -35,3 +45,5 @@ ENV IMPORT_DIR=/import \
 WORKDIR /usr/src/app
 COPY . /usr/src/app/
 CMD ["./import_osm.sh"]
+
+# openmaptiles/import-osm             latest              7050831434d2        14 minutes ago      748.2 MB
