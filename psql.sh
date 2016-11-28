@@ -27,4 +27,4 @@ PGPASSWORD="$POSTGRES_PASSWORD" psql \
         --host="$POSTGRES_HOST" \
         --port="$POSTGRES_PORT" \
         --dbname="$POSTGRES_DB" \
-        --username="$POSTGRES_USER"  $@
+        --username="$POSTGRES_USER"  "$@"
