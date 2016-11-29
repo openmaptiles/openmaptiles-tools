@@ -1,5 +1,4 @@
-FROM osm2vectortiles/postgis
-MAINTAINER "Lukas Martinelli <me@lukasmartinelli.ch>"
+FROM openmaptiles/postgis:2.2
 ENV IMPORT_DATA_DIR=/import \
     NATURAL_EARTH_DB=/import/natural_earth_vector.sqlite
 
