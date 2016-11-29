@@ -27,22 +27,31 @@ function drop_table() {
 }
 
 function generalize_water() {
-    echo 'CREATE TABLE osm_ocean_polygon_gen0 AS SELECT ST_Simplify(geometry, 30000) AS geometry FROM osm_ocean_polygon_gen1' | exec_psql
-    echo 'CREATE INDEX ON osm_ocean_polygon_gen0 USING gist (geometry)' | exec_psql
-    echo 'ANALYZE osm_ocean_polygon_gen0' | exec_psql
+    local target_table_name="$1"
+    local source_table_name="$2"
+    local tolerance="$3"
+    echo "Generalize $target_table_name with tolerance $tolerance from $source_table_name"
+    echo "CREATE TABLE $target_table_name AS SELECT ST_Simplify(geometry, $tolerance) AS geometry FROM $source_table_name" | exec_psql
+    echo "CREATE INDEX ON $target_table_name USING gist (geometry)" | exec_psql
+    echo "ANALYZE $target_table_name" | exec_psql
 }
 
 function import_water() {
     local table_name="osm_ocean_polygon"
-    local simplified_table_name="osm_ocean_polygon_gen1"
-
     drop_table "$table_name"
     import_shp "$WATER_POLYGONS_FILE" "$table_name"
 
-    drop_table "$simplified_table_name"
-    import_shp "$SIMPLIFIED_WATER_POLYGONS_FILE" "$simplified_table_name"
+    local gen1_table_name="osm_ocean_polygon_gen1"
+    drop_table "$gen1_table_name"
+    generalize_water "$gen1_table_name" "$table_name" 20
 
-    generalize_water
+    local gen2_table_name="osm_ocean_polygon_gen2"
+    drop_table "$gen2_table_name"
+    generalize_water "$gen2_table_name" "$table_name" 40
+
+    local gen3_table_name="osm_ocean_polygon_gen3"
+    drop_table "$gen3_table_name"
+    generalize_water "$gen3_table_name" "$table_name" 80
 }
 
 import_water
