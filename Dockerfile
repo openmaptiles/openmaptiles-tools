@@ -1,8 +1,8 @@
-FROM postgres:9.5
+FROM postgres:9.6
 MAINTAINER "Lukas Martinelli <me@lukasmartinelli.ch>"
-ENV POSTGIS_MAJOR=2.2 \
-    POSTGIS_VERSION=2.2.2 \
-    GEOS_VERSION=3.5.0
+ENV POSTGIS_MAJOR=2.3 \
+    POSTGIS_VERSION=2.3.1 \
+    GEOS_VERSION=3.6.0
 
 RUN apt-get -y update \
  && apt-get -y --no-install-recommends install \
