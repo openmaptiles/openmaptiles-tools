@@ -23,6 +23,7 @@ function import_sql_files() {
 }
 
 function main() {
+    echo '\timing' > /root/.psqlrc
     exec_psql_file "$VT_UTIL_DIR/postgis-vt-util.sql"
     import_sql_files
 }
