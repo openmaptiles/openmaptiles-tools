@@ -24,7 +24,6 @@ function clean_natural_earth() {
     drop_table 'ne_10m_admin_0_scale_rank_minor_islands'
     drop_table 'ne_10m_admin_0_countries_lakes'
     drop_table 'ne_10m_airports'
-    drop_table 'ne_10m_geography_marine_polys'
     drop_table 'ne_10m_geography_regions_elevation_points'
     drop_table 'ne_10m_geography_regions_points'
     drop_table 'ne_10m_geography_regions_polys'
