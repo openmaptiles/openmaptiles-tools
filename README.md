@@ -69,5 +69,12 @@ output fies:
 
 
 
+###  Generate SQL query for a given layer and zoom level
+
+example:
+```
+generate-sqlquery layers/landcover/landcover.yaml  14
+```
+
 
 

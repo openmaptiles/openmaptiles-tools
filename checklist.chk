@@ -1,6 +1,7 @@
-38892c0f98947006e7554db9d6b84592  testlayers/housenumber/README.md
+799943132447a2331888a66eac999b9a  testlayers/housenumber/README.md
 928b1672c63ddf5148bee4e0f0821f4d  testlayers/housenumber/etl_housenumber.dot
 dda7cbc06ef7499b0514654ce4656563  testlayers/housenumber/etl_housenumber.svg
 e3c469f231ef8c0616bf8053b5859386  testbuild/mapping.yaml
 6b6a0ad94d535604ee2942445de39f86  testbuild/tileset.sql
 308eaa4e7a7c8dfd452121e6aca2d469  testbuild/testmaptiles.tm2source/data.yml
+ef913dbd325a81468f4687dfb69f1c27  testbuild/sqlquery.sql
