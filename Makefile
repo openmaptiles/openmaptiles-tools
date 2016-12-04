@@ -1,3 +1,6 @@
+VERSION := $(shell cat VERSION)
+DOCKER_IMAGE      := openmaptiles/openmaptiles-tools
+DOCKER_IMAGE_PY27 := openmaptiles/openmaptiles-tools_py27
 
 .PHONY: test
 
@@ -18,12 +21,19 @@ checklist:
 	md5sum ./testbuild/mapping.yaml                     >> checklist.chk
 	md5sum ./testbuild/tileset.sql                      >> checklist.chk
 	md5sum ./testlayers/housenumber/README.md           >> checklist.chk
-	md5sum ./testbuild/sqlquery.sql                     >> checklist.chk	
+	md5sum ./testbuild/sqlquery.sql                     >> checklist.chk
 	md5sum ./testbuild/devdoc/etl_housenumber.dot 		>> checklist.chk
-	md5sum ./testbuild/devdoc/etl_housenumber.svg 		>> checklist.chk	
+	md5sum ./testbuild/devdoc/etl_housenumber.svg 		>> checklist.chk
 	md5sum ./testbuild/devdoc/etl_housenumber.png 		>> checklist.chk
 	cat checklist.chk
 
 buildtest:
-	docker build -f Dockerfile      -t openmaptiles/openmaptiles-tools      .
-	docker build -f Dockerfile.py27 -t openmaptiles/openmaptiles-tools_py27 .
+	@echo "Buildtest: $(VERSION)"
+	docker build -f Dockerfile      -t $(DOCKER_IMAGE):$(VERSION)      .
+	docker build -f Dockerfile.py27 -t $(DOCKER_IMAGE_PY27):$(VERSION) .
+	docker images | grep  $(DOCKER_IMAGE) | grep $(VERSION)
+
+release:
+	@echo "Release: $(VERSION)"
+	docker build -f Dockerfile      -t openmaptiles/openmaptiles-tools:$(VERSION)      .
+	docker images | grep $(DOCKER_IMAGE) | grep -v $(DOCKER_IMAGE_PY27) | grep $(VERSION)
