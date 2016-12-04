@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 """
 Usage:
-  generate-etlgraph <layer-definition>
+  generate-etlgraph <layer-definition>  <output-path>
   generate-etlgraph --help
   generate-etlgraph --version
 Options:
@@ -57,13 +57,17 @@ if __name__ == '__main__':
     layer_path, layer_filename = os.path.split(args['<layer-definition>'])
 
     # add a prefix for a new .dot,.png,.svg file
-    dotbasefile = os.path.join(layer_path, 'etl_' + layer_filename.split('.')[0])
+    dotbasefile = os.path.join(args['<output-path>'], 'etl_' + layer_filename.split('.')[0])
 
     dot_filename = dotbasefile + '.dot'
     old_dot = ''
 
+    print ( args['<output-path>'] )
+    print (dot_filename)
+
     layer = Layer.parse(args['<layer-definition>'])
     etldoc = collect_etldot(layer)
+
 
     # IF exists THEN read the old .dot content
     if os.path.isfile(dot_filename):
@@ -93,10 +97,9 @@ if __name__ == '__main__':
                 dot_file_w.write(etldoc.encode("utf-8"))
                 dot_file_w.close()
 
-        # Generate svg
+        # Generate png and svg
         if distutils.spawn.find_executable('dot'):
-            ## temporary: the png is removed , because the svg file size is 10% of the png ,
-            # os.system('dot -Tpng %s.dot -o %s.png' % (dotbasefile, dotbasefile))
+            os.system('dot -Tpng %s.dot -o %s.png' % (dotbasefile, dotbasefile))
             os.system('dot -Tsvg %s.dot -o %s.svg' % (dotbasefile, dotbasefile))
             print ('Generated : %s (.dot .svg) ' % (dotbasefile))
         else:

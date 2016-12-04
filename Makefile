@@ -6,7 +6,7 @@ test:
 	mkdir -p testbuild && generate-imposm3 testmaptiles.yaml      > testbuild/mapping.yaml
 	mkdir -p testbuild && generate-sql     testmaptiles.yaml      > testbuild/tileset.sql
 	generate-doc      testlayers/housenumber/housenumber.yaml     > testlayers/housenumber/README.md
-	generate-etlgraph testlayers/housenumber/housenumber.yaml     
+	generate-etlgraph testlayers/housenumber/housenumber.yaml     testbuild/devdoc/
 	generate-sqlquery testlayers/housenumber/housenumber.yaml 14  > testbuild/sqlquery.sql
 	md5sum -c checklist.chk
 

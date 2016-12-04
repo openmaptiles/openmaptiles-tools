@@ -55,9 +55,9 @@ nad parsing for the `etldoc:` graphviz based comments, and generate an svg file.
 The `.dot` and the `.svg` filename prefix is `etl_`
 
 ```
-generate-etlgraph <tileset>
-generate-etlgraph layers/landcover/landcover.yaml
-generate-etlgraph layers/railway/railway.yaml
+generate-etlgraph <tileset>  <target-directory>
+generate-etlgraph layers/landcover/landcover.yaml  ./build/devdoc
+generate-etlgraph layers/railway/railway.yaml      ./build/etlgraph 
 ```
 
 example:
