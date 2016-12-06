@@ -12,6 +12,7 @@ RUN apt-key adv --keyserver ha.pool.sks-keyservers.net --recv-keys B97B0AFCAA1A4
       libleveldb-dev \
       libprotobuf-dev \
       osmctools \
+      osmosis \
  # install postgresql client
  && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
       postgresql-client-$PG_MAJOR \
@@ -29,12 +30,10 @@ RUN go get github.com/julien-noblet/download-geofabrik \
  && mkdir -p $GOPATH/src/github.com/omniscale/imposm3 \
  && cd  $GOPATH/src/github.com/omniscale/imposm3 \
  && go get github.com/tools/godep \
- && git clone --quiet --depth 1 https://github.com/osm2vectortiles/imposm3 \
+ && git clone --quiet --depth 1 https://github.com/omniscale/imposm3 \
         $GOPATH/src/github.com/omniscale/imposm3 \
- && make update_version \
- && go get \
- && go install \
- && imposm3 version \
+ && make build \
+ && mv imposm3 /usr/bin/imposm3 \
  # clean
  && rm -rf $GOPATH/bin/godep \
  && rm -rf $GOPATH/src/ \
