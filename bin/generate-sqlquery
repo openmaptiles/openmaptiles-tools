@@ -1,0 +1,36 @@
+#!/usr/bin/env python
+
+"""
+Usage:
+  generate-sqlquery <layer-definition> <zoom-level>
+  generate-sqlquery --help
+  generate-sqlquery --version
+Options:
+  --help               Show this screen.
+  --version            Show version.
+"""
+
+from __future__ import (absolute_import, division, print_function,
+                        unicode_literals)
+
+from docopt import docopt
+
+import openmaptiles
+
+from openmaptiles.tileset import Layer
+from openmaptiles.docs import collect_documentation
+from openmaptiles.diagram import generate_table_mapping_diagram
+
+
+if __name__ == '__main__':
+  #  print ('-------------------- Dev--------------------')
+    args = docopt(__doc__, version=openmaptiles.__version__)
+    layer = Layer.parse(args['<layer-definition>'])
+
+    bbox="st_SetSRID('BOX3D(-20037508.34 -20037508.34, 20037508.34 20037508.34)'::box3d, 3857 )"
+    zoomlevel=args['<zoom-level>']
+    datasource = layer['layer']['datasource']
+    query=datasource['query']
+    sql=query.replace('!bbox!',bbox).replace('z(!scale_denominator!)', zoomlevel ).replace('!pixel_width!','1')
+  
+    print(sql)
