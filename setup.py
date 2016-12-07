@@ -13,6 +13,7 @@ setup(
         'bin/generate-sqlquery',        
         'bin/generate-doc',
         'bin/generate-etlgraph',       
+        'bin/generate-mapping-graph',       
     ],
     install_requires=[
       'docopt',

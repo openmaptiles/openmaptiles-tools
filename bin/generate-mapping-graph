@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 """
 Usage:
-  generate-doc <layer-definition>
-  generate-doc --help
-  generate-doc --version
+  generate-mapping-graph <layer-definition> <filename>
+  generate-mapping-graph --help
+  generate-mapping-graph --version
 Options:
   --help               Show this screen.
   --version            Show version.
@@ -16,11 +16,12 @@ from docopt import docopt
 import openmaptiles
 
 from openmaptiles.tileset import Layer
-from openmaptiles.docs import collect_documentation
+from openmaptiles.diagram import generate_table_mapping_diagram
 
 
 if __name__ == '__main__':
     args = docopt(__doc__, version=openmaptiles.__version__)
     layer = Layer.parse(args['<layer-definition>'])
-    markdown = collect_documentation(layer, diagram=args['--diagram'])
-    print(markdown)
+    mapping_config = layer.imposm_mappings[0]
+    graph = generate_table_mapping_diagram(mapping_config)
+    graph.render(filename=args['<filename>'])
