@@ -48,7 +48,7 @@ def find_tables(config):
         if table_value.get('mappings'):
             mapping = list(merge_grouped_mappings(table_value['mappings']))
         else:
-            mapping = table_value.get('mapping').items()
+            mapping = table_value.get('mapping', {}).items()
 
         if mapping and fields:
             yield Table(table_name, fields, mapping, table_value['type'])

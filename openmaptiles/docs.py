@@ -24,7 +24,7 @@ def generate_field_doc(field_name, field_spec):
     return field_doc
 
 
-def collect_documentation(layer, diagram=None):
+def collect_documentation(layer):
     markdown_doc = "# {layer_id}\n\n{desc}\n\n".format(
         layer_id=layer['layer']['id'].strip(),
         desc=layer['layer'].get('description', '').strip()
@@ -37,10 +37,6 @@ def collect_documentation(layer, diagram=None):
 
     if len(fields) > 0:
         markdown_doc += "## Fields\n\n{fields}\n".format(fields=fields_doc)
-
-    if diagram:
-        markdown_doc += "## Mapping\n\n![]({diagram_file}.png)\n".format(diagram_file=os.path.basename(diagram))
-
 
     markdown_doc += "\n"
     return markdown_doc

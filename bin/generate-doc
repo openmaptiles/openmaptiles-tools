@@ -22,5 +22,5 @@ from openmaptiles.docs import collect_documentation
 if __name__ == '__main__':
     args = docopt(__doc__, version=openmaptiles.__version__)
     layer = Layer.parse(args['<layer-definition>'])
-    markdown = collect_documentation(layer, diagram=args['--diagram'])
+    markdown = collect_documentation(layer)
     print(markdown)
