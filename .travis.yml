@@ -29,5 +29,7 @@ before_install:
  
 script:
   - sudo service docker restart
+  - docker-compose -v
+  - docker -v  
   - make buildtest
   
