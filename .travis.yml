@@ -1,6 +1,6 @@
 sudo: required
 
-dist: precise
+dist: trusty
 
 language: bash
 
@@ -10,7 +10,7 @@ services:
 env:
   global:
     - COMPOSE_VERSION=1.7.1
-    - DOCKER_VERSION=1.10.0-0~precise
+    - DOCKER_VERSION=1.10.1-0~trusty
 
 before_install:
   - sudo sh -c 'echo "deb https://apt.dockerproject.org/repo ubuntu-precise main" > /etc/apt/sources.list.d/docker.list'
@@ -30,6 +30,6 @@ before_install:
 script:
   - sudo service docker restart
   - docker-compose -v
-  - docker -v  
+  - docker info
   - make buildtest
   
