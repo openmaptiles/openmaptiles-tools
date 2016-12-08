@@ -24,8 +24,6 @@ checklist:
 	md5sum ./testbuild/doc/housenumber.md               >> checklist.chk
 	md5sum ./testbuild/sqlquery.sql                     >> checklist.chk
 	md5sum ./testbuild/devdoc/etl_housenumber.dot 		>> checklist.chk
-	md5sum ./testbuild/devdoc/etl_housenumber.svg 		>> checklist.chk
-	md5sum ./testbuild/devdoc/etl_housenumber.png 		>> checklist.chk
 	cat checklist.chk
 
 buildtest:

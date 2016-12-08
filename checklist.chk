@@ -4,5 +4,3 @@ e3c469f231ef8c0616bf8053b5859386  ./testbuild/mapping.yaml
 2bbb5f07cf224ce595b7e6863bbbeac4  ./testbuild/doc/housenumber.md
 a9025f157ec61cae2e17f7c5d3428ada  ./testbuild/sqlquery.sql
 321ae45757024c5b7b7d46714a2f17f6  ./testbuild/devdoc/etl_housenumber.dot
-507ad764285ff598d6328607b9048b6c  ./testbuild/devdoc/etl_housenumber.svg
-95422b8ddd36650e34df41e090a60cde  ./testbuild/devdoc/etl_housenumber.png
