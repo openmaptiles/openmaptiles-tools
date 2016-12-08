@@ -25,10 +25,7 @@ def generate_field_doc(field_name, field_spec):
 
 
 def collect_documentation(layer):
-    markdown_doc = "# {layer_id}\n\n{desc}\n\n".format(
-        layer_id=layer['layer']['id'].strip(),
-        desc=layer['layer'].get('description', '').strip()
-    )
+    markdown_doc = layer['layer'].get('description', '').strip()
 
     fields_doc = ""
     fields = layer['layer'].get('fields', {}).items()
