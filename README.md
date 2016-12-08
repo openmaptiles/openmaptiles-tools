@@ -1,4 +1,4 @@
-# OpenMapTiles Tools
+# OpenMapTiles Tools [![Build Status](https://api.travis-ci.org/openmaptiles/openmaptiles-tools.svg?branch=master)](https://travis-ci.org/openmaptiles/openmaptiles-tools)
 
 The OpenMapTiles generation tools for generating TM2Source projects, imposm3 mappings and SQL instructions
 from OpenMapTiles layers.
