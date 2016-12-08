@@ -29,10 +29,6 @@ def collect_etldot(layer):
 
     layer_name = layer['layer']['id']
     dot += '\n'
-    dot += "subgraph cluster_"+layer_name+ " {\n"
-    dot += '  style=filled;\n'
-    dot += '  color=lightblue;\n'
-    dot += '\n'
     for mappingstr in layer.imposm_mappings_str:
         for line in mappingstr.splitlines():
             sline = line.strip(' \t\n\r')
@@ -44,8 +40,6 @@ def collect_etldot(layer):
             sline = line.strip(' \t\n\r')
             if sline[:10] == '-- etldoc:':
                 dot += sline[10:].strip(' \t\n\r')+'\n'
-    dot += '}\n'
-
     dot += '\n}\n'
     return dot
 

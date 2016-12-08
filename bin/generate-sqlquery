@@ -16,6 +16,7 @@ from __future__ import (absolute_import, division, print_function,
 from docopt import docopt
 
 import openmaptiles
+import re
 
 from openmaptiles.tileset import Layer
 from openmaptiles.docs import collect_documentation
@@ -27,10 +28,12 @@ if __name__ == '__main__':
     args = docopt(__doc__, version=openmaptiles.__version__)
     layer = Layer.parse(args['<layer-definition>'])
 
-    bbox="st_SetSRID('BOX3D(-20037508.34 -20037508.34, 20037508.34 20037508.34)'::box3d, 3857 )"
+    bbox="ST_SetSRID('BOX3D(-20037508.34 -20037508.34, 20037508.34 20037508.34)'::box3d, 3857 )"
     zoomlevel=args['<zoom-level>']
     datasource = layer['layer']['datasource']
     query=datasource['query']
     sql=query.replace('!bbox!',bbox).replace('z(!scale_denominator!)', zoomlevel ).replace('!pixel_width!','1')
   
-    print(sql)
+    extract_query = re.compile('\((.*)\) AS *')
+    match = extract_query.search(sql) 
+    print(match.group(1))
