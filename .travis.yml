@@ -8,9 +8,9 @@ services:
   - docker
 
 env:
-	  global:
-	    - COMPOSE_VERSION=1.7.1
-	    - DOCKER_VERSION=1.10.0-0~precise
+  global:
+    - COMPOSE_VERSION=1.7.1
+    - DOCKER_VERSION=1.10.0-0~precise
 
 before_install:
   - sudo sh -c 'echo "deb https://apt.dockerproject.org/repo ubuntu-precise main" > /etc/apt/sources.list.d/docker.list'
