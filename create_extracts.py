@@ -2,15 +2,14 @@
 """Generate jobs for rendering tiles in pyramid and list format in JSON format
 
 Usage:
-  create_extracts.py bbox <source_file> <csv_file> [--patch-from=<patch-src>]  [--upload] [--concurrency=<concurrency>] [--target-dir=<target-dir>]
-  create_extracts.py zoom-level <source_file> --max-zoom=<max-zoom> [--upload] [--target-dir=<target-dir>]
+  create_extracts.py bbox <source_file> <csv_file> [--patch-from=<patch-src>]  [--concurrency=<concurrency>] [--target-dir=<target-dir>]
+  create_extracts.py zoom-level <source_file> --max-zoom=<max-zoom> [--target-dir=<target-dir>]
   create_extracts.py (-h | --help)
   create_extracts.py --version
 
 Options:
   -h --help                     Show this screen.
   --version                     Show version.
-  --upload                      Upload extracts to S3.
   --patch-from=<patch-src>      Patch MBTiles file with other MBTiles src.
   --concurrency=<concurrency>   Number of copy processes to use [default: 4].
   --max-zoom=<max-zoom>         Max zoom level of low zoom level extract.
@@ -125,36 +124,10 @@ def parse_extracts(csv_file):
             )
 
 
-def upload_mbtiles(mbtiles_file):
-    """
-    Use s3cmd to upload file. This is easier than using Boto directly.
-    The upload command is configured via environment variables and not
-    the extract utility command line flags.
-    """
-    config_file = os.getenv('S3_CONFIG_FILE',
-                            os.path.join(os.environ['HOME'], '.s3cfg'))
-    access_key = os.environ['S3_ACCESS_KEY']
-    secret_key = os.environ['S3_SECRET_KEY']
-    bucket_name = os.getenv('S3_BUCKET_NAME', 'osm2vectortiles-downloads')
-    prefix = os.getenv('S3_PREFIX', 'v{}/{}/'.format(VERSION, 'extracts'))
-
-    subprocess.check_call([
-        's3cmd',
-        '--config={}'.format(config_file),
-        '--access_key={}'.format(access_key),
-        '--secret_key={}'.format(secret_key),
-        'put', mbtiles_file,
-        's3://{}/{}'.format(bucket_name, prefix),
-        '--acl-public',
-        '--multipart-chunk-size-mb=50'
-    ])
-
-
 if __name__ == '__main__':
     args = docopt(__doc__, version='0.1')
 
     target_dir = args['--target-dir']
-    upload = args['--upload']
     source_file = args['<source_file>']
 
     def process_extract(extract):
@@ -179,10 +152,6 @@ if __name__ == '__main__':
 
         print('Update metadata {}'.format(extract_file))
         update_metadata(extract_file, extract.metadata(extract_file))
-
-        if upload:
-            print('Upload file {}'.format(extract_file))
-            upload_mbtiles(extract_file)
 
     if args['bbox']:
         process_count = int(args['--concurrency'])
