@@ -85,7 +85,7 @@ def create_extract(extract, source_file, extract_file):
         '--bounds={}'.format(extract.bounds()),
         '--minzoom', str(extract.min_zoom),
         '--maxzoom', str(extract.max_zoom),
-        '--timeout=20000000',
+        '--timeout=1800000',
         source, sink
     ]
 
@@ -111,7 +111,7 @@ def update_metadata(mbtiles_file, metadata):
 
 
 def parse_extracts(csv_file):
-    with open(args['<csv_file>'], "r") as file_handle:
+    with open(args['<csv_file>'], 'r') as file_handle:
         reader = csv.DictReader(file_handle, delimiter=',',)
         for row in reader:
             yield Extract(
