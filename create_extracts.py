@@ -16,18 +16,21 @@ Options:
   --max-zoom=<max-zoom>         Max zoom level of low zoom level extract.
   --target-dir=<target-dir>     Target directory to put extracts in [default: ./]
 """
+from __future__ import print_function
 
 import shutil
 import subprocess
 import sqlite3
 import csv
+import sys
+import os
 import os.path
 from multiprocessing.dummy import Pool as ProcessPool
 from docopt import docopt
 
-ATTRIBUTION = '<a href="http://www.openstreetmap.org/about/" target="_blank">&copy; OpenStreetMap contributors</a>'
-VERSION = '2.0'
 
+ATTRIBUTION = os.environ.get('METADATA_ATTRIBUTION', '<a href="http://www.openstreetmap.org/about/" target="_blank">&copy; OpenStreetMap contributors</a>')
+VERSION = os.environ.get('METADATA_VERSION', '3.3')
 
 class Extract(object):
 
@@ -57,14 +60,14 @@ class Extract(object):
 
     def metadata(self, extract_file):
         return {
-            "type": "baselayer",
+            "type": os.environ.get('METADATA_TYPE', 'baselayer'),
             "attribution": ATTRIBUTION,
             "version": VERSION,
             "minzoom": self.min_zoom,
             "maxzoom": self.max_zoom,
-            "name": "osm2vectortiles",
-            "id": "osm2vectortiles",
-            "description": "Extract from http://osm2vectortiles.org",
+            "name": os.environ.get('METADATA_NAME', 'OpenMapTiles'),
+            "id": os.environ.get('METADATA_ID', 'openmaptiles'),
+            "description": os.environ.get('METADATA_DESC', "Extract from http://openmaptiles.org"),
             "bounds": self.bounds(),
             "center": self.center(),
             "basename": os.path.basename(extract_file),
@@ -82,7 +85,7 @@ def create_extract(extract, source_file, extract_file):
         '--bounds={}'.format(extract.bounds()),
         '--minzoom', str(extract.min_zoom),
         '--maxzoom', str(extract.max_zoom),
-        '--timeout=200000',
+        '--timeout=20000000',
         source, sink
     ]
 
@@ -166,7 +169,14 @@ if __name__ == '__main__':
             print('Use patch from {} as base'.format(patch_src))
             shutil.copyfile(patch_src, extract_file)
 
-        create_extract(extract, source_file, extract_file)
+        try:
+            create_extract(extract, source_file, extract_file)
+        except subprocess.CalledProcessError as e:
+            # Failing extracts should not interrupt
+            # the entire process
+            print(e, file=sys.stderr)
+            return
+
         print('Update metadata {}'.format(extract_file))
         update_metadata(extract_file, extract.metadata(extract_file))
 
