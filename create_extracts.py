@@ -27,9 +27,9 @@ import os.path
 from multiprocessing.dummy import Pool as ProcessPool
 from docopt import docopt
 
-
-ATTRIBUTION = os.environ.get('METADATA_ATTRIBUTION', '<a href="http://www.openstreetmap.org/about/" target="_blank">&copy; OpenStreetMap contributors</a>')
+ATTRIBUTION = os.environ.get('METADATA_ATTRIBUTION', '<a href="http://openmaptiles.org/" target="_blank">&copy; OpenMapTiles</a> <a href="http://www.openstreetmap.org/about/" target="_blank">&copy; OpenStreetMap contributors</a>')
 VERSION = os.environ.get('METADATA_VERSION', '3.3')
+
 
 class Extract(object):
 
