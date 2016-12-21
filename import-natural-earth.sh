@@ -14,7 +14,7 @@ function import_natural_earth() {
     -t_srs EPSG:3857 \
     -clipsrc -180.1 -85.0511 180.1 85.0511 \
     PG:"$PGCONN" \
-    -lco GEOMETRY_NAME=geom \
+    -lco GEOMETRY_NAME=geometry \
     -lco DIM=2 \
     -nlt GEOMETRY \
     -overwrite \
