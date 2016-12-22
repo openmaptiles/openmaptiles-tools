@@ -42,7 +42,7 @@ def generate_layer(layer_def, layer_defaults, db_params):
         },
         'Datasource': {
           'extent': [-20037508.34, -20037508.34, 20037508.34, 20037508.34],
-          'geometry_field': datasource.get('geometry_field', 'geom'),
+          'geometry_field': datasource.get('geometry_field', 'geometry'),
           'key_field': datasource.get('key_field', ''),
           'key_field_as_attribute': datasource.get('key_field_as_attribute', ''),
           'max_size': datasource.get('max_size', 512),
