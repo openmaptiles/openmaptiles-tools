@@ -9,7 +9,8 @@ function update() {
     imposm3 run \
         -connection "$PG_CONNECT" \
         -mapping "$MAPPING_YAML" \
-        -cachedir "$IMPOSM_CACHE_DIR"
+        -cachedir "$IMPOSM_CACHE_DIR" \
+        -config config.json
 }
 
 update
