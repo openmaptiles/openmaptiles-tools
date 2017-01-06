@@ -1,7 +1,9 @@
 # OpenMapTiles Tools [![Build Status](https://api.travis-ci.org/openmaptiles/openmaptiles-tools.svg?branch=master)](https://travis-ci.org/openmaptiles/openmaptiles-tools)
 
-The OpenMapTiles generation tools for generating TM2Source projects, imposm3 mappings and SQL instructions
-from OpenMapTiles layers.
+The OpenMapTiles tools for generating TM2Source projects, imposm3 mappings and SQL instructions
+from OpenMapTiles layers. We encourage other people to use this for their vector tile projects as well since this approach works well for us.
+
+Check out the [OpenMapTiles project](https://github.com/openmaptiles/openmaptiles/) for a real world example.
 
 ## Install
 
@@ -11,6 +13,59 @@ You need Python 2 or Python 3 installed on your system.
 pip install openmaptiles-tools
 # As long as we are not published to PyPI you can install directly from git
 pip install git+https://github.com/openmaptiles/openmaptiles-tools
+```
+
+## Concepts
+
+You define a self contained **Layer** together with SQL files and layer and data source definitions (like an imposm3 mapping file) that you can then reference in a **Tileset** where you mix and match with other layers.
+
+
+### Define your own Layer
+
+Take a look or copy a standard layer like [building](https://github.com/openmaptiles/openmaptiles/tree/master/layers/building) to get started with your own layer.
+A layer consists out of a **Layer** definition written in YAML format.
+
+There you specify the `layer` properties like `id`, `buffer_size` and possible Markdown documentation (`description` and `fields`).
+You can also reference SQL files in `schema` for writing the necessary queries for your layer or create generalized tables.
+We encourage you to have a function per layer which takes the bounding box and zoom level. This makes it easy
+to test and reuse.
+
+If your data is based of OSM you can also directly
+reference a [imposm3 mapping file](https://imposm.org/docs/imposm3/latest/mapping.html) to choose the OSM data you need.
+
+```yaml
+layer:
+  id: "building"
+  description: Buildings from OpenStreetMap
+  buffer_size: 4
+  datasource:
+    query: (SELECT geometry FROM layer_building(!bbox!, z(!scale_denominator!))) AS t
+  fields:
+    render_height: An approximated height from levels and height of building.
+schema:
+  - ./building.sql
+datasources:
+  - type: imposm3
+    mapping_file: ./mapping.yaml
+```
+
+### Define your own Tileset
+
+A **Tileset** defines which layer will be in your vector tile set (`layers`)
+and metadata used for generating a TM2Source project to actually generate the vector tiles.
+
+```yaml
+tileset:
+  layers:
+    - layers/building/building.yaml
+    - layers/housenumber/housenumber.yaml
+    - layers/poi/poi.yaml
+  name: Street Level
+  description: A tileset showing street level info like building, housenumbers and POIs.
+  attribution: "OpenStreetMap contributors"
+  maxzoom: 14
+  minzoom: 13
+  center: [-12.2168, 28.6135, 4]
 ```
 
 ## Usage
