@@ -10,6 +10,9 @@ function update() {
         -connection "$PG_CONNECT" \
         -mapping "$MAPPING_YAML" \
         -cachedir "$IMPOSM_CACHE_DIR" \
+        -diffdir "$IMPORT_DIR" \
+        -expiretiles-dir "$IMPORT_DIR" \
+        -expiretiles-zoom 14 \
         -config config.json
 }
 
