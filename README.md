@@ -8,11 +8,16 @@ Check out the [OpenMapTiles project](https://github.com/openmaptiles/openmaptile
 ## Install
 
 You need Python 2 or Python 3 installed on your system.
+External dependency:  graphviz, sqlite3 
 
 ```
 pip install openmaptiles-tools
 # As long as we are not published to PyPI you can install directly from git
 pip install git+https://github.com/openmaptiles/openmaptiles-tools
+
+#Some tool call external command,  you can install them on debian / ubuntu :
+apt-get install  graphviz sqlite3 
+
 ```
 
 ## Concepts
@@ -105,6 +110,8 @@ generate-doc <tileset>
 
 ### Generate ETL (Extract-Transform-Load ) graph 
 
+dependency:  graphviz
+
 Takes a source code from the imposm3 mapping file and the SQL postprocessing code , 
 nad parsing for the `etldoc:` graphviz based comments, and generate an svg file.
 The `.dot` and the `.svg` filename prefix is `etl_`
@@ -131,5 +138,11 @@ example:
 generate-sqlquery layers/landcover/landcover.yaml  14
 ```
 
+### Add simple metadata to mbtiles file 
 
+dependency:  sqlite3 
 
+example:
+```
+generate_metadata ./data/tiles.mbtiles
+```
