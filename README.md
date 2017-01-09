@@ -12,7 +12,7 @@ External dependency:  graphviz, sqlite3
 
 ```
 pip install openmaptiles-tools
-# As long as we are not published to PyPI you can install directly from git
+# You can also install the package directly from git
 pip install git+https://github.com/openmaptiles/openmaptiles-tools
 
 #Some tool call external command,  you can install them on debian / ubuntu :
