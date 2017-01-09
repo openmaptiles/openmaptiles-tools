@@ -35,4 +35,5 @@ buildtest:
 release:
 	@echo "Release: $(VERSION)"
 	docker build -f Dockerfile      -t openmaptiles/openmaptiles-tools:$(VERSION)      .
-	docker images | grep $(DOCKER_IMAGE) | grep -v $(DOCKER_IMAGE_PY27) | grep $(VERSION)
+	docker build -f Dockerfile      -t openmaptiles/openmaptiles-tools:latest          .	
+	docker images | grep $(DOCKER_IMAGE) | grep -v $(DOCKER_IMAGE_PY27) 

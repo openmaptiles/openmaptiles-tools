@@ -7,13 +7,14 @@ setup(
     license='MIT',
     long_description=open('README.md').read(),
     scripts=[
-        'bin/generate-tm2source',
-        'bin/generate-imposm3',
-        'bin/generate-sql',
-        'bin/generate-sqlquery',        
         'bin/generate-doc',
         'bin/generate-etlgraph',       
+        'bin/generate-imposm3',
         'bin/generate-mapping-graph',       
+        'bin/generate-metadata',        
+        'bin/generate-sql',
+        'bin/generate-sqlquery',        
+        'bin/generate-tm2source',
     ],
     install_requires=[
       'docopt',
