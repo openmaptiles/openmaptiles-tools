@@ -15,10 +15,6 @@ RUN apt-key adv --keyserver ha.pool.sks-keyservers.net --recv-keys B97B0AFCAA1A4
     ca-certificates \
  && rm -rf /var/lib/apt/lists/*
 
-RUN wget -O pgfutter https://github.com/lukasmartinelli/pgfutter/releases/download/v1.1/pgfutter_linux_amd64 \
- && chmod +x pgfutter \
- && mv pgfutter /usr/local/bin/
-
 RUN git clone https://github.com/pnorman/osmborder.git /usr/src/osmborder
 WORKDIR /usr/src/osmborder/build
 RUN cmake .. && make && make install
