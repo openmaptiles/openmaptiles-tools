@@ -10,6 +10,7 @@ def create_imposm3_mapping(tileset_filename):
 
     generalized_tables = {}
     tables = {}
+    tags = {}
 
     for layer in tileset.layers:
         for mapping in layer.imposm_mappings:
@@ -17,8 +18,11 @@ def create_imposm3_mapping(tileset_filename):
                 generalized_tables[table_name] = definition
             for table_name, definition in mapping.get('tables', {}).items():
                 tables[table_name] = definition
+            for tag_name, definition in mapping.get('tags', {}).items():
+                tags[tag_name] = definition
 
     return {
+        'tags': tags,
         'generalized_tables': generalized_tables,
         'tables': tables,
     }
