@@ -1,4 +1,4 @@
-FROM openmaptiles/postgis:latest
+FROM openmaptiles/postgis:2.3
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
       ca-certificates \
