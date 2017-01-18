@@ -21,8 +21,8 @@ function cleanup_dest_project() {
 function replace_db_connection() {
     local replace_expr_1="s|host: .*|host: \"$POSTGRES_HOST\"|g"
     local replace_expr_2="s|port: .*|port: \"5432\"|g"
-    local replace_expr_3="s|dbname: .*|dbname: \"$POSTGRES_USER\"|g"
-    local replace_expr_4="s|user: .*|user: \"$POSTGRES_DB\"|g"
+    local replace_expr_3="s|dbname: .*|dbname: \"$POSTGRES_DB\"|g"
+    local replace_expr_4="s|user: .*|user: \"$POSTGRES_USER\"|g"
     local replace_expr_5="s|password: .*|password: \"$POSTGRES_PASSWORD\"|g"
 
     sed -i "$replace_expr_1" "$DEST_PROJECT_FILE"
