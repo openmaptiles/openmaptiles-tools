@@ -45,7 +45,9 @@ RUN go get github.com/julien-noblet/download-geofabrik \
 VOLUME /import /cache /mapping
 ENV IMPORT_DIR=/import \
     IMPOSM_CACHE_DIR=/cache \
-    MAPPING_YAML=/mapping/mapping.yaml
+    MAPPING_YAML=/mapping/mapping.yaml \
+    DIFF_DIR=/import \
+    TILES_DIR=/import
 
 WORKDIR /usr/src/app
 COPY . /usr/src/app/

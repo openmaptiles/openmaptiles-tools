@@ -21,7 +21,7 @@ function import_pbf() {
         -connection "$PG_CONNECT" \
         -mapping "$MAPPING_YAML" \
         -overwritecache \
-        -diffdir "$IMPORT_DIR" \
+        -diffdir "$DIFF_DIR" \
         -cachedir "$IMPOSM_CACHE_DIR" \
         -read "$pbf_file" \
         -deployproduction \
