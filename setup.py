@@ -14,6 +14,7 @@ setup(
         'bin/generate-sql',
         'bin/generate-sqlquery',        
         'bin/generate-tm2source',
+        'bin/replace-layer',
     ],
     install_requires=[
       'docopt',

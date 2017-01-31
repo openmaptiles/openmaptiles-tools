@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 """
 Usage:
-  replace-layers <input_yaml> <output_yaml> <new_layer>
-  replace-layers --help
-  replace-layers --version
+  replace-layer <input_yaml> <output_yaml> <new_layer>
+  replace-layer --help
+  replace-layer --version
 Options:
   --help              Show this screen.
   --version           Show version.
