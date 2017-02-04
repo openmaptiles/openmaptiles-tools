@@ -47,7 +47,8 @@ ENV IMPORT_DIR=/import \
     IMPOSM_CACHE_DIR=/cache \
     MAPPING_YAML=/mapping/mapping.yaml \
     DIFF_DIR=/import \
-    TILES_DIR=/import
+    TILES_DIR=/import \
+    CONFIG_JSON=config.json
 
 WORKDIR /usr/src/app
 COPY . /usr/src/app/
