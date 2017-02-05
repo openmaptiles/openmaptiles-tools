@@ -13,7 +13,7 @@ function update() {
         -diffdir "$DIFF_DIR" \
         -expiretiles-dir "$TILES_DIR" \
         -expiretiles-zoom 14 \
-        -config config.json
+        -config $CONFIG_JSON
 }
 
 update
