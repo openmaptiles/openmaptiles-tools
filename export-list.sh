@@ -6,6 +6,7 @@ set -o nounset
 source utils.sh
 
 readonly LIST_FILE="$EXPORT_DIR/tiles.txt"
+readonly TILE_TIMEOUT=${TILE_TIMEOUT:-1800000}
 
 function export_local_mbtiles() {
     local mbtiles_name="tiles.mbtiles"
@@ -18,6 +19,7 @@ function export_local_mbtiles() {
     exec tilelive-copy \
         --scheme="list" \
         --list="$LIST_FILE" \
+        --timeout="$TILE_TIMEOUT" \
         "tmsource://$DEST_PROJECT_DIR" "mbtiles://$EXPORT_DIR/$mbtiles_name"
 }
 
