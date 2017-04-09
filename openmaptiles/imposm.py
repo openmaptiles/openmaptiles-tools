@@ -21,11 +21,14 @@ def create_imposm3_mapping(tileset_filename):
         for mapping in layer.imposm_mappings:
             for table_name, definition in mapping.get('generalized_tables', {}).items():
                 if 'tolerance' in definition:
-                    if re.match(r"^Z\d{1,2}$", definition['tolerance']):
-                        definition['tolerance'] = ZRes(float(definition['tolerance'][1:3]))
-                    else:
-                        raise SyntaxError('Unrecognized tolerance '+str(definition['tolerance']))
-                generalized_tables[table_name] = definition
+                    try:
+                        generalized_tables[table_name] = float(definition['tolerance'])
+                    except:
+                        if re.match(r"^Z\d{1,2}$", definition['tolerance']):
+                            definition['tolerance'] = ZRes(float(definition['tolerance'][1:3]))
+                            generalized_tables[table_name] = definition
+                        else:
+                            raise SyntaxError('Unrecognized tolerance '+str(definition['tolerance']))
             for table_name, definition in mapping.get('tables', {}).items():
                 tables[table_name] = definition
             for tag_name, definition in mapping.get('tags', {}).items():
