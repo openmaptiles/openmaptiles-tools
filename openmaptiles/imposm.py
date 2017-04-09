@@ -3,6 +3,11 @@ from __future__ import (absolute_import, division, print_function,
 
 from .tileset import Tileset
 
+import sys
+import re
+
+def ZRes(z):
+    return 40075016.6855785/(256*2**z) # See https://github.com/mapbox/postgis-vt-util/blob/master/src/ZRes.sql
 
 def create_imposm3_mapping(tileset_filename):
     tileset = Tileset.parse(tileset_filename)
@@ -15,7 +20,15 @@ def create_imposm3_mapping(tileset_filename):
     for layer in tileset.layers:
         for mapping in layer.imposm_mappings:
             for table_name, definition in mapping.get('generalized_tables', {}).items():
-                generalized_tables[table_name] = definition
+                if 'tolerance' in definition:
+                    try:
+                        generalized_tables[table_name] = float(definition['tolerance'])
+                    except:
+                        if re.match(r"^Z\d{1,2}$", definition['tolerance']):
+                            definition['tolerance'] = ZRes(float(definition['tolerance'][1:3]))
+                            generalized_tables[table_name] = definition
+                        else:
+                            raise SyntaxError('Unrecognized tolerance '+str(definition['tolerance']))
             for table_name, definition in mapping.get('tables', {}).items():
                 tables[table_name] = definition
             for tag_name, definition in mapping.get('tags', {}).items():
