@@ -22,7 +22,8 @@ def create_imposm3_mapping(tileset_filename):
             for table_name, definition in mapping.get('generalized_tables', {}).items():
                 if 'tolerance' in definition:
                     try:
-                        generalized_tables[table_name] = float(definition['tolerance'])
+                        float(definition['tolerance'])
+                        generalized_tables[table_name] = definition
                     except:
                         if re.match(r"^Z\d{1,2}$", definition['tolerance']):
                             definition['tolerance'] = ZRes(float(definition['tolerance'][1:3]))
