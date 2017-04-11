@@ -3,11 +3,6 @@ from __future__ import (absolute_import, division, print_function,
 
 from .tileset import Tileset
 
-import sys
-import re
-
-def ZRes(z):
-    return 40075016.6855785/(256*2**z) # See https://github.com/mapbox/postgis-vt-util/blob/master/src/ZRes.sql
 
 def create_imposm3_mapping(tileset_filename):
     tileset = Tileset.parse(tileset_filename)
