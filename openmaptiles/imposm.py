@@ -15,6 +15,14 @@ def create_imposm3_mapping(tileset_filename):
     for layer in tileset.layers:
         for mapping in layer.imposm_mappings:
             for table_name, definition in mapping.get('generalized_tables', {}).items():
+                if 'tolerance' in definition:
+                    try:					# Test if numeric
+                        float(definition['tolerance'])
+                    except:
+                        if re.match(r"^Z\d{1,2}$", definition['tolerance']):	# Match Z## pattern
+                            definition['tolerance'] = ZRes(float(definition['tolerance'][1:3]))	# Convert to distance
+                        else:
+                            raise SyntaxError('Unrecognized tolerance '+str(definition['tolerance']))
                 generalized_tables[table_name] = definition
             for table_name, definition in mapping.get('tables', {}).items():
                 tables[table_name] = definition
