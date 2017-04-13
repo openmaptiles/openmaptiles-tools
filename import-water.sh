@@ -52,6 +52,10 @@ function import_water() {
     local gen3_table_name="osm_ocean_polygon_gen3"
     drop_table "$gen3_table_name"
     generalize_water "$gen3_table_name" "$table_name" 80
+    
+    local gen3_table_name="osm_ocean_polygon_gen4"
+    drop_table "$gen3_table_name"
+    generalize_water "$gen3_table_name" "$table_name" 160
 }
 
 import_water
