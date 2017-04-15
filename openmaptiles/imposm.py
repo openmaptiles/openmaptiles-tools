@@ -17,7 +17,7 @@ def create_imposm3_mapping(tileset_filename):
     tileset = Tileset.parse(tileset_filename)
     definition = tileset.definition
 
-    pixel_scale = float(tileset.definition.get('pixel_scale',256))
+    pixel_scale = tileset.definition['pixel_scale']
 
     generalized_tables = {}
     tables = {}
