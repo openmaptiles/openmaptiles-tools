@@ -6,8 +6,8 @@ from .tileset import Tileset
 import sys
 import re
 
-def ZRes(z):
-    return 40075016.6855785/(256*2**z) # See https://github.com/mapbox/postgis-vt-util/blob/master/src/ZRes.sql
+def pixel_geounit(pixel_scale,zoom):
+    return 40075016.6855785/((1.0*pixel_scale)*2**zoom) # See https://github.com/mapbox/postgis-vt-util/blob/master/src/ZRes.sql
 
 def create_imposm3_mapping(tileset_filename):
     tileset = Tileset.parse(tileset_filename)
@@ -24,8 +24,10 @@ def create_imposm3_mapping(tileset_filename):
                     try:					# Test if numeric
                         float(definition['tolerance'])
                     except:
-                        if re.match(r"^Z\d{1,2}$", definition['tolerance']):	# Match Z## pattern
-                            definition['tolerance'] = ZRes(float(definition['tolerance'][1:3]))	# Convert to distance
+                        if re.match(r"^GEOUNIT\d{1,2}$", definition['tolerance']):	# Match Z## pattern
+                            zoom = definition['tolerance'][7:9]
+                            pixel_scale = tileset.definition['pixel_scale']
+                            definition['tolerance'] = pixel_geounit(float(pixel_scale),float(zoom))	# Convert to distance
                         else:
                             raise SyntaxError('Unrecognized tolerance '+str(definition['tolerance']))
                 generalized_tables[table_name] = definition

@@ -21,6 +21,7 @@ def generate_tm2source(tileset_filename, db_params):
         'maxzoom': tileset['maxzoom'],
         'minzoom': tileset['minzoom'],
         'name': tileset['name'],
+        'pixel_scale': tileset['pixel_scale'],
         'Layer': [],
     }
 
