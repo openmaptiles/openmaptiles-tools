@@ -17,6 +17,8 @@ def create_imposm3_mapping(tileset_filename):
     tileset = Tileset.parse(tileset_filename)
     definition = tileset.definition
 
+    pixel_scale = float(tileset.definition.get('pixel_scale',256))
+
     generalized_tables = {}
     tables = {}
     tags = {}
@@ -30,12 +32,10 @@ def create_imposm3_mapping(tileset_filename):
                     except:
                         if re.match(r"^GEOUNIT\d{1,2}$", definition['tolerance']):
                             zoom = definition['tolerance'][7:9]
-                            pixel_scale = tileset.definition['pixel_scale']
                             definition['tolerance'] = pixel_geounit(float(pixel_scale),float(zoom))	# Convert to distance
                         else:
                             raise SyntaxError('Unrecognized tolerance '+str(definition['tolerance']))
                 if 'sql_filter' in definition:
-                   pixel_scale = tileset.definition['pixel_scale']
                    definition['sql_filter'] = re.sub(r"GEOUNIT\d{1,2}",lambda match: call_pixel_geounit(pixel_scale,match),definition['sql_filter'])
                 generalized_tables[table_name] = definition
             for table_name, definition in mapping.get('tables', {}).items():
