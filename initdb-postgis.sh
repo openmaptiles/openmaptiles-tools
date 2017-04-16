@@ -29,7 +29,6 @@ function create_postgis_extension() {
 function main() {
     create_template_postgis
     create_postgis_extension
-    execute_sql_into_template "$VT_UTIL_DIR/postgis-vt-util.sql"
 }
 
 main
