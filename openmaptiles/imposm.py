@@ -31,7 +31,7 @@ def create_imposm3_mapping(tileset_filename):
                         float(definition['tolerance'])
                     except:
                         if re.match(r"^ZRES\d{1,2}$", definition['tolerance']):
-                            zoom = definition['tolerance'][7:9]
+                            zoom = definition['tolerance'][4:6]
                             definition['tolerance'] = zres(float(pixel_scale),float(zoom))	# Convert to distance
                         else:
                             raise SyntaxError('Unrecognized tolerance '+str(definition['tolerance']))
