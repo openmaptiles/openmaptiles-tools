@@ -6,12 +6,18 @@ from .tileset import Tileset
 import sys
 import re
 
-def ZRes(z):
-    return 40075016.6855785/(256*2**z) # See https://github.com/mapbox/postgis-vt-util/blob/master/src/ZRes.sql
+
+def zres(pixel_scale,zoom):
+    return 40075016.6855785/((1.0*pixel_scale)*2**zoom) # See https://github.com/mapbox/postgis-vt-util/blob/master/src/ZRes.sql
+
+def call_zres(pixel_scale,match):
+    return str(zres(float(pixel_scale),float(match.group(0)[4:6]))) # See https://github.com/mapbox/postgis-vt-util/blob/master/src/ZRes.sql
 
 def create_imposm3_mapping(tileset_filename):
     tileset = Tileset.parse(tileset_filename)
     definition = tileset.definition
+
+    pixel_scale = tileset.definition['pixel_scale']
 
     generalized_tables = {}
     tables = {}
@@ -24,10 +30,13 @@ def create_imposm3_mapping(tileset_filename):
                     try:					# Test if numeric
                         float(definition['tolerance'])
                     except:
-                        if re.match(r"^Z\d{1,2}$", definition['tolerance']):	# Match Z## pattern
-                            definition['tolerance'] = ZRes(float(definition['tolerance'][1:3]))	# Convert to distance
+                        if re.match(r"^ZRES\d{1,2}$", definition['tolerance']):
+                            zoom = definition['tolerance'][4:6]
+                            definition['tolerance'] = zres(float(pixel_scale),float(zoom))	# Convert to distance
                         else:
                             raise SyntaxError('Unrecognized tolerance '+str(definition['tolerance']))
+                if 'sql_filter' in definition:
+                   definition['sql_filter'] = re.sub(r"ZRES\d{1,2}",lambda match: call_zres(pixel_scale,match),definition['sql_filter'])
                 generalized_tables[table_name] = definition
             for table_name, definition in mapping.get('tables', {}).items():
                 tables[table_name] = definition
