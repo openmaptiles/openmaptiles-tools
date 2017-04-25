@@ -11,7 +11,7 @@ def zres(pixel_scale,zoom):
     return 40075016.6855785/((1.0*pixel_scale)*2**zoom) # See https://github.com/mapbox/postgis-vt-util/blob/master/src/ZRes.sql
 
 def call_zres(pixel_scale,match):
-    return str(zres(float(pixel_scale),float(match.group(0)[7:9]))) # See https://github.com/mapbox/postgis-vt-util/blob/master/src/ZRes.sql
+    return str(zres(float(pixel_scale),float(match.group(0)[4:6]))) # See https://github.com/mapbox/postgis-vt-util/blob/master/src/ZRes.sql
 
 def create_imposm3_mapping(tileset_filename):
     tileset = Tileset.parse(tileset_filename)
