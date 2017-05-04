@@ -16,7 +16,7 @@ function execute_sql_into_template() {
 }
 
 function create_postgis_extension() {
-    cd "/usr/share/postgresql/9.6/contrib/postgis-2.3"
+    cd "/usr/share/postgresql/9.6/contrib/postgis-2.4"
     local db
     for db in template_postgis "$POSTGRES_DB"; do
         echo "Loading PostGIS into $db"
