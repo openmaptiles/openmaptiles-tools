@@ -30,7 +30,7 @@ def GeneratePrepared(layers):
     prepared = prepared + " UNION ALL ".join(queries) + ";"
     return(prepared)
 
-layers = GetTM2Source("openmaptiles.tm2source/data.yml")
+layers = GetTM2Source("/mapping/data.yml")
 prepared = GeneratePrepared(layers)
 engine = create_engine('postgresql://'+os.getenv('POSTGRES_USER','openmaptiles')+':'+os.getenv('POSTGRES_PASSWORD','openmaptiles')+'@'+os.getenv('POSTGRES_HOST','postgres')+':'+os.getenv('POSTGRES_PORT','5432')+'/'+os.getenv('POSTGRES_DB','openmaptiles'))
 inspector = inspect(engine)
