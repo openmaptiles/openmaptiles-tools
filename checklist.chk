@@ -1,6 +1,6 @@
-1cfa9c31c2d7160dda66bd802c889e42  ./testbuild/testmaptiles.tm2source/data.yml
+750a75d5312e6c919cbe935c9f785105  ./testbuild/testmaptiles.tm2source/data.yml
 c2952026257da17bbf4fb5211aeca624  ./testbuild/mapping.yaml
 da380515eacff2c557cd753aa66018ba  ./testbuild/tileset.sql
 2bbb5f07cf224ce595b7e6863bbbeac4  ./testbuild/doc/housenumber.md
-b8a409b5fd216ae76f72f8be4d0d5dd4  ./testbuild/sqlquery.sql
+a403c1def86dcbf096c35ebbc8569a1d  ./testbuild/sqlquery.sql
 321ae45757024c5b7b7d46714a2f17f6  ./testbuild/devdoc/etl_housenumber.dot
