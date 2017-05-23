@@ -12,6 +12,8 @@ tables:
     - name: housenumber
       key: addr:housenumber
       type: string
+    - name: tags
+      type: hstore_tags
     type_mappings:
       points:
         addr:housenumber:

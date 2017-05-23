@@ -51,14 +51,14 @@ class Layer(object):
 
         return Layer(layer_filename, layer,
                      list(parse_imposm_mappings()),
-                     list(parse_imposm_mappings_str()),                     
+                     list(parse_imposm_mappings_str()),
                      list(parse_schemas()))
 
     def __init__(self, filename, definition, mappings=[], mappings_str=[], schemas=[]):
         self.filename = filename
         self.definition = definition
         self.imposm_mappings = mappings
-        self.imposm_mappings_str = mappings_str        
+        self.imposm_mappings_str = mappings_str
         self.schemas = schemas
 
     def __getitem__(self, attr):

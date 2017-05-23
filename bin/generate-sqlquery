@@ -21,6 +21,7 @@ import re
 from openmaptiles.tileset import Layer
 from openmaptiles.docs import collect_documentation
 from openmaptiles.diagram import generate_table_mapping_diagram
+from openmaptiles.language import languages_to_sql
 
 
 if __name__ == '__main__':
@@ -32,8 +33,9 @@ if __name__ == '__main__':
     zoomlevel=args['<zoom-level>']
     datasource = layer['layer']['datasource']
     query=datasource['query']
-    sql=query.replace('!bbox!',bbox).replace('z(!scale_denominator!)', zoomlevel ).replace('!pixel_width!','1')
-  
+    name_languages = languages_to_sql([])
+    sql=query.replace('!bbox!',bbox).replace('z(!scale_denominator!)', zoomlevel ).replace('!pixel_width!','1').replace('{name_languages}',name_languages)
+
     extract_query = re.compile('\((.*)\) AS *')
-    match = extract_query.search(sql) 
+    match = extract_query.search(sql)
     print(match.group(1))

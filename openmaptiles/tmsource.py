@@ -4,6 +4,7 @@ from __future__ import (absolute_import, division, print_function,
 import collections
 
 from .tileset import Tileset
+from .language import languages_to_sql
 
 
 DbParams = collections.namedtuple('DbParams', ['dbname', 'host', 'port',
@@ -25,16 +26,26 @@ def generate_tm2source(tileset_filename, db_params):
         'Layer': [],
     }
 
+    definition = tileset.definition
+    name_languages = languages_to_sql(definition.get('languages', []))
+
+    query_tokens = {
+        'name_languages': name_languages
+    }
+
     for layer in tileset.layers:
-        tm2layer = generate_layer(layer, layer_defaults, db_params)
+        tm2layer = generate_layer(layer, layer_defaults, query_tokens, db_params)
         tm2['Layer'].append(tm2layer)
 
     return tm2
 
 
-def generate_layer(layer_def, layer_defaults, db_params):
+def generate_layer(layer_def, layer_defaults, query_tokens, db_params):
     layer = layer_def['layer']
     datasource = layer['datasource']
+
+    query = datasource['query'].format(**query_tokens)
+
     tm2layer = {
         'id': layer['id'],
         'srs': layer.get('srs', layer_defaults['srs']),
@@ -49,7 +60,7 @@ def generate_layer(layer_def, layer_defaults, db_params):
           'max_size': datasource.get('max_size', 512),
           'port': db_params.port,
           'srid': datasource.get('srid', layer_defaults['datasource']['srid']),
-          'table': datasource['query'],
+          'table': query,
           'type': 'postgis',
           'host': db_params.host,
           'dbname': db_params.dbname,
