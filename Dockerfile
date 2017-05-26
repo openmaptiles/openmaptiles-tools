@@ -1,7 +1,7 @@
 FROM postgres:9.6
 MAINTAINER "Lukas Martinelli <me@lukasmartinelli.ch>"
-ENV POSTGIS_MAJOR=2.4dev \
-    POSTGIS_VERSION=2.4dev \
+ENV POSTGIS_MAJOR=2.3 \
+    POSTGIS_VERSION=2.3.1 \
     GEOS_VERSION=3.6.0
 
 RUN apt-get -y update \
@@ -9,7 +9,6 @@ RUN apt-get -y update \
         autotools-dev \
         automake \
         autoconf \
-        bison \
         curl \
         git \
         libtool \
@@ -52,14 +51,13 @@ RUN cd /opt/ \
  && ldconfig
 
 RUN cd /opt/ \
- && git clone -b svn-trunk https://github.com/postgis/postgis.git \
+ && git clone -b asmvt https://git.osgeo.org/gogs/bjornharrtell/postgis.git \
  && cd postgis \
- && git reset --hard a767ba280e73446aa33a32ec253781a2f0da7d67 \
  && ./autogen.sh \
  && ./configure CFLAGS="-O0 -Wall" \
  && make \
- && make install \
- && ldconfig
+ && make install \ 
+ && ldconfig 
 
  ##&& (cd /opt/postgis/extensions/postgis && make -j && make install) \
 COPY ./initdb-postgis.sh /docker-entrypoint-initdb.d/10_postgis.sh
