@@ -28,3 +28,28 @@ CREATE OR REPLACE FUNCTION get_name_int(tags hstore) RETURNS text AS $$
         tags->'name'
       );
 $$ LANGUAGE SQL IMMUTABLE STRICT;
+
+
+CREATE OR REPLACE FUNCTION get_basic_names(tags hstore) RETURNS hstore AS $$
+DECLARE
+  tags_array text[] := ARRAY[]::text[];
+  name_latin text;
+  name_nonlatin text;
+  name_int text;
+BEGIN
+  name_latin := get_latin_name(tags);
+  name_nonlatin := get_nonlatin_name(tags);
+  name_int := get_name_int(tags);
+  IF name_latin IS NOT NULL THEN
+    tags_array := tags_array || ARRAY['name:latin', name_latin];
+  END IF;
+  IF name_nonlatin IS NOT NULL THEN
+    tags_array := tags_array || ARRAY['name:nonlatin', name_nonlatin];
+  END IF;
+  IF name_int IS NOT NULL THEN
+    tags_array := tags_array || ARRAY['name_int', name_int];
+  END IF;
+  RETURN hstore(tags_array);
+END;
+$$ STRICT
+LANGUAGE plpgsql IMMUTABLE;
