@@ -2,7 +2,7 @@ from distutils.core import setup
 
 setup(
     name='openmaptiles-tools',
-    version='0.3.0',
+    version='0.4.0',
     packages=['openmaptiles'],
     license='MIT',
     scripts=[
