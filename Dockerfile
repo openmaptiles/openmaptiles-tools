@@ -4,25 +4,29 @@ ENV POSTGIS_MAJOR=2.3 \
     POSTGIS_VERSION=2.3.1 \
     GEOS_VERSION=3.6.0
 
-RUN apt-get -y update \
- && apt-get -y --no-install-recommends install \
-        autotools-dev \
-        automake \
+RUN apt-get -qq -y update \
+ && apt-get -qq -y --no-install-recommends install \
         autoconf \
-        curl \
-        git \
-        libtool \
-        libcunit1-dev \
-        xsltproc \
-        docbook-xsl \
-        docbook-mathml \
-        dblatex \
+        automake \
+        autotools-dev \
         build-essential \
-        cmake \
         ca-certificates \
+        cmake \
+        curl \
+        dblatex \
+        docbook-mathml \
+        docbook-xsl \
+        git \
+        libcunit1-dev \
+        libtool \
         unzip \
+        xsltproc \
         # PostGIS build dependencies
-                postgresql-server-dev-$PG_MAJOR libxml2-dev libjson0-dev libproj-dev libgdal-dev \
+            libgdal-dev \
+            libjson0-dev \
+            libproj-dev \
+            libxml2-dev \
+            postgresql-server-dev-$PG_MAJOR \
  && rm -rf /var/lib/apt/lists/*
 
 RUN cd /opt/ \
