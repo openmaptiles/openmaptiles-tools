@@ -18,7 +18,9 @@ RUN apt-get -qq -y update \
         docbook-xsl \
         git \
         libcunit1-dev \
+        libkakasi2-dev \
         libtool \
+        pandoc \
         unzip \
         xsltproc \
         # PostGIS build dependencies
@@ -60,8 +62,24 @@ RUN cd /opt/ \
  && ./autogen.sh \
  && ./configure CFLAGS="-O0 -Wall" \
  && make \
- && make install \ 
- && ldconfig 
+ && make install \
+ && ldconfig
+
+RUN cd /opt/ \
+    && git clone https://github.com/JuliaLang/utf8proc.git \
+    && cd utf8proc \
+    && git checkout -q v2.0.2 \
+    && make \
+    && make install \
+    && ldconfig \
+    && rm -rf /opt/utf8proc
+
+RUN cd /opt/ \
+    && git clone https://github.com/openmaptiles/mapnik-german-l10n.git \
+    && cd mapnik-german-l10n \
+    && make \
+    && make install \
+    && rm -rf /opt/mapnik-german-l10n
 
  ##&& (cd /opt/postgis/extensions/postgis && make -j && make install) \
 COPY ./initdb-postgis.sh /docker-entrypoint-initdb.d/10_postgis.sh
