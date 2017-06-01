@@ -53,3 +53,18 @@ BEGIN
 END;
 $$ STRICT
 LANGUAGE plpgsql IMMUTABLE;
+
+
+CREATE OR REPLACE FUNCTION delete_empty_keys(tags hstore) RETURNS hstore AS $$
+DECLARE
+  result hstore;
+BEGIN
+  select
+    hstore(array_agg(key), array_agg(value)) into result
+  from
+    each(hstore(tags))
+  where nullif(value, '') is not null;
+  RETURN result;
+END;
+$$ STRICT
+LANGUAGE plpgsql IMMUTABLE;
