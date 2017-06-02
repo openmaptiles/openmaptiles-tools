@@ -24,13 +24,14 @@ def layer_notice(layer_name):
 
 SLICE_LANGUAGE_TAGS_SQL="""CREATE OR REPLACE FUNCTION slice_language_tags(tags hstore)
 RETURNS hstore AS $$
-    SELECT slice(tags, ARRAY[{0}])
+    SELECT delete_empty_keys(slice(tags, ARRAY[{0}]))
 $$ LANGUAGE SQL IMMUTABLE;
 """
 
 def get_slice_language_tags(languages):
     include_tags = list(map(lambda l: 'name:'+l, languages))
     include_tags.append('int_name')
+    include_tags.append('loc_name')
     include_tags.append('name')
 
     tags_sql = "'" + "', '".join(include_tags) + "'"
