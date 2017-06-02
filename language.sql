@@ -1,12 +1,13 @@
-CREATE OR REPLACE FUNCTION get_latin_name(tags hstore) RETURNS text AS $$
+CREATE OR REPLACE FUNCTION get_latin_name(tags hstore, geometry geometry) RETURNS text AS $$
     SELECT COALESCE(
-      NULLIF(tags->'name:en', ''),
-      NULLIF(tags->'int_name', ''),
       CASE
-        WHEN tags->'name' ~ '.*[a-zA-Z].*'
+        WHEN tags->'name' is not null and osml10n_is_latin(tags->'name')
           THEN tags->'name'
         ELSE NULL
-      END
+      END,
+      NULLIF(tags->'name:en', ''),
+      NULLIF(tags->'int_name', ''),
+      NULLIF(osml10n_get_name_without_brackets_from_tags(tags, 'en', geometry), '')
     );
 $$ LANGUAGE SQL IMMUTABLE STRICT;
 
@@ -14,32 +15,32 @@ $$ LANGUAGE SQL IMMUTABLE STRICT;
 CREATE OR REPLACE FUNCTION get_nonlatin_name(tags hstore) RETURNS text AS $$
     SELECT
       CASE
-        WHEN tags->'name' !~ '.*[a-zA-Z].*'
-          THEN tags->'name'
-        ELSE NULL
+        WHEN tags->'name' is not null and osml10n_is_latin(tags->'name')
+          THEN NULL
+        WHEN unaccent(tags->'name') ~ '[a-zA-Z]'
+          THEN remove_latin(tags->'name')
+        ELSE tags->'name'
       END;
 $$ LANGUAGE SQL IMMUTABLE STRICT;
 
-CREATE OR REPLACE FUNCTION get_name_int(tags hstore) RETURNS text AS $$
-    SELECT
-      COALESCE(
-        NULLIF(tags->'int_name', ''),
-        NULLIF(tags->'name:en', ''),
-        tags->'name'
-      );
-$$ LANGUAGE SQL IMMUTABLE STRICT;
-
-
-CREATE OR REPLACE FUNCTION get_basic_names(tags hstore) RETURNS hstore AS $$
+CREATE OR REPLACE FUNCTION get_basic_names(tags hstore, geometry geometry) RETURNS hstore AS $$
 DECLARE
   tags_array text[] := ARRAY[]::text[];
   name_latin text;
   name_nonlatin text;
   name_int text;
 BEGIN
-  name_latin := get_latin_name(tags);
+  name_latin := get_latin_name(tags, geometry);
   name_nonlatin := get_nonlatin_name(tags);
-  name_int := get_name_int(tags);
+  IF (name_nonlatin = name_latin) THEN
+    name_nonlatin := null;
+  END IF;
+  name_int := COALESCE(
+    NULLIF(tags->'int_name', ''),
+    NULLIF(tags->'name:en', ''),
+    NULLIF(name_latin, ''),
+    tags->'name'
+  );
   IF name_latin IS NOT NULL THEN
     tags_array := tags_array || ARRAY['name:latin', name_latin];
   END IF;
@@ -68,3 +69,24 @@ BEGIN
 END;
 $$ STRICT
 LANGUAGE plpgsql IMMUTABLE;
+
+
+CREATE OR REPLACE FUNCTION remove_latin(text) RETURNS text AS $$
+  DECLARE
+    i integer;
+  DECLARE
+    letter text;
+    result text = '';
+  BEGIN
+    FOR i IN 1..char_length($1) LOOP
+      letter := substr($1, i, 1);
+      IF (unaccent(letter) !~ '^[a-zA-Z].*') THEN
+        result := result || letter;
+      END IF;
+    END LOOP;
+    result := regexp_replace(result, '(\([ -.]*\)|\[[ -.]*\])', '');
+    result := regexp_replace(result, ' +\. *$', '');
+    result := trim(both ' -\n' from result);
+    RETURN result;
+  END;
+$$ LANGUAGE 'plpgsql' IMMUTABLE;
