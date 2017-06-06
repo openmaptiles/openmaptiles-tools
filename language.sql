@@ -1,3 +1,39 @@
+CREATE OR REPLACE FUNCTION delete_empty_keys(tags hstore) RETURNS hstore AS $$
+DECLARE
+  result hstore;
+BEGIN
+  select
+    hstore(array_agg(key), array_agg(value)) into result
+  from
+    each(hstore(tags))
+  where nullif(value, '') is not null;
+  RETURN result;
+END;
+$$ STRICT
+LANGUAGE plpgsql IMMUTABLE;
+
+
+CREATE OR REPLACE FUNCTION remove_latin(text) RETURNS text AS $$
+  DECLARE
+    i integer;
+  DECLARE
+    letter text;
+    result text = '';
+  BEGIN
+    FOR i IN 1..char_length($1) LOOP
+      letter := substr($1, i, 1);
+      IF (unaccent(letter) !~ '^[a-zA-Z].*') THEN
+        result := result || letter;
+      END IF;
+    END LOOP;
+    result := regexp_replace(result, '(\([ -.]*\)|\[[ -.]*\])', '');
+    result := regexp_replace(result, ' +\. *$', '');
+    result := trim(both ' -\n' from result);
+    RETURN result;
+  END;
+$$ LANGUAGE 'plpgsql' IMMUTABLE;
+
+
 CREATE OR REPLACE FUNCTION get_latin_name(tags hstore, geometry geometry) RETURNS text AS $$
     SELECT COALESCE(
       CASE
@@ -54,39 +90,3 @@ BEGIN
 END;
 $$ STRICT
 LANGUAGE plpgsql IMMUTABLE;
-
-
-CREATE OR REPLACE FUNCTION delete_empty_keys(tags hstore) RETURNS hstore AS $$
-DECLARE
-  result hstore;
-BEGIN
-  select
-    hstore(array_agg(key), array_agg(value)) into result
-  from
-    each(hstore(tags))
-  where nullif(value, '') is not null;
-  RETURN result;
-END;
-$$ STRICT
-LANGUAGE plpgsql IMMUTABLE;
-
-
-CREATE OR REPLACE FUNCTION remove_latin(text) RETURNS text AS $$
-  DECLARE
-    i integer;
-  DECLARE
-    letter text;
-    result text = '';
-  BEGIN
-    FOR i IN 1..char_length($1) LOOP
-      letter := substr($1, i, 1);
-      IF (unaccent(letter) !~ '^[a-zA-Z].*') THEN
-        result := result || letter;
-      END IF;
-    END LOOP;
-    result := regexp_replace(result, '(\([ -.]*\)|\[[ -.]*\])', '');
-    result := regexp_replace(result, ' +\. *$', '');
-    result := trim(both ' -\n' from result);
-    RETURN result;
-  END;
-$$ LANGUAGE 'plpgsql' IMMUTABLE;
