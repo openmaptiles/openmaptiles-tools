@@ -1,0 +1,26 @@
+#!/usr/bin/env python
+"""
+Usage:
+  replace-layer <input_yaml> <new_layer>
+  replace-layer --help
+  replace-layer --version
+Options:
+  --help              Show this screen.
+  --version           Show version.
+"""
+from __future__ import (absolute_import, division, print_function,
+                        unicode_literals)
+import yaml
+from docopt import docopt
+import openmaptiles
+
+if __name__ == '__main__':
+    args = docopt(__doc__,version=openmaptiles.__version__)
+    input_yaml=args['<input_yaml>']
+    new_layer=args['<new_layer>']
+
+    with open(input_yaml) as stream:
+        file = yaml.load(stream)
+        file['tileset']['layers']= [new_layer]
+
+    print(yaml.safe_dump(file,default_flow_style=False))
