@@ -28,8 +28,7 @@ RUN apt-get -qq -y update \
             libjson0-dev \
             libproj-dev \
             libxml2-dev \
-            postgresql-server-dev-$PG_MAJOR \
- && rm -rf /var/lib/apt/lists/*
+            postgresql-server-dev-$PG_MAJOR
 
 RUN cd /opt/ \
  && curl -o /opt/geos.tar.bz2 http://download.osgeo.org/geos/geos-$GEOS_VERSION.tar.bz2 \
@@ -47,14 +46,16 @@ RUN cd /opt/ \
  && ./configure \
  && make \
  && make install \
- && ldconfig
+ && ldconfig \
+ && rm -rf /opt/protobuf-3.0.2
 
 RUN cd /opt/ \
  && curl -L https://github.com/protobuf-c/protobuf-c/releases/download/v1.2.1/protobuf-c-1.2.1.tar.gz | tar xvz && cd protobuf-c-1.2.1 \
  && ./configure \
  && make \
  && make install \
- && ldconfig
+ && ldconfig \
+ && rm -rf /opt/protobuf-c.1.2.1
 
 RUN cd /opt/ \
  && git clone -b asmvt https://git.osgeo.org/gogs/bjornharrtell/postgis.git \
@@ -63,7 +64,8 @@ RUN cd /opt/ \
  && ./configure CFLAGS="-O0 -Wall" \
  && make \
  && make install \
- && ldconfig
+ && ldconfig \
+ && rm -rf /opt/postgis
 
 RUN cd /opt/ \
     && git clone https://github.com/JuliaLang/utf8proc.git \
