@@ -3,7 +3,7 @@ set -o errexit
 set -o pipefail
 set -o nounset
 
-readonly PGCONN="dbname=$POSTGRES_DB user=$POSTGRES_USER host=$POSTGRES_HOST password=$POSTGRES_PASSWORD port=5432"
+readonly PGCONN="dbname=$POSTGRES_DB user=$POSTGRES_USER host=$POSTGRES_HOST password=$POSTGRES_PASSWORD port=$POSTGRES_PORT"
 
 function import_geojson() {
     local geojson_file=$1
