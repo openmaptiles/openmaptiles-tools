@@ -26,8 +26,13 @@ def GeneratePrepared(layers):
     queries = []
     prepared = "PREPARE gettile(geometry, numeric, numeric, numeric) AS "
     for layer in layers['Layer']:
-        queries.append("SELECT ST_AsMVT('"+layer['id']+"',$1, 4096, 100, true, '"+layer['Datasource']['geometry_field']+"', t) FROM "+layer['Datasource']['table'].replace("!bbox!","$1").replace("!scale_denominator!","$2").replace("!pixel_width!","$3").replace("!pixel_height!","$4"))
+        layer_query = layer['Datasource']['table'].lstrip().rstrip()	# Remove lead and trailing whitespace
+        layer_query = layer_query[1:len(layer_query)-6]			# Remove enough characters to remove first and last () and "AS t"
+        layer_query = layer_query.replace("geometry", "ST_AsMVTGeom(geometry,!bbox!,4096,0,true) AS mvtgeometry")
+        base_query = "SELECT ST_ASMVT('"+layer['id']+"', 4096, 'mvtgeometry', tile) FROM ("+layer_query+" WHERE ST_AsMVTGeom(geometry, !bbox!,4096,0,true) IS NOT NULL) AS tile"
+        queries.append(base_query.replace("!bbox!","$1").replace("!scale_denominator!","$2").replace("!pixel_width!","$3").replace("!pixel_height!","$4"))
     prepared = prepared + " UNION ALL ".join(queries) + ";"
+    print(prepared)
     return(prepared)
 
 layers = GetTM2Source("/mapping/data.yml")
