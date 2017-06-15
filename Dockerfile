@@ -1,7 +1,7 @@
 FROM postgres:9.6
 MAINTAINER "Lukas Martinelli <me@lukasmartinelli.ch>"
-ENV POSTGIS_MAJOR=2.3 \
-    POSTGIS_VERSION=2.3.1 \
+ENV POSTGIS_MAJOR=2.4dev \
+    POSTGIS_VERSION=2.4dev \
     GEOS_VERSION=3.6.0
 
 RUN apt-get -qq -y update \
@@ -11,6 +11,7 @@ RUN apt-get -qq -y update \
         autotools-dev \
         build-essential \
         ca-certificates \
+        bison \
         cmake \
         curl \
         dblatex \
@@ -58,8 +59,9 @@ RUN cd /opt/ \
  && rm -rf /opt/protobuf-c.1.2.1
 
 RUN cd /opt/ \
- && git clone -b asmvt https://git.osgeo.org/gogs/bjornharrtell/postgis.git \
+ && git clone -b svn-trunk https://github.com/postgis/postgis.git \  
  && cd postgis \
+ && git reset --hard ff0a844e606622f45841fc25221bbaa136ed1001 \ 
  && ./autogen.sh \
  && ./configure CFLAGS="-O0 -Wall" \
  && make \
