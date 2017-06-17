@@ -1,4 +1,4 @@
-FROM openmaptiles/postgis:latest
+FROM openmaptiles/postgis:2.8
 ENV IMPORT_DATA_DIR=/import \
     NATURAL_EARTH_DB=/import/natural_earth_vector.sqlite
 
