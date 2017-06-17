@@ -1,4 +1,4 @@
-FROM postgres:9.6
+FROM openmaptiles/postgis:latest
 ENV IMPORT_DIR=/import
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -9,7 +9,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
  && mv pgfutter /usr/local/bin/ \
  && mkdir -p $IMPORT_DIR \
  && wget -O $IMPORT_DIR/osmborder_lines.csv https://github.com/openmaptiles/import-osmborder/releases/download/v0.1/osmborder_lines.csv \
- && apt-get purge -y \
+ && apt-get purge -y --auto-remove \
       wget \
       ca-certificates \
  && rm -rf /var/lib/apt/lists/*
