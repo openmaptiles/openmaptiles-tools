@@ -1,4 +1,4 @@
-FROM openmaptiles/postgis:latest
+FROM openmaptiles/postgis:2.8
 ENV IMPORT_DIR=/import
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
