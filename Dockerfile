@@ -1,4 +1,4 @@
-FROM debian:jessie-slim
+FROM openmaptiles/postgis:latest
 MAINTAINER "Lukas Martinelli <me@lukasmartinelli.ch>"
 
 ENV IMPORT_DATA_DIR=/import \
@@ -10,13 +10,12 @@ COPY . /usr/src/app
 RUN apt-get update && apt-get install -y --no-install-recommends \
       wget \
       unzip \
-      gdal-bin \
       sqlite3 \
     && wget --quiet http://naciscdn.org/naturalearth/packages/natural_earth_vector.sqlite.zip \
     && unzip -oj natural_earth_vector.sqlite.zip -d /import \
     && rm natural_earth_vector.sqlite.zip \
     && /usr/src/app/clean-natural-earth.sh \
-    && apt-get purge -y \
+    && apt-get purge -y --auto-remove \
       wget \
       unzip \
       sqlite3 \
