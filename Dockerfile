@@ -1,4 +1,4 @@
-FROM openmaptiles/postgis:latest
+FROM openmaptiles/postgis:2.8
 MAINTAINER "Lukas Martinelli <me@lukasmartinelli.ch>"
 
 ENV IMPORT_DATA_DIR=/import \
