@@ -99,7 +99,6 @@ RUN apt-get -qq -y update \
         docbook-xsl \
         git \
         libcunit1-dev \
-        libkakasi2-dev \
         libtool \
         make \
         g++ \
