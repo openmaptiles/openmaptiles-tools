@@ -104,7 +104,6 @@ RUN apt-get -qq -y update \
         make \
         g++ \
         gcc \
-        libc6-dev \
         pandoc \
         unzip \
         xsltproc \
