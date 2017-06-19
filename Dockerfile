@@ -1,4 +1,4 @@
-FROM openmaptiles/postgis:2.8
+FROM openmaptiles/postgis:2.9
 
 ENV IMPORT_DIR=/import \
     LAKELINES_GEOJSON=/data/import/lake_centerline.geojson
