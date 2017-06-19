@@ -1,4 +1,4 @@
-FROM openmaptiles/postgis:2.8
+FROM openmaptiles/postgis:2.9
 
 ENV VT_UTIL_DIR=/opt/postgis-vt-util \
     VT_UTIL_URL="https://raw.githubusercontent.com/mapbox/postgis-vt-util/v1.0.0/postgis-vt-util.sql" \
