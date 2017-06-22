@@ -18,6 +18,7 @@ RUN apt-get -qq -y update \
         docbook-mathml \
         docbook-xsl \
         git \
+        gdal-bin \
         libcunit1-dev \
         libkakasi2-dev \
         libtool \
