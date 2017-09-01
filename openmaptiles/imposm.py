@@ -24,6 +24,8 @@ def create_imposm3_mapping(tileset_filename):
     include_tags.append('int_name')
     include_tags.append('loc_name')
     include_tags.append('name')
+    include_tags.append('wikidata')
+    include_tags.append('wikipedia')
 
     generalized_tables = {}
     tables = {}

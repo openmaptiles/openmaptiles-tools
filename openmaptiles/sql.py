@@ -33,6 +33,8 @@ def get_slice_language_tags(languages):
     include_tags.append('int_name')
     include_tags.append('loc_name')
     include_tags.append('name')
+    include_tags.append('wikidata')
+    include_tags.append('wikipedia')
 
     tags_sql = "'" + "', '".join(include_tags) + "'"
 
