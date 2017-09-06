@@ -10,12 +10,17 @@ import psycopg2.extras
 from wikidata import etl, osm
 from wikidata.cfg import *
 import os.path
+import sys
 
 if __name__ == '__main__':
     print('Importing Wikidata ...')
     conn = psycopg2.connect(dbname=POSTGRES_DB, user=POSTGRES_USER,
                             password=POSTGRES_PASSWORD, host=POSTGRES_HOST,
                             port=POSTGRES_PORT)
+
+    if(not os.path.exists(DUMP)):
+        print('File {} not found, no Wikidata imported!'.format(DUMP))
+        sys.exit()
 
     psycopg2.extras.register_hstore(conn)
     cur = conn.cursor()
@@ -33,11 +38,8 @@ if __name__ == '__main__':
     etl.empty_table(TABLE_NAME, cur)
     conn.commit()
 
-    if(os.path.exists(DUMP)):
-        print('Parsing Wikidata dump {} ...'.format(DUMP))
-        etl.simple_parse(DUMP, ids, pages, cur, conn, TABLE_NAME, LIMIT)
-    else:
-        print('File {} not found, no Wikidata imported!'.format(DUMP))
+    print('Parsing Wikidata dump {} ...'.format(DUMP))
+    etl.simple_parse(DUMP, ids, pages, cur, conn, TABLE_NAME, LIMIT)
 
     cur.close()
     conn.close()
