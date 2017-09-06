@@ -20,7 +20,7 @@ def get_ids(tables, cur):
     q += ' order by t.id;'
 
     cur.execute(q)
-    ids = map(lambda t: t[0], cur.fetchall())
+    ids = list(map(lambda t: t[0], cur.fetchall()))
     return ids
 
 def get_pages(tables, cur):
@@ -30,5 +30,5 @@ def get_pages(tables, cur):
     q += ' order by t.page;'
 
     cur.execute(q)
-    pages = map(lambda t: t[0], cur.fetchall())
+    pages = list(map(lambda t: t[0], cur.fetchall()))
     return pages

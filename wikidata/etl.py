@@ -4,17 +4,17 @@ import traceback
 import json
 import re
 
-RECREATE_TABLE = """
-DROP TABLE IF EXISTS {table};
-CREATE TABLE {table} (
+EMPTY_TABLE = """
+CREATE TABLE IF NOT EXISTS {table} (
     id          varchar(20) UNIQUE,
     page          varchar(200) UNIQUE,
     labels      hstore
 );
+TRUNCATE {table};
 """
 
-def recreate_table(table, cur):
-    cur.execute(RECREATE_TABLE.format(table=table))
+def empty_table(table, cur):
+    cur.execute(EMPTY_TABLE.format(table=table))
 
 def get_json(line):
     if line != "[\n" and line != "]" and line != "]\n" and len(line) > 2:
@@ -23,13 +23,13 @@ def get_json(line):
                 # print 'endswith \\n'
                 item = json.loads(line[:-2])
             else:
-                print 'endswithout \\n'
+                print('endswithout \\n')
                 item = json.loads(line)
             return item
         except Exception as e:
-            print e.message
-            print traceback.format_exc()
-            print line
+            print(e.message)
+            print(traceback.format_exc())
+            print(line)
 
 def get_id(line):
     prefix = '{"type":"item","id":"'
@@ -38,8 +38,8 @@ def get_id(line):
     if(part and line.startswith(prefix)):
         m = re.search('^(Q[0-9]+)"', part)
         if(m is None):
-            print 'NONE LINE'
-            print line
+            print('NONE LINE')
+            print(line)
         return m.group(1)
 
 
@@ -71,7 +71,7 @@ def simple_parse(file, ids, pages, cur, conn, table_name, limit):
     ids, pages = remove_duplicate_ids_and_pages(ids, pages)
 
     total_ids_len = len(ids)
-    print('finding {} ids'.format(total_ids_len))
+    # print('finding {} ids'.format(total_ids_len))
     # total_pages_len = len(pages)
     # print('finding {} pages'.format(total_pages_len))
 
@@ -86,6 +86,7 @@ def simple_parse(file, ids, pages, cur, conn, table_name, limit):
         i = 1
         for line in f:
             # search ID
+            line = line.decode("utf-8")
             id = get_id(line)
             if id in ids:
                 entity = get_json(line)
@@ -96,7 +97,6 @@ def simple_parse(file, ids, pages, cur, conn, table_name, limit):
                 conn.commit()
                 found_ids.append(id)
                 ids.remove(id)
-                print('found id {}, already found {} of {} ids'.format(id, len(found_ids), total_ids_len))
                 if(len(ids) == 0):
                     break
 
@@ -108,12 +108,16 @@ def simple_parse(file, ids, pages, cur, conn, table_name, limit):
             #     print osm_labels
 
 
-            if i % 10000 == 0:
-                print i
+            if i % 100000 == 0:
+                print('  parsed {:,} lines, already loaded {:,} of {:,}'
+                      ' IDs'.format(i, len(found_ids), total_ids_len))
             if i >= limit:
+                print('  limit of {:,} parsed lines reached, parsing '
+                      'stopped'.format(limit))
                 break
             i += 1
 
-    print('found {} of {} ids'.format(len(found_ids), total_ids_len))
+    print('Loaded {:,} of {:,} Wikidata IDs'.format(len(found_ids),
+                                                    total_ids_len))
 
 
