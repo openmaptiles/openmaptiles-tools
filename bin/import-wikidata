@@ -36,7 +36,7 @@ if __name__ == '__main__':
         print()
 
         print('Parsing Wikidata dump {} ...'.format(DUMP))
-        etl.simple_parse(DUMP, ids, pages, cur, conn, TABLE_NAME, LIMIT)
+        etl.multi_parse(DUMP, ids, pages, cur, conn, TABLE_NAME, LIMIT)
 
     else:
         print('File {} not found, no Wikidata imported!'.format(DUMP))

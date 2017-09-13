@@ -10,5 +10,6 @@ setup(
     ],
     install_requires=[
         'psycopg2',
+        'sortedcontainers',
     ],
 )

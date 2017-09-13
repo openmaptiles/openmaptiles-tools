@@ -5,6 +5,7 @@ import json
 import re
 from multiprocessing import Pool
 from collections import defaultdict
+from sortedcontainers import SortedList
 
 EMPTY_TABLE = """
 CREATE TABLE IF NOT EXISTS {table} (
@@ -67,6 +68,7 @@ def remove_duplicate_ids_and_pages(ids, pages):
 
 def simple_parse(file, ids, pages, cur, conn, table_name, limit):
     ids, pages = remove_duplicate_ids_and_pages(ids, pages)
+    ids = SortedList(ids)
 
     total_ids_len = len(ids)
     # print('finding {} ids'.format(total_ids_len))
@@ -116,18 +118,19 @@ def get_page(item, pages):
 
 def multi_parse(file, ids, pages, cur, conn, table_name, limit):
     ids, pages = remove_duplicate_ids_and_pages(ids, pages)
+    ids = SortedList(ids)
 
     total_ids_len = len(ids)
     # print('finding {} ids'.format(total_ids_len))
     total_pages_len = len(pages)
     # print('finding {} pages'.format(total_pages_len))
 
-    pages_bucket = defaultdict(list)
+    pages_bucket = defaultdict(SortedList)
     for page in pages:
         page_parts = page.split(':')
         if(len(page_parts)==2):
-            pages_bucket[page_parts[0]].append(page_parts[1])
-            # pages_bucket[page_parts[0]].append(page_parts[1].decode('utf8'))
+            pages_bucket[page_parts[0]].add(page_parts[1])
+            # pages_bucket[page_parts[0]].add(page_parts[1].decode('utf8'))
     pool = Pool()
 
     found_ids = []
@@ -190,7 +193,7 @@ def multi_parse(file, ids, pages, cur, conn, table_name, limit):
             i += 1
     pool.close()
     pool.join()
-    print(parsed_lines[0])
+    print('Parsed {:,} lines.', parsed_lines[0])
 
     conn.commit()
     print('Loaded {:,} of {:,} Wikidata IDs and {:,} of {:,} Wikipedia pages'
