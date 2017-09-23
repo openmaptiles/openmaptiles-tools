@@ -18,6 +18,7 @@ def generate_tm2source(tileset_filename, db_params):
     tm2 = {
         'attribution': tileset['attribution'],
         'center': tileset['center'],
+        'bounds': tileset['bounds'],
         'description': tileset['description'],
         'maxzoom': tileset['maxzoom'],
         'minzoom': tileset['minzoom'],
