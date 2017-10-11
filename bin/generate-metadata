@@ -92,7 +92,7 @@ def update_metadata(mbtiles_file, metadata):
     conn.close()
 
 if __name__ == '__main__':
-    args = docopt(__doc__, version=openmaptiles.__version__)
+    args = docopt(__doc__, version=openmaptiles.__version__, options_first=True)
     print (args)
 
     extract_file= args['<mbtiles>']
