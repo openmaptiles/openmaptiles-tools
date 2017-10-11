@@ -3,6 +3,7 @@
 
 Usage:
   generate_metadata <mbtiles>
+  generate_metadata <mbtiles> <west> <south> <east> <north>
   generate_metadata (-h | --help)
   generate_metadata --version
 
@@ -14,7 +15,8 @@ Options:
 # generate_metadata ./data/tiles.mbtiles
 
 # TODO:  better BBOX parameters ..
-# TODO:  test! 
+  # TODO:  parse os.environ.get('BBOX') for west, south, east, values
+# TODO:  test!
 
 from __future__ import print_function
 
@@ -38,10 +40,10 @@ class Extract(object):
         self.country = country
         self.city = city
 
-        self.min_lon = left
-        self.min_lat = bottom
-        self.max_lon = right
-        self.max_lat = top
+        self.min_lon = float(left)
+        self.min_lat = float(bottom)
+        self.max_lon = float(right)
+        self.max_lat = float(top)
 
         self.min_zoom = min_zoom
         self.max_zoom = max_zoom
@@ -91,18 +93,24 @@ def update_metadata(mbtiles_file, metadata):
 
 if __name__ == '__main__':
     args = docopt(__doc__, version=openmaptiles.__version__)
+    print (args)
 
     extract_file= args['<mbtiles>']
+
+    left = args['<west>']
+    bottom = args['<south>']
+    right = args['<east>']
+    top = args['<north>']
 
     extract = Extract(extract_file,
                         country=None,
                         city=None,
-                        left=-180,
-                        right=180,
-                        top=85.0511,
-                        bottom=-85.0511,
+                        left=left,
+                        right=right,
+                        top=top,
+                        bottom=bottom,
                         center_zoom=2,
-                        min_zoom= os.environ.get('QUICKSTART_MIN_ZOOM', 0), 
+                        min_zoom= os.environ.get('QUICKSTART_MIN_ZOOM', 0),
                         max_zoom= os.environ.get('QUICKSTART_MAX_ZOOM', 14),
                         )
 
