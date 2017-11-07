@@ -22,7 +22,7 @@ function import_csv() {
 }
 
 function exec_psql() {
-    PGPASSWORD=$POSTGRES_PASSWORD psql --host="$POSTGRES_HOST" --port="$POSTGRES_PORT"--dbname="$POSTGRES_DB" --username="$POSTGRES_USER"
+    PGPASSWORD=$POSTGRES_PASSWORD psql --host="$POSTGRES_HOST" --port="$POSTGRES_PORT" --dbname="$POSTGRES_DB" --username="$POSTGRES_USER"
 }
 
 function drop_table() {
