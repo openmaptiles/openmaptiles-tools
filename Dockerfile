@@ -32,8 +32,8 @@ RUN go get github.com/julien-noblet/download-geofabrik \
  && go get github.com/tools/godep \
  # && git clone --quiet --depth 1 https://github.com/omniscale/imposm3 \
  #
- # testing new filter syntax : https://github.com/omniscale/imposm3/pull/135
- && git clone --quiet --depth 1 https://github.com/openmaptiles/imposm3.git -b filter_reject_require_v1 \
+ # update to current omniscale/imposm3
+ && git clone --quiet --depth 1 https://github.com/openmaptiles/imposm3.git -b v2017-10-18 \
         $GOPATH/src/github.com/omniscale/imposm3 \
  && make build \
  && mv imposm3 /usr/bin/imposm3 \
