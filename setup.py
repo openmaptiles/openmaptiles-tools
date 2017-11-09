@@ -7,6 +7,7 @@ setup(
     license='MIT',
     scripts=[
         'bin/generate-doc',
+        'bin/generate-diagram-pngs',
         'bin/generate-etlgraph',
         'bin/generate-imposm3',
         'bin/generate-mapping-graph',

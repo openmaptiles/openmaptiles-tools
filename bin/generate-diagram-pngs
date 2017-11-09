@@ -1,0 +1,40 @@
+#!/usr/bin/env python
+"""
+Usage:
+  generate-diagram-pngs <layer-definition>
+  generate-diagram-pngs --help
+  generate-diagram-pngs --version
+Options:
+  --help                Show this screen.
+  --version             Show version.
+"""
+
+from __future__ import (absolute_import, division, print_function,
+                        unicode_literals)
+import os
+import os.path
+
+from docopt import docopt
+
+import openmaptiles
+
+if __name__ == '__main__':
+    args = docopt(__doc__, version=openmaptiles.__version__)
+    layer_path = args['<layer-definition>']
+    layer_dir, layer_filename = os.path.split(layer_path)
+    layer_basename = layer_filename.split('.')[0]
+
+    os.system('generate-etlgraph %s %s' % (layer_path, layer_dir))
+
+    os.remove(os.path.join(layer_dir, 'etl_%s.svg' % layer_basename))
+    os.remove(os.path.join(layer_dir, 'etl_%s.dot' % layer_basename))
+    os.rename(
+        os.path.join(layer_dir, 'etl_%s.png' % layer_basename),
+        os.path.join(layer_dir, 'etl_diagram.png')
+    )
+
+    os.system('generate-mapping-graph %s %s' % (
+        layer_path,
+        os.path.join(layer_dir, 'mapping_diagram')
+    ))
+    os.remove(os.path.join(layer_dir, 'mapping_diagram'))
