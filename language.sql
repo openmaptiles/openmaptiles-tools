@@ -90,3 +90,43 @@ BEGIN
 END;
 $$ STRICT
 LANGUAGE plpgsql IMMUTABLE;
+
+
+CREATE OR REPLACE FUNCTION merge_wiki_names(tags hstore) RETURNS hstore AS $$
+DECLARE
+  result hstore;
+BEGIN
+
+  IF (tags ? 'wikidata' OR tags ? 'wikipedia') THEN
+    select INTO result
+    CASE
+      WHEN avals(wd.labels) && avals(tags)
+        THEN slice_language_tags(wd.labels) || tags
+      ELSE tags
+    END
+    FROM wd_names wd
+    WHERE wd.id = tags->'wikidata' OR wd.page = tags->'wikipedia';
+    IF result IS NULL THEN
+      result := tags;
+    END IF;
+  ELSE
+    result := tags;
+  END IF;
+
+  RETURN result;
+END;
+$$ STRICT
+LANGUAGE plpgsql IMMUTABLE;
+
+
+CREATE OR REPLACE FUNCTION update_tags(tags hstore, geometry
+  geometry) RETURNS hstore AS $$
+DECLARE
+  result hstore;
+BEGIN
+  result := delete_empty_keys(tags) || get_basic_names(tags, geometry);
+  result := merge_wiki_names(result);
+  RETURN result;
+END;
+$$ STRICT
+LANGUAGE plpgsql IMMUTABLE;
