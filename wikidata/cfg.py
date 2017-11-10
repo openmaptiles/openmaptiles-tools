@@ -1,21 +1,14 @@
 import os
 
-# POSTGRES_DB=os.environ['POSTGRES_DB']
-# POSTGRES_USER=os.environ['POSTGRES_USER']
-# POSTGRES_PASSWORD=os.environ['POSTGRES_PASSWORD']
-# POSTGRES_HOST='localhost'
-# POSTGRES_PORT=os.environ['POSTGRES_PORT']
+POSTGRES_DB=os.environ['POSTGRES_DB']
+POSTGRES_USER=os.environ['POSTGRES_USER']
+POSTGRES_PASSWORD=os.environ['POSTGRES_PASSWORD']
+POSTGRES_HOST=os.environ['POSTGRES_HOST']
+POSTGRES_PORT=os.environ['POSTGRES_PORT']
 
-POSTGRES_DB='openmaptiles'
-POSTGRES_USER='openmaptiles'
-POSTGRES_PASSWORD='openmaptiles'
-POSTGRES_HOST='localhost'
-POSTGRES_PORT=5432
 
 '''Path to Wikidata dump from /import folder'''
 DUMP = 'latest-all.json.gz'
-#DUMP = '../klokantech-openmaptiles/wikidata/latest-all.json.gz'
-#DUMP = 'latest-all.json.bz2'
 
 '''Max number of lines to read from dump'''
 LIMIT = 100000000
