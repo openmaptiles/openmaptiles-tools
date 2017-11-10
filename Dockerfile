@@ -1,4 +1,4 @@
-FROM golang:1.7
+FROM golang:1.8
 MAINTAINER "Lukas Martinelli <me@lukasmartinelli.ch>"
 
 ENV PG_MAJOR 9.6

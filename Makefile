@@ -10,6 +10,6 @@ build:
 
 release:
 	@echo "Release: $(VERSION)"
-	docker pull golang:1.7	
+	docker pull golang:1.8	
 	docker build -f Dockerfile      -t $(DOCKER_IMAGE):$(VERSION)      .
 	docker images | grep $(DOCKER_IMAGE) | grep $(VERSION)
