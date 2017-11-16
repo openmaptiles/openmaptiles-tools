@@ -4,7 +4,7 @@ set -o pipefail
 set -o nounset
 
 # Drop all unused tables to save space and keep the schema clean
-# If we only drop the geometry columsn the import-external image
+# If we only drop the geometry columns the import-external image
 # doesn't get smaller so we need to remove both
 
 function drop_table() {
@@ -56,7 +56,7 @@ function clean_natural_earth() {
     drop_table 'ne_10m_rivers_lake_centerlines_scale_rank'
     drop_table 'ne_10m_time_zones'
     drop_table 'ne_10m_urban_areas_landscan'
-    drop_table 'ne_10m_admin_1_states_provinces_lakes_shp'
+    drop_table 'ne_10m_admin_1_states_provinces_lakes'
     drop_table 'ne_50m_admin_0_boundary_lines_disputed_areas'
     drop_table 'ne_50m_admin_0_countries_lakes'
     drop_table 'ne_50m_admin_0_map_subunits'
@@ -93,19 +93,19 @@ function clean_natural_earth() {
     drop_table 'ne_10m_ocean_scale_rank'
     drop_table 'ne_110m_admin_0_sovereignty'
     drop_table 'ne_110m_admin_0_tiny_countries'
-    drop_table 'ne_110m_admin_1_states_provinces_lakes_shp'
+    drop_table 'ne_110m_admin_1_states_provinces_lakes'
     drop_table 'ne_110m_coastline'
     drop_table 'ne_110m_geographic_lines'
     drop_table 'ne_110m_populated_places'
     drop_table 'ne_110m_populated_places_simple'
     drop_table 'ne_110m_admin_0_countries'
     drop_table 'ne_110m_admin_1_states_provinces_lines'
-    drop_table 'ne_110m_admin_1_states_provinces_shp'
-    drop_table 'ne_110m_admin_1_states_provinces_shp_scale_rank'
+    drop_table 'ne_110m_admin_1_states_provinces'
+    drop_table 'ne_110m_admin_1_states_provinces_scale_rank'
     drop_table 'ne_110m_land'
     drop_table 'ne_50m_admin_0_boundary_lines_maritime_indicator'
-    drop_table 'ne_50m_admin_1_states_provinces_lakes_shp'
-    drop_table 'ne_50m_admin_1_states_provinces_shp_scale_rank'
+    drop_table 'ne_50m_admin_1_states_provinces_lakes'
+    drop_table 'ne_50m_admin_1_states_provinces_scale_rank'
     drop_table 'ne_50m_lakes_historic'
     drop_table 'ne_50m_land'
     drop_table 'ne_50m_playas'

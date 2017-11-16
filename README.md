@@ -18,3 +18,6 @@ docker run --rm \
     -e POSTGRES_PORT="5432" \
     openmaptiles/import-natural-earth
 ```
+
+## Natural Earth
+Using version [4.0](https://github.com/nvkelso/natural-earth-vector/releases/tag/v4.0.0).
