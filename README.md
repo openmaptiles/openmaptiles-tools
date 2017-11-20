@@ -17,3 +17,5 @@ docker run --rm \
     -e POSTGRES_PORT="5432" \
     openmaptiles/import-water
 ```
+## Version of OpenStreetMapData
+**2017-10-28**
