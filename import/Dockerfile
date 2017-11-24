@@ -8,7 +8,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
  && chmod +x pgfutter \
  && mv pgfutter /usr/local/bin/ \
  && mkdir -p $IMPORT_DIR \
- && wget -O $IMPORT_DIR/osmborder_lines.csv https://github.com/openmaptiles/import-osmborder/releases/download/v0.1/osmborder_lines.csv \
+ && wget -O $IMPORT_DIR/osmborder_lines.csv https://github.com/openmaptiles/import-osmborder/releases/download/v0.4/osmborder_lines.csv \
  && apt-get purge -y --auto-remove \
       wget \
       ca-certificates \
