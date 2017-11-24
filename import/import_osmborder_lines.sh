@@ -16,7 +16,7 @@ function import_csv() {
         --pass "$POSTGRES_PASSWORD" \
         --table "$table_name" \
     csv \
-        --fields "osm_id,admin_level,disputed,maritime,geometry" \
+        --fields "osm_id,admin_level,dividing_line,disputed,maritime,geometry" \
         --delimiter $'\t' \
     "$csv_file"
 }
@@ -37,14 +37,14 @@ function generalize_border() {
     local tolerance="$3"
     local max_admin_level="$4"
     echo "Generalize $target_table_name with tolerance $tolerance from $source_table_name"
-    echo "CREATE TABLE $target_table_name AS SELECT ST_Simplify(geometry, $tolerance) AS geometry, osm_id, admin_level, disputed, maritime FROM $source_table_name WHERE admin_level <= $max_admin_level;" | exec_psql
+    echo "CREATE TABLE $target_table_name AS SELECT ST_Simplify(geometry, $tolerance) AS geometry, osm_id, admin_level, dividing_line, disputed, maritime FROM $source_table_name WHERE admin_level <= $max_admin_level;" | exec_psql
     echo "CREATE INDEX ON $target_table_name USING gist (geometry);" | exec_psql
     echo "ANALYZE $target_table_name;" | exec_psql
 }
 
 function create_import_table() {
     local target_table_name="$1"
-    echo "CREATE TABLE $target_table_name (osm_id bigint, admin_level int, disputed bool, maritime bool, geometry Geometry(LineString, 3857));" | exec_psql
+    echo "CREATE TABLE $target_table_name (osm_id bigint, admin_level int, dividing_line bool, disputed bool, maritime bool, geometry Geometry(LineString, 3857));" | exec_psql
     echo "CREATE INDEX ON $target_table_name USING gist (geometry);" | exec_psql
 }
 
