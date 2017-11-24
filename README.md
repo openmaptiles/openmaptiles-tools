@@ -44,3 +44,6 @@ docker run --rm \
     openmaptiles/import-osmborder
 ```
 
+
+## Version of OpenStreetMap
+**2017-11-20**
