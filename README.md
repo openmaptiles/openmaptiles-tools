@@ -10,12 +10,12 @@ Check out the [OpenMapTiles project](https://github.com/openmaptiles/openmaptile
 You need Python 2 or Python 3 installed on your system.
 External dependency:  graphviz, sqlite3 
 
-```
+```bash
 pip install openmaptiles-tools
 # You can also install the package directly from git
 pip install git+https://github.com/openmaptiles/openmaptiles-tools
 
-#Some tool call external command,  you can install them on debian / ubuntu :
+# Some tool call external command,  you can install them on debian / ubuntu :
 apt-get install  graphviz sqlite3 
 
 ```
