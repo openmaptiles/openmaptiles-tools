@@ -19,6 +19,7 @@ from __future__ import print_function
 import sqlite3
 import os
 import os.path
+import json
 from docopt import docopt
 import openmaptiles
 
@@ -82,6 +83,43 @@ def update_metadata(mbtiles_file, metadata):
 
     for key, value in metadata.items():
         upsert_entry(key, value)
+
+    # Change json value in metadata
+    cursor = conn.cursor()
+    cursor.execute("SELECT name,value FROM metadata WHERE name = 'json';")
+    metadata_json = ''
+    for row in cursor:
+        metadata_json = row[1]
+        break
+    if metadata_json:
+        obj = json.loads(metadata_json)
+        # Remove Layer - contains connections and SQLs
+        if 'Layer' in obj:
+            del obj['Layer']
+        # Remove unnecessary field _prefs
+        if '_prefs' in obj:
+            del obj['_prefs']
+        # Update maxzoom in vector_layers:
+        if 'vector_layers' in obj:
+            # find out maxzoom from metadata
+            maxzoom = 0
+            cursor.execute(
+                "SELECT name,value FROM metadata WHERE name='maxzoom'")
+            for row in cursor:
+                try:
+                    maxzoom = int(row[1])
+                except:
+                    maxzoom = 0
+                break
+            if maxzoom > 0:
+                vector_layers = obj['vector_layers']
+                for layer in vector_layers:
+                    layer['maxzoom'] = maxzoom
+        # Save json back into metadata minified
+        metadata_json = json.dumps(obj, separators=(',', ':'))
+        cursor.execute("REPLACE INTO metadata VALUES(?, ?);",
+                       ('json', metadata_json, ))
+        conn.commit()
 
     conn.commit()
     conn.close()
