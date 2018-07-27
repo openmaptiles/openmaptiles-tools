@@ -1,18 +1,20 @@
 #!/usr/bin/env python
-"""generate metadata to tiles.mbtiles.
+"""Generate and clean metadata to tiles.mbtiles.
 
 Usage:
-  generate_metadata <mbtiles>
-  generate_metadata <mbtiles> <west> <south> <east> <north>
+  generate_metadata [--force] <mbtiles>
+  generate_metadata [--force] <mbtiles> <west> <south> <east> <north>
   generate_metadata (-h | --help)
   generate_metadata --version
 
 Options:
   -h --help                     Show this screen.
   --version                     Show version.
-"""
+  --force                       Overwrite all metadata, not only missing
 
-# generate_metadata ./data/tiles.mbtiles
+This script reads environment variable: METADATA_* for overwriting metadata values.
+This script parses BBOX, MIN_ZOOM, MAX_ZOOM and CENTER_ZOOM to prepare bounds and center values.
+"""
 
 from __future__ import print_function
 
@@ -23,8 +25,13 @@ import json
 from docopt import docopt
 import openmaptiles
 
-ATTRIBUTION = os.environ.get('METADATA_ATTRIBUTION', '<a href="https://openmaptiles.org/" target="_blank">&copy; OpenMapTiles</a> <a href="https://www.openstreetmap.org/copyright" target="_blank">&copy; OpenStreetMap contributors</a>')
-VERSION = os.environ.get('METADATA_VERSION', '3.8')
+
+META_NAME = os.environ.get('METADATA_NAME', 'OpenMapTiles')
+META_ID = os.environ.get('METADATA_ID', 'openmaptiles')
+META_VERSION = os.environ.get('METADATA_VERSION', '3.8')
+META_ATTRIBUTION = os.environ.get('METADATA_ATTRIBUTION', '<a href="https://openmaptiles.org/" target="_blank">&copy; OpenMapTiles</a> <a href="https://www.openstreetmap.org/copyright" target="_blank">&copy; OpenStreetMap contributors</a>')
+META_DESCRIPTION = os.environ.get('METADATA_DESCRIPTION', 'Development OpenMapTiles extract, based on https://openmaptiles.org')
+META_TYPE = os.environ.get('METADATA_TYPE', 'baselayer')
 
 
 class Extract(object):
@@ -55,14 +62,14 @@ class Extract(object):
 
     def metadata(self, extract_file):
         return {
-            "type": os.environ.get('METADATA_TYPE', 'baselayer'),
-            "attribution": ATTRIBUTION,
-            "version": VERSION,
+            "type": META_TYPE,
+            "attribution": META_ATTRIBUTION,
+            "description": META_DESCRIPTION,
+            "version": META_VERSION,
             "minzoom": self.min_zoom,
             "maxzoom": self.max_zoom,
-            "name": os.environ.get('METADATA_NAME', 'OpenMapTiles'),
-            "id": os.environ.get('METADATA_ID', 'openmaptiles'),
-            "description": os.environ.get('METADATA_DESC', "Development extract, based on https://openmaptiles.org"),
+            "name": META_NAME,
+            "id": META_ID,
             "bounds": self.bounds(),
             "center": self.center(),
             "basename": os.path.basename(extract_file),
@@ -70,14 +77,23 @@ class Extract(object):
         }
 
 
-def update_metadata(mbtiles_file, metadata):
+def update_metadata(mbtiles_file, metadata, force=False):
     """
     Update metadata key value pairs inside the MBTiles file
     with the provided metadata
     """
     conn = sqlite3.connect(mbtiles_file)
+    cursor = conn.cursor()
 
     def upsert_entry(key, value):
+        # ID should be overwritten always!
+        if not force and key != 'id':
+            cursor.execute("SELECT value FROM metadata WHERE name = '{}'".format(key))
+            for row in cursor:
+                # Skip if the value exists
+                print("{}={}".format(key, row))
+                if row[0]:
+                    return
         conn.execute("DELETE FROM metadata WHERE name='{}'".format(key))
         conn.execute("INSERT INTO metadata VALUES('{}', '{}')".format(key, value))
 
@@ -85,7 +101,6 @@ def update_metadata(mbtiles_file, metadata):
         upsert_entry(key, value)
 
     # Change json value in metadata
-    cursor = conn.cursor()
     cursor.execute("SELECT name,value FROM metadata WHERE name = 'json';")
     metadata_json = ''
     for row in cursor:
@@ -126,7 +141,7 @@ def update_metadata(mbtiles_file, metadata):
 
 if __name__ == '__main__':
     args = docopt(__doc__, version=openmaptiles.__version__, options_first=True)
-    print (args)
+    force = args.get('--force', False)
 
     extract_file = args['<mbtiles>']
 
@@ -147,10 +162,10 @@ if __name__ == '__main__':
         right=right,
         top=top,
         bottom=bottom,
-        center_zoom=5,
+        center_zoom=os.environ.get('CENTER_ZOOM', 5),
         min_zoom=os.environ.get('MIN_ZOOM', 0),
         max_zoom=os.environ.get('MAX_ZOOM', 14),
     )
 
     print('Update metadata {}'.format(extract_file))
-    update_metadata(extract_file, extract.metadata(extract_file))
+    update_metadata(extract_file, extract.metadata(extract_file), force)
