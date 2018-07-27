@@ -1,8 +1,9 @@
-from distutils.core import setup
+#from distutils.core import setup
+import setuptools
 
-setup(
+setuptools.setup(
     name='openmaptiles-tools',
-    version='0.9.0',
+    version='0.9.1',
     packages=['openmaptiles'],
     license='MIT',
     scripts=[
