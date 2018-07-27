@@ -2,7 +2,7 @@ from distutils.core import setup
 
 setup(
     name='openmaptiles-tools',
-    version='0.8.0',
+    version='0.9.0',
     packages=['openmaptiles'],
     license='MIT',
     scripts=[
@@ -17,8 +17,8 @@ setup(
         'bin/generate-tm2source',
     ],
     install_requires=[
-      'docopt',
-      'pyyaml',
-      'graphviz',
+        'docopt',
+        'pyyaml',
+        'graphviz',
     ],
 )
