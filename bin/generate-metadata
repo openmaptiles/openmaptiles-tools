@@ -91,7 +91,7 @@ def update_metadata(mbtiles_file, metadata, force=False):
             cursor.execute("SELECT value FROM metadata WHERE name = '{}'".format(key))
             for row in cursor:
                 # Skip if the value exists
-                print("{}={}".format(key, row))
+                # print("{}={}".format(key, row))
                 if row[0]:
                     return
         conn.execute("DELETE FROM metadata WHERE name='{}'".format(key))
