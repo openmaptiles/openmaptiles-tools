@@ -7,7 +7,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name='openmaptiles-tools',
-    version='0.9.1',
+    version='0.9.2',
     packages=['openmaptiles'],
     description="The OpenMapTiles tools for generating TM2Source projects, imposm3 mappings and SQL instructions from OpenMapTiles layers. We encourage other people to use this for their vector tile projects as well since this approach works well for us.",
     long_description=long_description,
