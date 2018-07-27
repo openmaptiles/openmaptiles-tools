@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""generate metadata to tiles.mbtiles
+"""generate metadata to tiles.mbtiles.
 
 Usage:
   generate_metadata <mbtiles>
@@ -14,22 +14,16 @@ Options:
 
 # generate_metadata ./data/tiles.mbtiles
 
-# TODO:  better BBOX parameters ..
-  # TODO:  parse os.environ.get('BBOX') for west, south, east, values
-# TODO:  test!
-
 from __future__ import print_function
 
-import shutil
 import sqlite3
-import sys
 import os
 import os.path
 from docopt import docopt
 import openmaptiles
 
-ATTRIBUTION = os.environ.get('METADATA_ATTRIBUTION', '<a href="http://openmaptiles.org/" target="_blank">&copy; OpenMapTiles</a> <a href="http://www.openstreetmap.org/about/" target="_blank">&copy; OpenStreetMap contributors</a>')
-VERSION = os.environ.get('METADATA_VERSION', '3.3')
+ATTRIBUTION = os.environ.get('METADATA_ATTRIBUTION', '<a href="https://openmaptiles.org/" target="_blank">&copy; OpenMapTiles</a> <a href="https://www.openstreetmap.org/copyright" target="_blank">&copy; OpenStreetMap contributors</a>')
+VERSION = os.environ.get('METADATA_VERSION', '3.8')
 
 
 class Extract(object):
@@ -67,12 +61,13 @@ class Extract(object):
             "maxzoom": self.max_zoom,
             "name": os.environ.get('METADATA_NAME', 'OpenMapTiles'),
             "id": os.environ.get('METADATA_ID', 'openmaptiles'),
-            "description": os.environ.get('METADATA_DESC', "Development extract, based on http://openmaptiles.org"),
+            "description": os.environ.get('METADATA_DESC', "Development extract, based on https://openmaptiles.org"),
             "bounds": self.bounds(),
             "center": self.center(),
             "basename": os.path.basename(extract_file),
             "filesize": os.path.getsize(extract_file)
         }
+
 
 def update_metadata(mbtiles_file, metadata):
     """
@@ -95,24 +90,29 @@ if __name__ == '__main__':
     args = docopt(__doc__, version=openmaptiles.__version__, options_first=True)
     print (args)
 
-    extract_file= args['<mbtiles>']
+    extract_file = args['<mbtiles>']
 
-    left = args['<west>']
-    bottom = args['<south>']
-    right = args['<east>']
-    top = args['<north>']
+    bbox = os.environ.get('BBOX', '-180.0,-85.0511,180.0,85.0511')
+    # $lon_min,$lat_min,$lon_max,$lat_max
+    # left,bottom,right,top
+    left, bottom, right, top = bbox.split(',')
+    left = args.get('<west>') or left
+    bottom = args.get('<south>') or bottom
+    right = args.get('<east>') or right
+    top = args.get('<north>') or top
 
-    extract = Extract(extract_file,
-                        country=None,
-                        city=None,
-                        left=left,
-                        right=right,
-                        top=top,
-                        bottom=bottom,
-                        center_zoom=2,
-                        min_zoom= os.environ.get('QUICKSTART_MIN_ZOOM', 0),
-                        max_zoom= os.environ.get('QUICKSTART_MAX_ZOOM', 14),
-                        )
+    extract = Extract(
+        extract_file,
+        country=None,
+        city=None,
+        left=left,
+        right=right,
+        top=top,
+        bottom=bottom,
+        center_zoom=5,
+        min_zoom=os.environ.get('MIN_ZOOM', 0),
+        max_zoom=os.environ.get('MAX_ZOOM', 14),
+    )
 
     print('Update metadata {}'.format(extract_file))
     update_metadata(extract_file, extract.metadata(extract_file))
