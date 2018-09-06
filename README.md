@@ -71,6 +71,7 @@ tileset:
   maxzoom: 14
   minzoom: 13
   center: [-12.2168, 28.6135, 4]
+  bounds: [-180.0,-85.0511,180.0,85.0511]
 ```
 
 ## Usage
