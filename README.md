@@ -20,4 +20,4 @@ docker run --rm \
 ```
 
 ## Natural Earth
-Using version [4.0](https://github.com/nvkelso/natural-earth-vector/releases/tag/v4.0.0).
+Using version [4.1](https://github.com/nvkelso/natural-earth-vector/releases/tag/v4.1.0).
