@@ -33,11 +33,38 @@ CREATE OR REPLACE FUNCTION remove_latin(text) RETURNS text AS $$
   END;
 $$ LANGUAGE 'plpgsql' IMMUTABLE;
 
+-- See osml10n_is_latin
+-- https://github.com/giggls/mapnik-german-l10n/blob/ea5da9cdfa6c931ae73eac747849140547ecd321/plpgsql/get_localized_name.sql#L19
+CREATE or REPLACE FUNCTION omt_is_latin(text) RETURNS BOOLEAN AS $$
+  DECLARE
+    i integer;
+    ascii_val int;
+  BEGIN
+    FOR i IN 1..char_length($1) LOOP
+      ascii_val := ascii(substr($1, i, 1));
+      IF (ascii_val > 591
+          -- Vietnam
+          -- https://en.wikipedia.org/wiki/Latin_script_in_Unicode
+          -- https://en.wikipedia.org/wiki/Latin_Extended_Additional
+          AND ascii_val NOT BETWEEN x'1E00'::int AND x'1EFF'::int
+          -- https://en.wikipedia.org/wiki/Combining_character
+          AND ascii_val NOT BETWEEN x'0300'::int AND x'036F'::int
+
+          -- Azerbaijan
+          -- https://en.wikipedia.org/wiki/IPA_Extensions
+          AND ascii_val <> x'0259'::int
+      ) THEN
+        RETURN false;
+      END IF;
+    END LOOP;
+    RETURN true;
+  END;
+$$ LANGUAGE 'plpgsql' IMMUTABLE;
 
 CREATE OR REPLACE FUNCTION get_latin_name(tags hstore, geometry geometry) RETURNS text AS $$
     SELECT COALESCE(
       CASE
-        WHEN tags->'name' is not null and osml10n_is_latin(tags->'name')
+        WHEN tags->'name' is not null and omt_is_latin(tags->'name')
           THEN tags->'name'
         ELSE NULL
       END,
@@ -51,7 +78,7 @@ $$ LANGUAGE SQL IMMUTABLE STRICT;
 CREATE OR REPLACE FUNCTION get_nonlatin_name(tags hstore) RETURNS text AS $$
     SELECT
       CASE
-        WHEN tags->'name' is not null and osml10n_is_latin(tags->'name')
+        WHEN tags->'name' is not null and omt_is_latin(tags->'name')
           THEN NULL
         WHEN unaccent(tags->'name') ~ '[a-zA-Z]'
           THEN remove_latin(tags->'name')
