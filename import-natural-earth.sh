@@ -15,6 +15,7 @@ function import_natural_earth() {
     -clipsrc -180.1 -85.0511 180.1 85.0511 \
     PG:"$PGCONN" \
     -lco GEOMETRY_NAME=geometry \
+    -lco OVERWRITE=YES \
     -lco DIM=2 \
     -nlt GEOMETRY \
     -overwrite \
