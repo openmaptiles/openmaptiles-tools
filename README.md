@@ -7,7 +7,7 @@ into the container to make distribution and execution easier.
 
 ## Usage
 
-Provide the database credentials and run `import-water`.
+Provide the database credentials and run `import-natural-earth`.
 
 ```bash
 docker run --rm \
