@@ -28,7 +28,7 @@ import openmaptiles
 
 META_NAME = os.environ.get('METADATA_NAME', 'OpenMapTiles')
 META_ID = os.environ.get('METADATA_ID', 'openmaptiles')
-META_VERSION = os.environ.get('METADATA_VERSION', '3.8')
+META_VERSION = os.environ.get('METADATA_VERSION', '3.9')
 META_ATTRIBUTION = os.environ.get('METADATA_ATTRIBUTION', '<a href="https://openmaptiles.org/" target="_blank">&copy; OpenMapTiles</a> <a href="https://www.openstreetmap.org/copyright" target="_blank">&copy; OpenStreetMap contributors</a>')
 META_DESCRIPTION = os.environ.get('METADATA_DESCRIPTION', 'Development OpenMapTiles extract, based on https://openmaptiles.org')
 META_TYPE = os.environ.get('METADATA_TYPE', 'baselayer')
