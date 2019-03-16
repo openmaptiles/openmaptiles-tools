@@ -4,7 +4,6 @@ set -o pipefail
 set -o nounset
 
 readonly WATER_POLYGONS_FILE="$IMPORT_DATA_DIR/water_polygons.shp"
-readonly SIMPLIFIED_WATER_POLYGONS_FILE="$IMPORT_DATA_DIR/simplified_water_polygons.shp"
 
 function exec_psql() {
     PGPASSWORD=$POSTGRES_PASSWORD psql --host="$POSTGRES_HOST" --port="$POSTGRES_PORT" --dbname="$POSTGRES_DB" --username="$POSTGRES_USER"
