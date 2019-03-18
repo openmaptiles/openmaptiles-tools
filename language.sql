@@ -118,6 +118,7 @@ END;
 $$ STRICT
 LANGUAGE plpgsql IMMUTABLE;
 
+CREATE TABLE IF NOT EXISTS wd_names(id varchar(20), page varchar(200), labels hstore);
 
 CREATE OR REPLACE FUNCTION merge_wiki_names(tags hstore) RETURNS hstore AS $$
 DECLARE
