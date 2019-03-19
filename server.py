@@ -29,7 +29,7 @@ def GeneratePrepared(layers):
         layer_query = layer['Datasource']['table'].lstrip().rstrip()	# Remove lead and trailing whitespace
         layer_query = layer_query[1:len(layer_query)-6]			# Remove enough characters to remove first and last () and "AS t"
         layer_query = layer_query.replace("geometry", "ST_AsMVTGeom(geometry,!bbox!,4096,0,true) AS mvtgeometry")
-        base_query = "SELECT ST_ASMVT('"+layer['id']+"', 4096, 'mvtgeometry', tile) FROM ("+layer_query+" WHERE ST_AsMVTGeom(geometry, !bbox!,4096,0,true) IS NOT NULL) AS tile"
+        base_query = "SELECT ST_ASMVT(tile, '"+layer['id']+"', 4096, 'mvtgeometry') FROM ("+layer_query+" WHERE ST_AsMVTGeom(geometry, !bbox!,4096,0,true) IS NOT NULL) AS tile"
         queries.append(base_query.replace("!bbox!","$1").replace("!scale_denominator!","$2").replace("!pixel_width!","$3").replace("!pixel_height!","$4"))
     prepared = prepared + " UNION ALL ".join(queries) + ";"
     print(prepared)
@@ -80,7 +80,7 @@ def get_mvt(zoom,x,y):
     layers = filter(None,list(itertools.chain.from_iterable(response)))
     final_tile = b''
     for layer in layers:
-        final_tile = final_tile + io.BytesIO(layer).getvalue() 
+        final_tile = final_tile + io.BytesIO(layer).getvalue()
     return final_tile
 
 class GetTile(tornado.web.RequestHandler):
