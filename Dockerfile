@@ -1,12 +1,12 @@
 FROM golang:1.8
 MAINTAINER "Lukas Martinelli <me@lukasmartinelli.ch>"
 
-ENV PG_MAJOR 9.6
+ENV PG_MAJOR 11
 RUN apt-key adv --keyserver ha.pool.sks-keyservers.net --recv-keys B97B0AFCAA1A47F044F244A07FCC7D46ACCC4CF8 \
  && echo 'deb http://apt.postgresql.org/pub/repos/apt/ jessie-pgdg main' $PG_MAJOR > /etc/apt/sources.list.d/pgdg.list \
  && echo 'deb http://httpredir.debian.org/debian jessie-backports main contrib' > /etc/apt/sources.list.d/backports.list \
  && DEBIAN_FRONTEND=noninteractive apt-get update \
- # install newer packages from backports 
+ # install newer packages from backports
  && DEBIAN_FRONTEND=noninteractive apt-get  -t jessie-backports install -y --no-install-recommends \
       libgeos-dev \
       libleveldb-dev \
