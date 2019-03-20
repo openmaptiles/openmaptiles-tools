@@ -114,7 +114,7 @@ generate-doc <tileset>
 dependency:  graphviz
 
 Takes a source code from the imposm3 mapping file and the SQL postprocessing code , 
-nad parsing for the `etldoc:` graphviz based comments, and generate an svg file.
+and parsing for the `etldoc:` graphviz based comments, and generate an svg file.
 The `.dot` and the `.svg` filename prefix is `etl_`
 
 ```
