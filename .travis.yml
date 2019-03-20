@@ -16,6 +16,7 @@ before_install:
   - sudo mv docker-compose /usr/local/bin
 
 script:
+  - set -e
   - sudo service docker restart
   - docker-compose -v
   - docker info
