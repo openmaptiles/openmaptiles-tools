@@ -102,7 +102,7 @@ class Tileset(object):
 def parse_file(filename):
     with open(filename, 'r') as stream:
         try:
-            return yaml.load(stream)
+            return yaml.load(stream, Loader=yaml.FullLoader)
         except yaml.YAMLError as e:
             print('Could not parse ' + filename)
             print(e)
