@@ -1,0 +1,27 @@
+#!/usr/bin/env python
+"""
+Usage:
+  generate-sqlgettile <tileset>
+  generate-sqlgettile --help
+  generate-sqlgettile --version
+Options:
+  --help              Show this screen.
+  --version           Show version.
+"""
+from __future__ import (absolute_import, division, print_function,
+                        unicode_literals)
+
+from docopt import docopt
+import yaml, sys
+
+import openmaptiles
+from openmaptiles.sqlgettile import generate_sqlgettile
+
+
+if __name__ == '__main__':
+    args = docopt(__doc__, version=openmaptiles.__version__)
+    sql = generate_sqlgettile(args['<tileset>'])
+    if sys.version_info >= (3, 0):
+        print(sql)
+    else:
+        print(sql.encode("utf-8"))
