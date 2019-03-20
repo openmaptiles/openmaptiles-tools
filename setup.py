@@ -24,7 +24,7 @@ setuptools.setup(
         'bin/generate-sql',
         'bin/generate-sqlquery',
         'bin/generate-tm2source',
-        'bin/generate-sqlgettile',
+        'bin/generate-sqltomvt',
     ],
     install_requires=[
         'docopt',

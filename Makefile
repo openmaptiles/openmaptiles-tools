@@ -5,10 +5,11 @@ DOCKER_IMAGE_PY27 := openmaptiles/openmaptiles-tools_py27
 
 test:
 	mkdir -p ./testbuild/testmaptiles.tm2source
+	mkdir -p ./testbuild/mvt
 	mkdir -p ./testbuild/devdoc
 	mkdir -p ./testbuild/doc
 	generate-tm2source testmaptiles.yaml --host="postgres" --port=5432 --database="testmaptiles" --user="testmaptiles" --password="testmaptiles" > ./testbuild/testmaptiles.tm2source/data.yml
-	generate-sqlgettile testmaptiles.yaml                           > ./testbuild/gettile.sql
+	generate-sqltomvt testmaptiles.yaml                             > ./testbuild/mvt/maketile.sql
 	generate-imposm3 testmaptiles.yaml                              > ./testbuild/mapping.yaml
 	generate-sql     testmaptiles.yaml                              > ./testbuild/tileset.sql
 	generate-doc      ./testlayers/housenumber/housenumber.yaml     > ./testbuild/doc/housenumber.md
@@ -19,7 +20,7 @@ test:
 checklist:
 	rm -f checklist.chk
 	md5sum ./testbuild/testmaptiles.tm2source/data.yml  >> checklist.chk
-	md5sum ./testbuild/gettile.sql                      >> checklist.chk
+	md5sum ./testbuild/mvt/maketile.sql                 >> checklist.chk
 	md5sum ./testbuild/mapping.yaml                     >> checklist.chk
 	md5sum ./testbuild/tileset.sql                      >> checklist.chk
 	md5sum ./testbuild/doc/housenumber.md               >> checklist.chk
