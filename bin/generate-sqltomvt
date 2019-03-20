@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 """
 Usage:
-  generate-sqlgettile <tileset>
-  generate-sqlgettile --help
-  generate-sqlgettile --version
+  generate-sqltomvt <tileset>
+  generate-sqltomvt --help
+  generate-sqltomvt --version
 Options:
   --help              Show this screen.
   --version           Show version.
@@ -15,12 +15,12 @@ from docopt import docopt
 import yaml, sys
 
 import openmaptiles
-from openmaptiles.sqlgettile import generate_sqlgettile
+from openmaptiles.sqltomvt import generate_sqltomvt
 
 
 if __name__ == '__main__':
     args = docopt(__doc__, version=openmaptiles.__version__)
-    sql = generate_sqlgettile(args['<tileset>'])
+    sql = generate_sqltomvt(args['<tileset>'])
     if sys.version_info >= (3, 0):
         print(sql)
     else:

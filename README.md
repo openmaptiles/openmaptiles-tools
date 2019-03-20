@@ -85,13 +85,14 @@ You need to provide PostgreSQL database connection settings before generating th
 generate-tm2source <tileset> --host="localhost" --port=5432 --database="osm" --user="osm" --password="osm"
 ```
 
-### Generate gettile() SQL function
+### Generate SQL code to create MVT tiles directly by PostGIS
 
-Takes a tileset definition and generates a single `gettile()` PostgreSQL function that 
-generate the entire vector tile in a Mapbox Vector Tile format using new PostGIS MVT support.
+Uses tileset definition to create a
+ [PostgreSQL prepared statement](https://www.postgresql.org/docs/current/sql-prepare.html) `gettile()` 
+ that generate the entire vector tile in a Mapbox Vector Tile format using PostGIS MVT support.
 
 ```
-generate-sqlgettile <tileset>
+generate-sqltomvt <tileset>
 ```
 
 ### Generate Imposm3 Mapping File
