@@ -8,6 +8,7 @@ test:
 	mkdir -p ./testbuild/devdoc
 	mkdir -p ./testbuild/doc
 	generate-tm2source testmaptiles.yaml --host="postgres" --port=5432 --database="testmaptiles" --user="testmaptiles" --password="testmaptiles" > ./testbuild/testmaptiles.tm2source/data.yml
+	generate-sqlgettile testmaptiles.yaml                           > ./testbuild/gettile.sql
 	generate-imposm3 testmaptiles.yaml                              > ./testbuild/mapping.yaml
 	generate-sql     testmaptiles.yaml                              > ./testbuild/tileset.sql
 	generate-doc      ./testlayers/housenumber/housenumber.yaml     > ./testbuild/doc/housenumber.md
@@ -18,11 +19,12 @@ test:
 checklist:
 	rm -f checklist.chk
 	md5sum ./testbuild/testmaptiles.tm2source/data.yml  >> checklist.chk
+	md5sum ./testbuild/gettile.sql                      >> checklist.chk
 	md5sum ./testbuild/mapping.yaml                     >> checklist.chk
 	md5sum ./testbuild/tileset.sql                      >> checklist.chk
 	md5sum ./testbuild/doc/housenumber.md               >> checklist.chk
 	md5sum ./testbuild/sqlquery.sql                     >> checklist.chk
-	md5sum ./testbuild/devdoc/etl_housenumber.dot 		>> checklist.chk
+	md5sum ./testbuild/devdoc/etl_housenumber.dot       >> checklist.chk
 	cat checklist.chk
 
 buildtest:

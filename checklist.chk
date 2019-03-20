@@ -1,4 +1,5 @@
 181fa05eb18eeae787bf8fd9fc19da61  ./testbuild/testmaptiles.tm2source/data.yml
+6dc29195f01becdef176f4cd31d7f54c  ./testbuild/gettile.sql
 a9923eeaa91b045373b9932c8185e668  ./testbuild/mapping.yaml
 48880261e757a91bd424244d98f2506d  ./testbuild/tileset.sql
 2bbb5f07cf224ce595b7e6863bbbeac4  ./testbuild/doc/housenumber.md
