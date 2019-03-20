@@ -17,10 +17,10 @@ def generate_sqltomvt(tileset_filename):
     extent = 4096
     queries = [generate_layer(layer, query_tokens, extent) for layer in tileset.layers]
 
-    query = "PREPARE gettile(geometry, numeric, numeric, numeric) AS \n" + \
-            "\nSELECT STRING_AGG(mvt) FROM (" + \
-            "\n   UNION ALL\n".join(queries) + \
-            ") AS ua\n;"
+    query = "PREPARE gettile(geometry, numeric, numeric, numeric) AS\n\n" + \
+            "SELECT STRING_AGG(mvt) FROM (\n  " + \
+            "\n    UNION ALL\n  ".join(queries) + \
+            "\n) AS ua;"
 
     return (query
             .replace("!bbox!", "$1")

@@ -2,7 +2,6 @@ DOCKER_IMAGE      := openmaptiles/openmaptiles-tools
 DOCKER_IMAGE_PY27 := openmaptiles/openmaptiles-tools_py27
 
 .PHONY: test
-
 test:
 	mkdir -p ./testbuild/testmaptiles.tm2source
 	mkdir -p ./testbuild/mvt
@@ -17,6 +16,7 @@ test:
 	generate-etlgraph ./testlayers/housenumber/housenumber.yaml ./testbuild/devdoc/
 	md5sum -c checklist.chk
 
+.PHONY: checklist
 checklist:
 	rm -f checklist.chk
 	md5sum ./testbuild/testmaptiles.tm2source/data.yml  >> checklist.chk
@@ -28,7 +28,13 @@ checklist:
 	md5sum ./testbuild/devdoc/etl_housenumber.dot       >> checklist.chk
 	cat checklist.chk
 
+.PHONY: buildtest
 buildtest:
 	docker build -f Dockerfile      -t $(DOCKER_IMAGE) .
 	docker build -f Dockerfile.py27 -t $(DOCKER_IMAGE_PY27) .
 	docker images | grep  $(DOCKER_IMAGE)
+
+.PHONY: clean
+clean:
+	rm -rf ./testbuild
+	rm -f checklist.chk
