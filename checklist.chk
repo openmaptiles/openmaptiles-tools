@@ -1,5 +1,6 @@
 181fa05eb18eeae787bf8fd9fc19da61  ./testbuild/testmaptiles.tm2source/data.yml
-838bfda8a6f9745e9e4fd874560089e1  ./testbuild/mvt/maketile.sql
+6f0b1a0d447faa199a665d56a5b9d272  ./testbuild/mvt/maketile_prep.sql
+1eabd5b2cb3adc4e165c8f95cfecf69e  ./testbuild/mvt/maketile_func.sql
 a9923eeaa91b045373b9932c8185e668  ./testbuild/mapping.yaml
 48880261e757a91bd424244d98f2506d  ./testbuild/tileset.sql
 2bbb5f07cf224ce595b7e6863bbbeac4  ./testbuild/doc/housenumber.md

@@ -1,26 +1,49 @@
 #!/usr/bin/env python
 """
+This script generates a single SQL statement (either as an SQL function or as a prepared statement),
+to generate a vector tile (MVT) for the given zoom and bounding box.
+
 Usage:
-  generate-sqltomvt <tileset>
+  generate-sqltomvt <tileset> [--fname <name>] [--function | --prepared | --raw] [--rmempty=<z>] [--rm-empty-layer=<layer> --rm-empty-zoom=<z>]
   generate-sqltomvt --help
   generate-sqltomvt --version
+
+  <tileset>        Tileset definition yaml file
+
 Options:
-  --help              Show this screen.
-  --version           Show version.
+  -f --function             Generate function generation SQL [default]
+  -p --prepared             Generate prepared statement SQL
+  -r --raw                  Generate raw qurey without any wrappers
+  --rm-empty-layer=<layer>  Remove empty layer (e.g. water) if there is no other data in a tile
+  --rm-empty-zoom=<z>       At which zoom should empty layer be removed [default: 10]
+  --fname=<name>            Name of the generated function [default: gettile]
+  --help                    Show this screen.
+  --version                 Show version.
 """
-from __future__ import (absolute_import, division, print_function,
-                        unicode_literals)
+from __future__ import (absolute_import, division, print_function, unicode_literals)
 
 from docopt import docopt
 import yaml, sys
 
 import openmaptiles
-from openmaptiles.sqltomvt import generate_sqltomvt
-
+from openmaptiles.sqltomvt import generate_sqltomvt_preparer, generate_sqltomvt_func, generate_sqltomvt_raw
 
 if __name__ == '__main__':
     args = docopt(__doc__, version=openmaptiles.__version__)
-    sql = generate_sqltomvt(args['<tileset>'])
+    opts = {
+        'tileset': args['<tileset>'],
+        'fname': args['--fname'],
+        'rm-empty-layer': args['--rm-empty-layer'],
+        'rm-empty-zoom': int(args['--rm-empty-zoom']),
+    }
+
+    if args['--prepared']:
+        sql = generate_sqltomvt_preparer(opts)
+    elif args['--raw']:
+        sql = generate_sqltomvt_raw(opts)
+    else:
+        sql = generate_sqltomvt_func(opts)
+
     if sys.version_info >= (3, 0):
         print(sql)
     else:

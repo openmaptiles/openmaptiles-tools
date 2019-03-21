@@ -8,7 +8,8 @@ test:
 	mkdir -p ./testbuild/devdoc
 	mkdir -p ./testbuild/doc
 	generate-tm2source testmaptiles.yaml --host="postgres" --port=5432 --database="testmaptiles" --user="testmaptiles" --password="testmaptiles" > ./testbuild/testmaptiles.tm2source/data.yml
-	generate-sqltomvt testmaptiles.yaml                             > ./testbuild/mvt/maketile.sql
+	generate-sqltomvt testmaptiles.yaml                             > ./testbuild/mvt/maketile_func.sql
+	generate-sqltomvt testmaptiles.yaml --prepared                  > ./testbuild/mvt/maketile_prep.sql
 	generate-imposm3 testmaptiles.yaml                              > ./testbuild/mapping.yaml
 	generate-sql     testmaptiles.yaml                              > ./testbuild/tileset.sql
 	generate-doc      ./testlayers/housenumber/housenumber.yaml     > ./testbuild/doc/housenumber.md
@@ -20,7 +21,8 @@ test:
 checklist:
 	rm -f checklist.chk
 	md5sum ./testbuild/testmaptiles.tm2source/data.yml  >> checklist.chk
-	md5sum ./testbuild/mvt/maketile.sql                 >> checklist.chk
+	md5sum ./testbuild/mvt/maketile_prep.sql            >> checklist.chk
+	md5sum ./testbuild/mvt/maketile_func.sql            >> checklist.chk
 	md5sum ./testbuild/mapping.yaml                     >> checklist.chk
 	md5sum ./testbuild/tileset.sql                      >> checklist.chk
 	md5sum ./testbuild/doc/housenumber.md               >> checklist.chk
