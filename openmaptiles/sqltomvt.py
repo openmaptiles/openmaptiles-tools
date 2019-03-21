@@ -17,10 +17,18 @@ def generate_sqltomvt(tileset_filename):
     extent = 4096
     queries = [generate_layer(layer, query_tokens, extent) for layer in tileset.layers]
 
-    query = "PREPARE gettile(geometry, numeric, numeric, numeric) AS\n\n" + \
-            "SELECT STRING_AGG(mvt) FROM (\n  " + \
-            "\n    UNION ALL\n  ".join(queries) + \
-            "\n) AS ua;"
+    query = """
+DO $$ BEGIN
+IF EXISTS (SELECT * FROM pg_prepared_statements where name = 'gettile') THEN
+  DEALLOCATE gettile;
+END IF;
+END $$;
+
+PREPARE gettile(geometry, numeric, numeric, numeric) AS
+
+SELECT STRING_AGG(mvtl, '') FROM (
+"""
+    query = query.lstrip() + "  " + "\n    UNION ALL\n  ".join(queries) + "\n) AS ua;"
 
     return (query
             .replace("!bbox!", "$1")
@@ -51,8 +59,8 @@ def generate_layer(layer_def, query_tokens, extent):
         "ST_AsMVTGeom(geometry, !bbox!, {extent}, {buffer}, true) AS mvtgeometry".format(extent=extent, buffer=buffer))
 
     query = (
-        # Combine all layer's features into a single MVT tile
-        "SELECT ST_AsMVT(tile, '{id}', {extent}, 'mvtgeometry') as mvt "
+        # Combine all layer's features into a single MVT blob representing one layer
+        "SELECT ST_AsMVT(tile, '{id}', {extent}, 'mvtgeometry') as mvtl "
         # only if the MVT geometry is not NULL
         "FROM ({query} WHERE ST_AsMVTGeom(geometry, !bbox!, {extent}, {buffer}, true) IS NOT NULL) AS tile "
         # Skip the whole layer if there is nothing in it
