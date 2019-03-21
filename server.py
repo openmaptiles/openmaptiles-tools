@@ -18,62 +18,81 @@ Options:
   --help                    Show this screen.
   --version                 Show version.
 """
+import logging
 import tornado.ioloop
 import tornado.web
 import io
 import os
 from docopt import docopt
-from sqlalchemy import create_engine, inspect
-from sqlalchemy.orm import sessionmaker
+import psycopg2
 
 
 class GetTile(tornado.web.RequestHandler):
-    def initialize(self, session, query):
-        self.db_session = session
+    def initialize(self, fname, connection, query):
+        self.fname = fname
+        self.db_connection = connection
         self.db_query = query
 
     def get(self, z, x, y):
         z, x, y = int(z), int(x), int(y)
+        cursor = self.db_connection.cursor()
         try:
-            result = self.db_session.execute(self.db_query, params=dict(z=z, x=x, y=y)).fetchall()
+            cursor.execute(self.db_query, (z, x, y))
+            result = cursor.fetchall()
             if result:
                 self.set_header("Content-Type", "application/x-protobuf")
                 self.set_header("Content-Disposition", "attachment")
                 self.set_header("Access-Control-Allow-Origin", "*")
                 value = io.BytesIO(result[0][0]).getvalue()
                 self.write(value)
-                print('{0},{1},{2} returned {3} bytes'.format(z, x, y, len(value)))
+                print('{0}({1},{2},{3})  -->  {4:,} bytes'.format(self.fname, z, x, y, len(value)))
             else:
                 self.clear()
                 self.set_status(404)
-                print('Got NULL result for {0},{1},{2}'.format(z, x, y))
+                print('{0}({1},{2},{3}) is EMPTY'.format(self.fname, z, x, y))
         except Exception as err:
-            print('{0},{1},{2} threw an exception {3}'.format(z, x, y, err))
+            print('{0}({1},{2},{3}) threw an exception'.format(self.fname, z, x, y, err))
             raise
+        finally:
+            cursor.close()
+
 
 def main(args):
+    pgdb = os.getenv('POSTGRES_DB', 'openmaptiles')
+    pghost = os.getenv('POSTGRES_HOST', 'localhost')
+    pgport = os.getenv('POSTGRES_PORT', '5432')
+    print('Connecting to PostgreSQL at {0}:{1}, db={2}...'.format(pghost, pgport, pgdb))
+
+    connection = psycopg2.connect(
+        dbname=pgdb,
+        host=pghost,
+        port=pgport,
+        user=os.getenv('POSTGRES_USER', 'openmaptiles'),
+        password=os.getenv('POSTGRES_PASSWORD', 'openmaptiles'),
+    )
+
     sqlfile = args['<prepared-sql-file>']
     with open(sqlfile, 'r') as stream:
         prepared = stream.read()
 
-    pghost = os.getenv('POSTGRES_HOST', 'localhost') + ':' + os.getenv('POSTGRES_PORT', '5432')
-    pgdb = os.getenv('POSTGRES_DB', 'openmaptiles')
-    pgcreds = os.getenv('POSTGRES_USER', 'openmaptiles') + ':' + os.getenv('POSTGRES_PASSWORD', 'openmaptiles')
-    engine = create_engine('postgresql://' + pgcreds + '@' + pghost + '/' + pgdb)
+    print('Using prepared SQL:\n\n-------\n\n' + prepared + '\n\n-------\n\n')
 
-    print('Connecting to PostgreSQL at {0}, db={1}'.format(pghost, pgdb))
-    inspector = inspect(engine)
-    session = sessionmaker(bind=engine)()
-    session.execute(prepared)
+    cursor = connection.cursor()
+    try:
+        cursor.execute(prepared)
+    finally:
+        cursor.close()
 
-    query = "EXECUTE {0}(:z, :x, :y)".format(args['--fname'])
-    print('Loaded {0}, will use "{1}" to get vector tiles.'.format(sqlfile, query))
+    fname = args['--fname']
+    query = "EXECUTE {0}(%s, %s, %s)".format(fname)
+    print('Loaded {0}\nWill use "{1}" to get vector tiles.'.format(sqlfile, query))
 
+    tornado.log.access_log.setLevel(logging.ERROR)
     port = int(args['--port'])
     application = tornado.web.Application([(
         r"/tiles/([0-9]+)/([0-9]+)/([0-9]+).pbf",
         GetTile,
-        dict(session=session, query=query)
+        dict(fname=fname, connection=connection, query=query)
     )])
     application.listen(port)
 
