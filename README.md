@@ -8,7 +8,7 @@ Check out the [OpenMapTiles project](https://github.com/openmaptiles/openmaptile
 ## Install
 
 You need Python 2 or Python 3 installed on your system.
-External dependency:  graphviz, sqlite3 
+External dependency:  graphviz, sqlite3
 
 ```bash
 pip install openmaptiles-tools
@@ -16,7 +16,7 @@ pip install openmaptiles-tools
 pip install git+https://github.com/openmaptiles/openmaptiles-tools
 
 # Some tool call external command,  you can install them on debian / ubuntu :
-apt-get install  graphviz sqlite3 
+apt-get install  graphviz sqlite3
 
 ```
 
@@ -78,7 +78,7 @@ tileset:
 
 ### Generate TM2Source Projects for Mapbox Studio Classic
 
-Takes a tileset definition an generates a TM2Source YAML project file.
+Takes a tileset definition and generates a TM2Source YAML project file.
 You need to provide PostgreSQL database connection settings before generating the project.
 
 ```
@@ -109,23 +109,23 @@ Takes a tileset definition and generates Markdown documentation.
 generate-doc <tileset>
 ```
 
-### Generate ETL (Extract-Transform-Load ) graph 
+### Generate ETL (Extract-Transform-Load) graph
 
 dependency:  graphviz
 
-Takes a source code from the imposm3 mapping file and the SQL postprocessing code , 
+Takes a source code from the imposm3 mapping file and the SQL postprocessing code,
 and parsing for the `etldoc:` graphviz based comments, and generate an svg file.
 The `.dot` and the `.svg` filename prefix is `etl_`
 
 ```
 generate-etlgraph <tileset>  <target-directory>
 generate-etlgraph layers/landcover/landcover.yaml  ./build/devdoc
-generate-etlgraph layers/railway/railway.yaml      ./build/etlgraph 
+generate-etlgraph layers/railway/railway.yaml      ./build/etlgraph
 ```
 
 example:
 
-input command: ` generate-etlgraph layers/landcover/landcover.yaml `
+input command: `generate-etlgraph layers/landcover/landcover.yaml`
 output fies:
 - `layers/landcover/etl_landcover.dot`
 - `layers/landcover/etl_landcover.svg`
@@ -139,9 +139,9 @@ example:
 generate-sqlquery layers/landcover/landcover.yaml  14
 ```
 
-### Add simple metadata to mbtiles file 
+### Add simple metadata to mbtiles file
 
-dependency:  sqlite3 
+dependency:  sqlite3
 
 example:
 ```
