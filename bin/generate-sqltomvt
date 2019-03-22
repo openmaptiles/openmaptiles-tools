@@ -4,7 +4,7 @@ This script generates a single SQL statement (either as an SQL function or as a 
 to generate a vector tile (MVT) for the given zoom and bounding box.
 
 Usage:
-  generate-sqltomvt <tileset> [--fname <name>] [--function | --prepared | --raw] [--mask-layer=<layer> --mask-level=<z>]
+  generate-sqltomvt <tileset> [--fname <name>] [--function | --prepared | --raw] [--mask-layer=<layer> --mask-zoom=<z>]
   generate-sqltomvt --help
   generate-sqltomvt --version
 
@@ -15,8 +15,8 @@ Options:
   -p --prepared          Generate prepared statement SQL
   -r --raw               Generate raw qurey without any wrappers
   --mask-layer=<layer>   If tile only has this layer covering for the whole tile (e.g. 'water'),
-                         and requested zoom is more than --mask-level parameter, returns empty result
-  --mask-level=<z>       If --mask-layer is set, tiles will be checked for empty after given zoom [default: 8]
+                         and requested zoom is more than --mask-zoom parameter, returns empty result
+  --mask-zoom=<z>        If --mask-layer is set, tiles will be checked for empty after given zoom [default: 8]
   --fname=<name>         Name of the generated function [default: gettile]
   --help                 Show this screen.
   --version              Show version.
@@ -35,7 +35,7 @@ if __name__ == '__main__':
         'tileset': args['<tileset>'],
         'fname': args['--fname'],
         'mask-layer': args['--mask-layer'],
-        'mask-level': int(args['--mask-level']),
+        'mask-zoom': int(args['--mask-zoom']),
     }
 
     if args['--prepared']:
