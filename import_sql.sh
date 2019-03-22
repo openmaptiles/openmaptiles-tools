@@ -2,6 +2,7 @@
 set -o errexit
 set -o pipefail
 set -o nounset
+shopt -s nullglob
 
 function exec_psql_file() {
     local file_name="$1"
