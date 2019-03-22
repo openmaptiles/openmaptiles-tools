@@ -4,26 +4,27 @@ This script generates a single SQL statement (either as an SQL function or as a 
 to generate a vector tile (MVT) for the given zoom and bounding box.
 
 Usage:
-  generate-sqltomvt <tileset> [--fname <name>] [--function | --prepared | --raw] [--rmempty=<z>] [--rm-empty-layer=<layer> --rm-empty-zoom=<z>]
+  generate-sqltomvt <tileset> [--fname <name>] [--function | --prepared | --raw] [--mask-layer=<layer> --mask-level=<z>]
   generate-sqltomvt --help
   generate-sqltomvt --version
 
   <tileset>        Tileset definition yaml file
 
 Options:
-  -f --function             Generate function generation SQL [default]
-  -p --prepared             Generate prepared statement SQL
-  -r --raw                  Generate raw qurey without any wrappers
-  --rm-empty-layer=<layer>  Remove empty layer (e.g. water) if there is no other data in a tile
-  --rm-empty-zoom=<z>       At which zoom should empty layer be removed [default: 10]
-  --fname=<name>            Name of the generated function [default: gettile]
-  --help                    Show this screen.
-  --version                 Show version.
+  -f --function          Generate function generation SQL [default]
+  -p --prepared          Generate prepared statement SQL
+  -r --raw               Generate raw qurey without any wrappers
+  --mask-layer=<layer>   If tile only has this layer covering for the whole tile (e.g. 'water'),
+                         and requested zoom is more than --mask-level parameter, returns empty result
+  --mask-level=<z>       If --mask-layer is set, tiles will be checked for empty after given zoom [default: 8]
+  --fname=<name>         Name of the generated function [default: gettile]
+  --help                 Show this screen.
+  --version              Show version.
 """
 from __future__ import (absolute_import, division, print_function, unicode_literals)
 
 from docopt import docopt
-import yaml, sys
+import sys
 
 import openmaptiles
 from openmaptiles.sqltomvt import generate_sqltomvt_preparer, generate_sqltomvt_func, generate_sqltomvt_raw
@@ -33,8 +34,8 @@ if __name__ == '__main__':
     opts = {
         'tileset': args['<tileset>'],
         'fname': args['--fname'],
-        'rm-empty-layer': args['--rm-empty-layer'],
-        'rm-empty-zoom': int(args['--rm-empty-zoom']),
+        'mask-layer': args['--mask-layer'],
+        'mask-level': int(args['--mask-level']),
     }
 
     if args['--prepared']:

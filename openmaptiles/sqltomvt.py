@@ -20,13 +20,14 @@ RETURNS TABLE(mvt bytea) AS $$
 
 def generate_sqltomvt_preparer(opts):
     header = """
+-- Delete prepared statement if it already exists
 DO $$ BEGIN
 IF EXISTS (SELECT * FROM pg_prepared_statements where name = '{0}') THEN
   DEALLOCATE {0};
 END IF;
 END $$;
 
--- zoom, x, y
+-- Run this statement with   EXECUTE {0}(zoom, x, y)
 PREPARE {0}(integer, integer, integer) AS
 """.format(opts['fname']).lstrip()
 
@@ -48,23 +49,23 @@ def generate_query(opts, bbox, zoom):
 
     queries = []
     for layer in tileset.layers:
-        if not opts['rm-empty-layer']:
+        if not opts['mask-layer']:
             empty_zoom = False
-        elif layer["layer"]['id'] == opts['rm-empty-layer']:
-            empty_zoom = opts['rm-empty-zoom']
+        elif layer["layer"]['id'] == opts['mask-layer']:
+            empty_zoom = opts['mask-level']
         else:
             empty_zoom = True
         queries.append(generate_layer(layer, query_tokens, extent, empty_zoom))
 
-    from_clause = "FROM (\n  " + "\n    UNION ALL\n  ".join(queries) + "\n) AS all_layers"
+    from_clause = "FROM (\n  " + "\n    UNION ALL\n  ".join(queries) + "\n) AS all_layers\n"
 
-    if opts['rm-empty-layer']:
-        from_clause = "FROM (SELECT IsEmpty, count(*) OVER () AS LayerCount, mvtl " + from_clause + ") AS counter_layers"
+    if opts['mask-layer']:
+        from_clause = "FROM (\nSELECT IsEmpty, count(*) OVER () AS LayerCount, mvtl " + from_clause + ") AS counter_layers\n"
 
-    query = "SELECT STRING_AGG(mvtl, '') " + from_clause
+    query = "SELECT STRING_AGG(mvtl, '') AS mvt " + from_clause
 
-    if opts['rm-empty-layer']:
-        query += " WHERE NOT IsEmpty OR LayerCount <> 1"
+    if opts['mask-layer']:
+        query += "HAVING BOOL_AND(NOT IsEmpty OR LayerCount <> 1)"
 
     if bbox is None:
         return query
@@ -107,10 +108,10 @@ def generate_layer(layer_def, query_tokens, extent, empty_zoom):
         filter = "FALSE AS IsEmpty, "
     else:
         # Test that geometry covers the whole tile
-        wkt_polygon = "MULTIPOLYGON((({0} {1},{0} {0},{1} {0},{1} {1},{0} {1})))".format(-buffer, extent + buffer)
-        filter = ("CASE z(!scale_denominator!) < {0} "
+        wkt_polygon = "POLYGON(({0} {1},{0} {0},{1} {0},{1} {1},{0} {1}))".format(0, extent)
+        filter = ("CASE z(!scale_denominator!) <= {0} "
                   "WHEN TRUE THEN FALSE "
-                  "ELSE ST_EQUALS(ST_COLLECT(mvtgeometry), ST_GeomFromText('{1}', 3857)) "
+                  "ELSE ST_WITHIN(ST_GeomFromText('{1}', 3857), ST_UNION(mvtgeometry)) "
                   "END AS IsEmpty, ".format(empty_zoom, wkt_polygon))
 
     query = (
