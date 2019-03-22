@@ -8,17 +8,23 @@ from .language import languages_to_sql
 
 
 def generate_sqltomvt_func(opts):
+    """
+    Creates a SQL function that returns a single bytea value or null
+    """
     header = """
 CREATE OR REPLACE FUNCTION {0}(zoom integer, x integer, y integer)
-RETURNS TABLE(mvt bytea) AS $$
+RETURNS bytea AS $$
 """.format(opts['fname']).lstrip()
 
     query = generate_query(opts, "TileBBox(zoom, x, y)", "zoom")
-    footer = ";\n$$ LANGUAGE SQL IMMUTABLE;"
+    footer = ";\n$$ LANGUAGE SQL STABLE RETURNS NULL ON NULL INPUT;"
     return header + query + footer
 
 
 def generate_sqltomvt_preparer(opts):
+    """
+    Creates a SQL prepared statement that returns 0 or 1 row with a single mvt column.
+    """
     header = """
 -- Delete prepared statement if it already exists
 DO $$ BEGIN
@@ -49,23 +55,30 @@ def generate_query(opts, bbox, zoom):
 
     queries = []
     for layer in tileset.layers:
+        # If mask-layer is set (e.g. to 'water'), add an extra column 'IsEmpty' to each layer's result row
+        # For non-water, or for water in zoom <= mask-zoom, always set it to FALSE
+        # For zoom > mask-zoom, test if the polygon spanning the entire tile is fully within layer's geometry
         if not opts['mask-layer']:
             empty_zoom = False
         elif layer["layer"]['id'] == opts['mask-layer']:
-            empty_zoom = opts['mask-level']
+            empty_zoom = opts['mask-zoom']
         else:
             empty_zoom = True
         queries.append(generate_layer(layer, query_tokens, extent, empty_zoom))
 
     from_clause = "FROM (\n  " + "\n    UNION ALL\n  ".join(queries) + "\n) AS all_layers\n"
 
+    # If mask-layer is set, wrap query to detect when the IsEmpty column is TRUE (for water),
+    # and there are no other rows, and if so, return nothing
     if opts['mask-layer']:
-        from_clause = "FROM (\nSELECT IsEmpty, count(*) OVER () AS LayerCount, mvtl " + from_clause + ") AS counter_layers\n"
+        from_clause = (
+                    "FROM (\n" +
+                    "SELECT IsEmpty, count(*) OVER () AS LayerCount, mvtl " +
+                    from_clause +
+                    ") AS counter_layers\n" +
+                    "HAVING BOOL_AND(NOT IsEmpty OR LayerCount <> 1)")
 
     query = "SELECT STRING_AGG(mvtl, '') AS mvt " + from_clause
-
-    if opts['mask-layer']:
-        query += "HAVING BOOL_AND(NOT IsEmpty OR LayerCount <> 1)"
 
     if bbox is None:
         return query
