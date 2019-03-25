@@ -26,6 +26,7 @@ setuptools.setup(
         'bin/generate-tm2source',
         'bin/generate-sqltomvt',
     ],
+    # Make sure this list is the same as in the requirements.txt
     install_requires=[
         'docopt',
         'pyyaml',

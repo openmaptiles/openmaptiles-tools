@@ -6,13 +6,14 @@ RUN apt-get update \
         sqlite3 \
     && rm -rf /var/lib/apt/lists/
 
-RUN mkdir -p /usr/src/app
 WORKDIR /usr/src/app
+# Copy requirements.txt first to avoid pip install on every code change
+COPY ./requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
 
-COPY . /usr/src/app
-RUN pip install .
-
-RUN make test
+COPY . .
+RUN mv bin/* .
+ENV PATH="/usr/src/app:${PATH}"
 
 WORKDIR /tileset
 VOLUME /tileset

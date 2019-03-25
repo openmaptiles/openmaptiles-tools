@@ -1,42 +1,50 @@
-DOCKER_IMAGE      := openmaptiles/openmaptiles-tools
-DOCKER_IMAGE_PY27 := openmaptiles/openmaptiles-tools_py27
+export DOCKER_IMAGE = openmaptiles/openmaptiles-tools
+RUN_CMD := ./docker-run.sh
+DIFF_CMD := diff --brief --recursive --new-file
+EXPECTED_DIR := testdata/expected
 
 .PHONY: test
-test:
-	mkdir -p ./testbuild/testmaptiles.tm2source
-	mkdir -p ./testbuild/mvt
-	mkdir -p ./testbuild/devdoc
-	mkdir -p ./testbuild/doc
-	generate-tm2source testmaptiles.yaml --host="postgres" --port=5432 --database="testmaptiles" --user="testmaptiles" --password="testmaptiles" > ./testbuild/testmaptiles.tm2source/data.yml
-	generate-sqltomvt testmaptiles.yaml                             > ./testbuild/mvt/maketile_func.sql
-	generate-sqltomvt testmaptiles.yaml --prepared                  > ./testbuild/mvt/maketile_prep.sql
-	generate-imposm3 testmaptiles.yaml                              > ./testbuild/mapping.yaml
-	generate-sql     testmaptiles.yaml                              > ./testbuild/tileset.sql
-	generate-doc      ./testlayers/housenumber/housenumber.yaml     > ./testbuild/doc/housenumber.md
-	generate-sqlquery ./testlayers/housenumber/housenumber.yaml 14  > ./testbuild/sqlquery.sql
-	generate-etlgraph ./testlayers/housenumber/housenumber.yaml ./testbuild/devdoc/
-	md5sum -c checklist.chk
+test: clean build-tests
+	@echo ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"
+	@echo "   Comparing built results with the expected ones"
+	@echo ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"
 
-.PHONY: checklist
-checklist:
-	rm -f checklist.chk
-	md5sum ./testbuild/testmaptiles.tm2source/data.yml  >> checklist.chk
-	md5sum ./testbuild/mvt/maketile_prep.sql            >> checklist.chk
-	md5sum ./testbuild/mvt/maketile_func.sql            >> checklist.chk
-	md5sum ./testbuild/mapping.yaml                     >> checklist.chk
-	md5sum ./testbuild/tileset.sql                      >> checklist.chk
-	md5sum ./testbuild/doc/housenumber.md               >> checklist.chk
-	md5sum ./testbuild/sqlquery.sql                     >> checklist.chk
-	md5sum ./testbuild/devdoc/etl_housenumber.dot       >> checklist.chk
-	cat checklist.chk
+	$(DIFF_CMD) build $(EXPECTED_DIR)
 
-.PHONY: buildtest
-buildtest:
-	docker build -f Dockerfile      -t $(DOCKER_IMAGE) .
-	docker build -f Dockerfile.py27 -t $(DOCKER_IMAGE_PY27) .
-	docker images | grep  $(DOCKER_IMAGE)
+	@echo "<<<<<<<<<<<<<<<<<<<<< SUCCESS <<<<<<<<<<<<<<<<<<<<<"
 
 .PHONY: clean
 clean:
-	rm -rf ./testbuild
-	rm -f checklist.chk
+	rm -rf build
+
+.PHONY: build-tests
+build-tests: build/tm2source.yml build/imposm3.yaml build/sql.sql build/doc/doc.md build/sqlquery.sql build/devdoc
+
+# Delete dir with the expected test results and rebuild them
+.PHONY: rebuild-expected
+rebuild-expected: build-tests
+	rm -rf $(EXPECTED_DIR)
+	mkdir -p $(EXPECTED_DIR)
+	mv build/* $(EXPECTED_DIR)/
+
+.PHONY: prepare
+prepare: build-docker
+	mkdir -p build
+
+.PHONY: build-docker
+build-docker:
+	docker build -f Dockerfile -t $(DOCKER_IMAGE) .
+
+build/tm2source.yml: prepare
+	$(RUN_CMD) generate-tm2source testdata/testlayers/testmaptiles.yaml --host="pghost" --port=5432 --database="pgdb" --user="pguser" --password="pgpswd" > build/tm2source.yml
+build/imposm3.yaml: prepare
+	$(RUN_CMD) generate-imposm3  testdata/testlayers/testmaptiles.yaml                             > build/imposm3.yaml
+build/sql.sql: prepare
+	$(RUN_CMD) generate-sql      testdata/testlayers/testmaptiles.yaml                             > build/sql.sql
+build/doc/doc.md: prepare
+	$(RUN_CMD) generate-doc      testdata/testlayers/housenumber/housenumber.yaml     > build/doc.md
+build/sqlquery.sql: prepare
+	$(RUN_CMD) generate-sqlquery testdata/testlayers/housenumber/housenumber.yaml 14  > build/sqlquery.sql
+build/devdoc: prepare
+	mkdir -p build/devdoc
+	$(RUN_CMD) generate-etlgraph testdata/testlayers/housenumber/housenumber.yaml build/devdoc
