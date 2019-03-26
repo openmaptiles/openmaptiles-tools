@@ -11,14 +11,17 @@ You need either just Docker or Python 3 installed on your system.  If running wi
 
 #### Usage with Docker
 
-The easiest is to use docker directly to run this command. You do not need to clone `openmaptiles-tools` locally, just clone the [openmaptiles repo](https://github.com/openmaptiles/openmaptiles) and run from its root: 
+The easiest is to use docker directly to run this command. You do not need to clone `openmaptiles-tools` locally, just clone the [openmaptiles repo](https://github.com/openmaptiles/openmaptiles) and run from its root.
+
+_**Note:** container scripts can only access files from the given directory and below, e.g. in this example - `${PWD}` - current dir._ 
 ```bash
 docker run -it --rm -u $(id -u ${USER}):$(id -g ${USER}) \
-             -v "${PWD}:/tileset" openmaptiles/openmaptiles-tools \
-             <name-of-the-script> <script-parameters> 
+           -v "${PWD}:/tileset" \
+           openmaptiles/openmaptiles-tools \
+           <name-of-the-script> <script-parameters>
 ```
 
-Where the `<name-of-the-script>` could be any of the scripts in the [bin/](./bin) directory, e.g. `generate-imposm3 openmaptiles.yaml`. 
+Where the `<name-of-the-script>` could be any of the scripts in the [bin/](./bin) directory, e.g. `generate-imposm3 openmaptiles.yaml`.
 
 #### Using without Docker
 
@@ -40,14 +43,15 @@ generate-imposm3 openmaptiles.yaml
 
 #### Running from source
 
-Make sure you have all 
+Make sure you have all dependencies from the [Usage](#Usage) section above.
 ```bash
 # Get OpenMapTiles layer data
 git clone https://github.com/openmaptiles/openmaptiles.git
 # Get the tools repo
 git clone https://github.com/openmaptiles/openmaptiles-tools.git
 cd openmaptiles-tools
-# Run a 
+# Run a script with all required parameters from the root of the tools repository
+# The PYTHONPATH=$PWD allows script to find required modules
 PYTHONPATH=$PWD python3 bin/generate-imposm3 ../openmaptiles/openmaptiles.yaml
 ```
 
