@@ -1,7 +1,16 @@
+.dockerignore
+.git/
+.gitignore
+.travis.yml
+docker-run.sh
+Dockerfile
+Makefile
+testdata/
+
 #
 #
 #
-# When changing, make sure to also change .dockerignore
+# The following was copied from the .gitignore file, and should be kept the same
 #
 #
 #

@@ -1,0 +1,12 @@
+digraph G
+{
+/* generated from the source code [ by generate-etlgraph  v0.1}  */ 
+rankdir=LR;
+
+imposm3 -> osm_housenumber_point
+osm_housenumber_point -> osm_housenumber_point
+layer_housenumber[shape=record fillcolor=lightpink, style="rounded,filled",
+label="layer_housenumber | <z14_> z14_" ] ;
+osm_housenumber_point -> layer_housenumber:z14_
+
+}

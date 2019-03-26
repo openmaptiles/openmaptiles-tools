@@ -5,22 +5,63 @@ from OpenMapTiles layers. We encourage other people to use this for their vector
 
 Check out the [OpenMapTiles project](https://github.com/openmaptiles/openmaptiles/) for a real world example.
 
-## Install
+## Usage
 
-You need Python 2 or Python 3 installed on your system.
-External dependency:  graphviz, sqlite3
+You need either just Docker or Python 3 installed on your system.  If running without Docker, some of the scripts require `graphviz` and `sqlite3` dependencies.
 
+#### Usage with Docker
+
+The easiest is to use docker directly to run this command. You do not need to clone `openmaptiles-tools` locally, just clone the [openmaptiles repo](https://github.com/openmaptiles/openmaptiles) and run from its root.
+
+_**Note:** container scripts can only access files from the given directory and below, e.g. in this example - `${PWD}` - current dir._ 
 ```bash
-pip install openmaptiles-tools
-# You can also install the package directly from git
-pip install git+https://github.com/openmaptiles/openmaptiles-tools
-
-# Some tool call external command,  you can install them on debian / ubuntu :
-apt-get install  graphviz sqlite3
-
+docker run -it --rm -u $(id -u ${USER}):$(id -g ${USER}) \
+           -v "${PWD}:/tileset" \
+           openmaptiles/openmaptiles-tools \
+           <name-of-the-script> <script-parameters>
 ```
 
-## Concepts
+Where the `<name-of-the-script>` could be any of the scripts in the [bin/](./bin) directory, e.g. `generate-imposm3 openmaptiles.yaml`.
+
+#### Using without Docker
+
+```bash
+python3 -m pip install openmaptiles-tools
+# OR you can also install the package directly from git
+python3 -m pip install git+https://github.com/openmaptiles/openmaptiles-tools
+
+# Some tool require these packages. On Debian/Ubuntu you can install them with
+sudo apt install graphviz sqlite3
+
+# Run the script you want, e.g. from the openmaptiles dir:
+generate-imposm3 openmaptiles.yaml
+
+# If the script doesn't run, make sure your PATH includes default PIP bin directory.
+# On Debian/Ubuntu that would be  ~/.local/bin/  (under your home dir).
+# Otherwise just run it with  ~/.local/bin/generate-imposm3 ...
+```
+
+#### Running from source
+
+Make sure you have all dependencies from the [Usage](#Usage) section above.
+```bash
+# Get OpenMapTiles layer data
+git clone https://github.com/openmaptiles/openmaptiles.git
+# Get the tools repo
+git clone https://github.com/openmaptiles/openmaptiles-tools.git
+cd openmaptiles-tools
+# Run a script with all required parameters from the root of the tools repository
+# The PYTHONPATH=$PWD allows script to find required modules
+PYTHONPATH=$PWD python3 bin/generate-imposm3 ../openmaptiles/openmaptiles.yaml
+```
+
+#### Development
+
+Use `make test` to run all of the tests locally.  The Makefile will build a docker image with all the code, run all tests, and compare the build result with the files in the [testdata/expected](./testdata/expected) dir.
+
+Run `make rebuild-expected` after you modify the output produced by the generation scripts. This will re-create the expected test results to match the actual ones, and make sure the changes are what you want. 
+
+## Data Concepts
 
 You define a self contained **Layer** together with SQL files and layer and data source definitions (like an imposm3 mapping file) that you can then reference in a **Tileset** where you mix and match with other layers.
 
@@ -74,7 +115,7 @@ tileset:
   bounds: [-180.0,-85.0511,180.0,85.0511]
 ```
 
-## Usage
+## Scripts
 
 ### Generate TM2Source Projects for Mapbox Studio Classic
 

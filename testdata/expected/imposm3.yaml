@@ -1,0 +1,32 @@
+generalized_tables: {}
+tables:
+  housenumber_point:
+    fields:
+    - name: osm_id
+      type: id
+    - name: geometry
+      type: geometry
+    - key: addr:housenumber
+      name: housenumber
+      type: string
+    - name: tags
+      type: hstore_tags
+    type: geometry
+    type_mappings:
+      points:
+        addr:housenumber:
+        - __any__
+      polygons:
+        addr:housenumber:
+        - __any__
+tags:
+  include:
+  - name:en
+  - name:de
+  - name:cs
+  - int_name
+  - loc_name
+  - name
+  - wikidata
+  - wikipedia
+

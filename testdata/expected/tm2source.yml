@@ -1,0 +1,45 @@
+Layer:
+- Datasource:
+    dbname: pgdb
+    extent:
+    - -20037508.34
+    - -20037508.34
+    - 20037508.34
+    - 20037508.34
+    geometry_field: geometry
+    host: pghost
+    key_field: ''
+    key_field_as_attribute: ''
+    max_size: 512
+    password: pgpswd
+    port: 5432
+    srid: 900913
+    table: (SELECT geometry, housenumber, NULLIF(tags->'name:en', '') AS "name:en",
+      NULLIF(tags->'name:de', '') AS "name:de", NULLIF(tags->'name:cs', '') AS "name:cs",
+      NULLIF(tags->'name_int', '') AS "name_int", NULLIF(tags->'name:latin', '') AS
+      "name:latin", NULLIF(tags->'name:nonlatin', '') AS "name:nonlatin" FROM layer_housenumber(!bbox!,
+      z(!scale_denominator!))) AS t
+    type: postgis
+    user: pguser
+  id: housenumber
+  properties:
+    buffer-size: 8
+  srs: +proj=merc +a=6378137 +b=6378137 +lat_ts=0.0 +lon_0=0.0 +x_0=0.0 +y_0=0.0 +k=1.0
+    +units=m +nadgrids=@null +wktext +no_defs +over
+attribution: <a href="http://www.openstreetmap.org/about/" target="_blank">&copy;
+  OpenStreetMap contributors</a>
+bounds:
+- -180.0
+- -85.0511
+- 180.0
+- 85.0511
+center:
+- -12.2168
+- 28.6135
+- 4
+description: Simple tileset for testing.
+maxzoom: 10
+minzoom: 0
+name: TestMapTiles v1.0
+pixel_scale: 256
+

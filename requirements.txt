@@ -1,0 +1,5 @@
+## This list should match setup.py - install_requires
+## We copy it here to speed-up docker build
+docopt
+pyyaml
+graphviz
