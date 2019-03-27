@@ -49,9 +49,9 @@ Make sure you have all dependencies from the [Usage](#Usage) section above.
 git clone https://github.com/openmaptiles/openmaptiles.git
 # Get the tools repo
 git clone https://github.com/openmaptiles/openmaptiles-tools.git
+# Run scripts from the root of the tools repository
 cd openmaptiles-tools
-# Run a script with all required parameters from the root of the tools repository
-# The PYTHONPATH=$PWD allows script to find required modules
+# The PYTHONPATH=$PWD allows script to find its modules located in the current dir.
 PYTHONPATH=$PWD python3 bin/generate-imposm3 ../openmaptiles/openmaptiles.yaml
 ```
 
