@@ -13,7 +13,7 @@ Usage:
 Options:
   -f --function          Generate function generation SQL [default]
   -p --prepared          Generate prepared statement SQL
-  -r --raw               Generate raw qurey without any wrappers
+  -r --raw               Generate raw query without any wrappers (good for debugging SQL)
   --mask-layer=<layer>   If tile only has this layer covering for the whole tile (e.g. 'water'),
                          and requested zoom is more than --mask-zoom parameter, returns empty result
   --mask-zoom=<z>        If --mask-layer is set, tiles will be checked for empty after given zoom [default: 8]
