@@ -1,4 +1,7 @@
-export DOCKER_IMAGE = openmaptiles/openmaptiles-tools
+VERSION             ?= $(shell cat VERSION)
+IMAGE_NAME          ?= openmaptiles/openmaptiles-tools
+export DOCKER_IMAGE ?= $(IMAGE_NAME):$(VERSION)
+
 RUN_CMD := ./docker-run.sh
 DIFF_CMD := diff --brief --recursive --new-file
 EXPECTED_DIR := testdata/expected

@@ -2,14 +2,18 @@
 import setuptools
 
 with open("README.md", "r") as fh:
-  long_description = fh.read()
+    long_description = fh.read()
 
+with open("VERSION", "r") as fh:
+    version = fh.read().strip()
 
 setuptools.setup(
     name='openmaptiles-tools',
-    version='0.10.0',
+    version=version,
     packages=['openmaptiles'],
-    description="The OpenMapTiles tools for generating TM2Source projects, imposm3 mappings and SQL instructions from OpenMapTiles layers. We encourage other people to use this for their vector tile projects as well since this approach works well for us.",
+    description="The OpenMapTiles tools for generating TM2Source projects, imposm3 mappings and SQL instructions from "
+                "OpenMapTiles layers. We encourage other people to use this for their vector tile projects as well "
+                "since this approach works well for us.",
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/openmaptiles/openmaptiles-tools",
