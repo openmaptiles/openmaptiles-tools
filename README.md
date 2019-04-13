@@ -117,21 +117,15 @@ tileset:
 
 ## Scripts
 
-### Generate TM2Source Projects for Mapbox Studio Classic
-
-Takes a tileset definition and generates a TM2Source YAML project file.
-You need to provide PostgreSQL database connection settings before generating the project.
-
-```
-generate-tm2source <tileset> --host="localhost" --port=5432 --database="osm" --user="osm" --password="osm"
-```
-
 ### Generate SQL code to create MVT tiles directly by PostGIS
 
-Uses tileset definition to create a
- [PostgreSQL prepared statement](https://www.postgresql.org/docs/current/sql-prepare.html) `gettile()`
-on a PostreSQL function that generate the entire vector tile in a Mapbox Vector Tile format using
-PostGIS MVT support. Use `--help` to get all parameters.
+Uses tileset definition to create a PostgreSQL
+ [prepared](https://www.postgresql.org/docs/current/sql-prepare.html) or
+ [create function](https://www.postgresql.org/docs/9.1/sql-createfunction.html) SQL code
+ to generate an entire vector tile in the Mapbox Vector Tile format with a single `getTile(z,x,y)` query
+ using PostGIS MVT support.
+ 
+Use `--help` to get all parameters.
 
 ```
 generate-sqltomvt <tileset>
@@ -183,7 +177,6 @@ output fies:
 - `layers/landcover/etl_landcover.svg`
 
 
-
 ###  Generate SQL query for a given layer and zoom level
 
 example:
@@ -198,4 +191,13 @@ dependency:  sqlite3
 example:
 ```
 generate_metadata ./data/tiles.mbtiles
+```
+
+### Generate TM2Source Projects for Mapbox Studio Classic
+
+Takes a tileset definition and generates a TM2Source YAML project file.
+You need to provide PostgreSQL database connection settings before generating the project.
+
+```
+generate-tm2source <tileset> --host="localhost" --port=5432 --database="osm" --user="osm" --password="osm"
 ```
