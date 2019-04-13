@@ -130,7 +130,8 @@ generate-tm2source <tileset> --host="localhost" --port=5432 --database="osm" --u
 
 Uses tileset definition to create a
  [PostgreSQL prepared statement](https://www.postgresql.org/docs/current/sql-prepare.html) `gettile()`
- that generate the entire vector tile in a Mapbox Vector Tile format using PostGIS MVT support.
+on a PostreSQL function that generate the entire vector tile in a Mapbox Vector Tile format using
+PostGIS MVT support. Use `--help` to get all parameters.
 
 ```
 generate-sqltomvt <tileset>
