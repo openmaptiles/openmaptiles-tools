@@ -46,4 +46,4 @@ docker run --rm \
 
 
 ## Version of OpenStreetMap
-**2019-06-25**
+**2017-11-20**
