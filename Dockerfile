@@ -12,8 +12,19 @@ COPY ./requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
-RUN mv bin/* .
+RUN mv bin/* . && \
+    rm -rf bin && \
+    rm requirements.txt
+
 ENV PATH="/usr/src/app:${PATH}"
 
 WORKDIR /tileset
 VOLUME /tileset
+
+# In case there are no parameters, print a list of available scripts
+CMD echo "*******************************************************************" && \
+    echo "  Please specify a script to run. Here are the available scripts." && \
+    echo "  Use script name with --help to get more information." && \
+    echo "  Use 'bash' to start a shell inside the tools container." && \
+    echo "*******************************************************************" && \
+    find /usr/src/app -maxdepth 1 -executable -type f -printf " * %f\n"
