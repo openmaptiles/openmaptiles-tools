@@ -48,7 +48,7 @@ prepare: build-docker
 
 .PHONY: build-docker
 build-docker:
-	docker build -f Dockerfile -t $(DOCKER_IMAGE) .
+	docker build --pull --file Dockerfile --tag $(DOCKER_IMAGE) .
 
 #
 # When adding a new target, make sure to also list it in the  "build-tests"  above
