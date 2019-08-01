@@ -18,10 +18,10 @@ _**Note:** container scripts can only access files from the given directory and 
 docker run -it --rm -u $(id -u ${USER}):$(id -g ${USER}) \
            -v "${PWD}:/tileset" \
            openmaptiles/openmaptiles-tools \
-           <name-of-the-script> <script-parameters>
+           <script-name> <script-parameters>
 ```
 
-Where the `<name-of-the-script>` could be any of the scripts in the [bin/](./bin) directory, e.g. `generate-imposm3 openmaptiles.yaml`.
+Where the `<script-name>` could be any of the scripts in the [bin/](./bin) directory, e.g. `generate-imposm3 openmaptiles.yaml`.
 
 #### Using without Docker
 

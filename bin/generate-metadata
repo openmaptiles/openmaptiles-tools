@@ -29,8 +29,13 @@ import openmaptiles
 META_NAME = os.environ.get('METADATA_NAME', 'OpenMapTiles')
 META_ID = os.environ.get('METADATA_ID', 'openmaptiles')
 META_VERSION = os.environ.get('METADATA_VERSION', '3.10')
-META_ATTRIBUTION = os.environ.get('METADATA_ATTRIBUTION', '<a href="https://openmaptiles.org/" target="_blank">&copy; OpenMapTiles</a> <a href="https://www.openstreetmap.org/copyright" target="_blank">&copy; OpenStreetMap contributors</a>')
-META_DESCRIPTION = os.environ.get('METADATA_DESCRIPTION', 'Development OpenMapTiles extract, based on https://openmaptiles.org')
+META_ATTRIBUTION = os.environ.get(
+    'METADATA_ATTRIBUTION',
+    '<a href="https://openmaptiles.org/" target="_blank">&copy; OpenMapTiles</a> '
+    '<a href="https://www.openstreetmap.org/copyright" target="_blank">&copy; OpenStreetMap contributors</a>')
+META_DESCRIPTION = os.environ.get(
+    'METADATA_DESCRIPTION',
+    'Development OpenMapTiles extract, based on https://openmaptiles.org')
 META_TYPE = os.environ.get('METADATA_TYPE', 'baselayer')
 
 
@@ -52,13 +57,12 @@ class Extract(object):
         self.center_zoom = center_zoom
 
     def bounds(self):
-        return '{},{},{},{}'.format(self.min_lon, self.min_lat,
-                                    self.max_lon, self.max_lat)
+        return f"{self.min_lon},{self.min_lat},{self.max_lon},{self.max_lat}"
 
     def center(self):
         center_lon = (self.min_lon + self.max_lon) / 2.0
         center_lat = (self.min_lat + self.max_lat) / 2.0
-        return '{},{},{}'.format(center_lon, center_lat, self.center_zoom)
+        return f"{center_lon},{center_lat},{self.center_zoom}"
 
     def metadata(self, extract_file):
         return {
@@ -88,20 +92,20 @@ def update_metadata(mbtiles_file, metadata, force=False):
     def upsert_entry(key, value):
         # ID should be overwritten always!
         if not force and key != 'id':
-            cursor.execute("SELECT value FROM metadata WHERE name = '{}'".format(key))
+            cursor.execute("SELECT value FROM metadata WHERE name = ?", key)
             for row in cursor:
                 # Skip if the value exists
-                # print("{}={}".format(key, row))
+                # print(f"{key}={row}")
                 if row[0]:
                     return
-        conn.execute("DELETE FROM metadata WHERE name='{}'".format(key))
-        conn.execute("INSERT INTO metadata VALUES('{}', '{}')".format(key, value))
+        conn.execute("DELETE FROM metadata WHERE name=?", key)
+        conn.execute("INSERT INTO metadata VALUES(?, ?)", (key, value))
 
     for key, value in metadata.items():
         upsert_entry(key, value)
 
     # Change json value in metadata
-    cursor.execute("SELECT name,value FROM metadata WHERE name = 'json';")
+    cursor.execute("SELECT name, value FROM metadata WHERE name = 'json'")
     metadata_json = ''
     for row in cursor:
         metadata_json = row[1]
@@ -119,7 +123,7 @@ def update_metadata(mbtiles_file, metadata, force=False):
             # find out maxzoom from metadata
             maxzoom = 0
             cursor.execute(
-                "SELECT name,value FROM metadata WHERE name='maxzoom'")
+                "SELECT name, value FROM metadata WHERE name='maxzoom'")
             for row in cursor:
                 try:
                     maxzoom = int(row[1])
@@ -132,8 +136,7 @@ def update_metadata(mbtiles_file, metadata, force=False):
                     layer['maxzoom'] = maxzoom
         # Save json back into metadata minified
         metadata_json = json.dumps(obj, separators=(',', ':'))
-        cursor.execute("REPLACE INTO metadata VALUES(?, ?);",
-                       ('json', metadata_json, ))
+        cursor.execute("REPLACE INTO metadata VALUES (?, ?)", ('json', metadata_json))
         conn.commit()
 
     conn.commit()
@@ -167,5 +170,5 @@ if __name__ == '__main__':
         max_zoom=os.environ.get('MAX_ZOOM', 14),
     )
 
-    print('Update metadata {}'.format(extract_file))
+    print(f'Update metadata {extract_file}')
     update_metadata(extract_file, extract.metadata(extract_file), force)

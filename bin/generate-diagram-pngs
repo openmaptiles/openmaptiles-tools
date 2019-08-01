@@ -11,7 +11,6 @@ Options:
 
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
-import os
 import os.path
 
 from docopt import docopt
@@ -24,17 +23,14 @@ if __name__ == '__main__':
     layer_dir, layer_filename = os.path.split(layer_path)
     layer_basename = layer_filename.split('.')[0]
 
-    os.system('generate-etlgraph %s %s' % (layer_path, layer_dir))
+    os.system(f'generate-etlgraph {layer_path} {layer_dir}')
 
-    os.remove(os.path.join(layer_dir, 'etl_%s.svg' % layer_basename))
-    os.remove(os.path.join(layer_dir, 'etl_%s.dot' % layer_basename))
+    os.remove(os.path.join(layer_dir, f'etl_{layer_basename}.svg'))
+    os.remove(os.path.join(layer_dir, f'etl_{layer_basename}.dot'))
     os.rename(
-        os.path.join(layer_dir, 'etl_%s.png' % layer_basename),
+        os.path.join(layer_dir, f'etl_{layer_basename}.png'),
         os.path.join(layer_dir, 'etl_diagram.png')
     )
 
-    os.system('generate-mapping-graph %s %s' % (
-        layer_path,
-        os.path.join(layer_dir, 'mapping_diagram')
-    ))
+    os.system(f'generate-mapping-graph {layer_path} {os.path.join(layer_dir, "mapping_diagram")}')
     os.remove(os.path.join(layer_dir, 'mapping_diagram'))

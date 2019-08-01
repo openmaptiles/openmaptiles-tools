@@ -11,8 +11,6 @@ Options:
 
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
-import os
-import sys
 import os.path
 import distutils.spawn
 
@@ -21,11 +19,12 @@ from docopt import docopt
 import openmaptiles
 from openmaptiles.tileset import Layer
 
+
 def collect_etldot(layer):
     dot = ('digraph G\n'
            '{\n'
-           '/* generated from the source code [ by generate-etlgraph  v' + openmaptiles.__version__ +'}  */ \n'
-           'rankdir=LR;\n')
+           '/* generated from the source code [ by generate-etlgraph  v' + openmaptiles.__version__ + '}  */ \n'
+                                                                                                      'rankdir=LR;\n')
 
     layer_name = layer['layer']['id']
     dot += '\n'
@@ -33,13 +32,13 @@ def collect_etldot(layer):
         for line in mappingstr.splitlines():
             sline = line.strip(' \t\n\r')
             if sline[:9] == '# etldoc:':
-                dot += sline[9:].strip(' \t\n\r')+'\n'
+                dot += sline[9:].strip(' \t\n\r') + '\n'
 
     for schema in layer.schemas:
         for line in schema.splitlines():
             sline = line.strip(' \t\n\r')
             if sline[:10] == '-- etldoc:':
-                dot += sline[10:].strip(' \t\n\r')+'\n'
+                dot += sline[10:].strip(' \t\n\r') + '\n'
     dot += '\n}\n'
     return dot
 
@@ -56,12 +55,11 @@ if __name__ == '__main__':
     dot_filename = dotbasefile + '.dot'
     old_dot = ''
 
-    print ( args['<output-path>'] )
-    print (dot_filename)
+    print(args['<output-path>'])
+    print(dot_filename)
 
     layer = Layer.parse(args['<layer-definition>'])
     etldoc = collect_etldot(layer)
-
 
     # IF exists THEN read the old .dot content
     if os.path.isfile(dot_filename):
@@ -71,31 +69,22 @@ if __name__ == '__main__':
 
     # Content is changed ?
     if etldoc.strip(' \t\n\r') == old_dot.strip(' \t\n\r'):
-        print ('Not changed dotfile :'+layer['layer']['id'])
-        print ('')
+        print(f"Not changed dotfile : {layer['layer']['id']}\n")
     else:
         if old_dot == '':
-            print ('Create dotfile : '+layer['layer']['id'])
+            print(f"Create dotfile : {layer['layer']['id']}")
         else:
-            print ('Update dotfile: '+layer['layer']['id'])
+            print(f"Update dotfile: {layer['layer']['id']}")
 
         # Write a new dot file
-        if sys.version_info >= (3, 0):
-            # python3 >=
-            with open(dot_filename, 'wt', encoding='utf-8') as dot_file_w:
-                dot_file_w.write(etldoc)
-                dot_file_w.close()
-        else:
-            # python 2.7
-            with open(dot_filename,'wb') as dot_file_w:
-                dot_file_w.write(etldoc.encode("utf-8"))
-                dot_file_w.close()
+        with open(dot_filename, 'wt', encoding='utf-8') as dot_file_w:
+            dot_file_w.write(etldoc)
 
         # Generate png and svg
         if distutils.spawn.find_executable('dot'):
-            os.system('dot -Tpng %s.dot -o %s.png' % (dotbasefile, dotbasefile))
-            os.system('dot -Tsvg %s.dot -o %s.svg' % (dotbasefile, dotbasefile))
-            print ('Generated : %s (.dot .svg) ' % (dotbasefile))
+            os.system(f"dot -Tpng {dotbasefile}.dot -o {dotbasefile}.png")
+            os.system(f"dot -Tsvg {dotbasefile}.dot -o {dotbasefile}.svg")
+            print(f"Generated : {dotbasefile} (.dot .svg) ")
         else:
-            print ('Warning: Could not find the `dot` command, check the graphviz installation!')
-        print ('')
+            print('Warning: Could not find the `dot` command, check the graphviz installation!')
+        print('')

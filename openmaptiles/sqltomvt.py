@@ -1,8 +1,6 @@
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 
-import collections
-
 from .tileset import Tileset
 from .language import languages_to_sql
 
@@ -11,37 +9,32 @@ def generate_sqltomvt_func(opts):
     """
     Creates a SQL function that returns a single bytea value or null
     """
-    header = """
-CREATE OR REPLACE FUNCTION {0}(zoom integer, x integer, y integer)
+    return f"""\
+CREATE OR REPLACE FUNCTION {opts['fname']}(zoom integer, x integer, y integer)
 RETURNS bytea AS $$
-""".format(opts['fname']).lstrip()
-
-    query = generate_query(opts, "TileBBox(zoom, x, y)", "zoom")
-    footer = ";\n$$ LANGUAGE SQL STABLE RETURNS NULL ON NULL INPUT;"
-    return header + query + footer
+{generate_query(opts, "TileBBox(zoom, x, y)", "zoom")};
+$$ LANGUAGE SQL STABLE RETURNS NULL ON NULL INPUT;"""
 
 
 def generate_sqltomvt_preparer(opts):
     """
     Creates a SQL prepared statement that returns 0 or 1 row with a single mvt column.
     """
-    header = """
+    return f"""\
 -- Delete prepared statement if it already exists
 DO $$ BEGIN
-IF EXISTS (SELECT * FROM pg_prepared_statements where name = '{0}') THEN
-  DEALLOCATE {0};
+IF EXISTS (SELECT * FROM pg_prepared_statements where name = '{opts['fname']}') THEN
+  DEALLOCATE {opts['fname']};
 END IF;
 END $$;
 
--- Run this statement with   EXECUTE {0}(zoom, x, y)
-PREPARE {0}(integer, integer, integer) AS
-""".format(opts['fname']).lstrip()
-
-    return header + generate_query(opts, "TileBBox($1, $2, $3)", "$1") + ";"
+-- Run this statement with   EXECUTE {opts['fname']}(zoom, x, y)
+PREPARE {opts['fname']}(integer, integer, integer) AS
+{generate_query(opts, "TileBBox($1, $2, $3)", "$1")};"""
 
 
 def generate_sqltomvt_raw(opts):
-    return generate_query(opts, None, None, None)
+    return generate_query(opts, None, None)
 
 
 def generate_query(opts, bbox, zoom):
@@ -72,11 +65,11 @@ def generate_query(opts, bbox, zoom):
     # and there are no other rows, and if so, return nothing
     if opts['mask-layer']:
         from_clause = (
-                    "FROM (\n" +
-                    "SELECT IsEmpty, count(*) OVER () AS LayerCount, mvtl " +
-                    from_clause +
-                    ") AS counter_layers\n" +
-                    "HAVING BOOL_AND(NOT IsEmpty OR LayerCount <> 1)")
+                "FROM (\n" +
+                "SELECT IsEmpty, count(*) OVER () AS LayerCount, mvtl " +
+                from_clause +
+                ") AS counter_layers\n" +
+                "HAVING BOOL_AND(NOT IsEmpty OR LayerCount <> 1)")
 
     query = "SELECT STRING_AGG(mvtl, '') AS mvt " + from_clause
 
@@ -107,34 +100,29 @@ def generate_layer(layer_def, query_tokens, extent, empty_zoom):
     query = layer["datasource"]["query"].format(**query_tokens)
 
     if query.startswith("("):
-        # Remove the first and last parentesis and "AS t"
+        # Remove the first and last parenthesis and "AS t"
         query = query[1:query.rfind(")")]
 
-    # TODO: Once fully migrated to Python 3.6+, use f-strings instead
     query = query.replace(
         "geometry",
-        "ST_AsMVTGeom(geometry, !bbox!, {extent}, {buffer}, true) AS mvtgeometry".format(extent=extent, buffer=buffer))
+        f"ST_AsMVTGeom(geometry, !bbox!, {extent}, {buffer}, true) AS mvtgeometry")
 
-    if empty_zoom == False:
-        filter = ""
-    elif empty_zoom == True:
-        filter = "FALSE AS IsEmpty, "
+    if isinstance(empty_zoom, bool):
+        is_empty = "FALSE AS IsEmpty, " if empty_zoom else ""
     else:
         # Test that geometry covers the whole tile
-        wkt_polygon = "POLYGON(({0} {1},{0} {0},{1} {0},{1} {1},{0} {1}))".format(0, extent)
-        filter = ("CASE z(!scale_denominator!) <= {0} "
-                  "WHEN TRUE THEN FALSE "
-                  "ELSE ST_WITHIN(ST_GeomFromText('{1}', 3857), ST_UNION(mvtgeometry)) "
-                  "END AS IsEmpty, ".format(empty_zoom, wkt_polygon))
+        zero = 0
+        wkt_polygon = f"POLYGON(({zero} {extent},{zero} {zero},{extent} {zero},{extent} {extent},{zero} {extent}))"
+        is_empty = f"""\
+CASE z(!scale_denominator!) <= {empty_zoom} \
+WHEN TRUE THEN FALSE \
+ELSE ST_WITHIN(ST_GeomFromText('{wkt_polygon}', 3857), ST_UNION(mvtgeometry)) \
+END AS IsEmpty, """
 
-    query = (
-            "SELECT " + filter +
-            # Combine all layer's features into a single MVT blob representing one layer
-            "ST_AsMVT(tile, '{id}', {extent}, 'mvtgeometry') as mvtl "
-            # only if the MVT geometry is not NULL
-            "FROM ({query} WHERE ST_AsMVTGeom(geometry, !bbox!, {extent}, {buffer}, true) IS NOT NULL) AS tile "
-            # Skip the whole layer if there is nothing in it
-            "HAVING COUNT(*) > 0"
-    ).format(id=layer['id'], extent=extent, query=query, buffer=buffer)
-
-    return query
+    # Combine all layer's features into a single MVT blob representing one layer
+    # only if the MVT geometry is not NULL
+    # Skip the whole layer if there is nothing in it
+    return f"""\
+SELECT {is_empty}ST_AsMVT(tile, '{layer['id']}', {extent}, 'mvtgeometry') as mvtl \
+FROM ({query} WHERE ST_AsMVTGeom(geometry, !bbox!, {extent}, {buffer}, true) IS NOT NULL) AS tile \
+HAVING COUNT(*) > 0"""

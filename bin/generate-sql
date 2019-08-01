@@ -12,7 +12,6 @@ from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 
 from docopt import docopt
-import sys
 import openmaptiles
 from openmaptiles.sql import collect_sql
 
@@ -20,7 +19,4 @@ from openmaptiles.sql import collect_sql
 if __name__ == '__main__':
     args = docopt(__doc__, version=openmaptiles.__version__)
     sql = collect_sql(args['<tileset>'])
-    if sys.version_info >= (3, 0):
-        print(sql)
-    else:
-        print(sql.encode("utf-8"))
+    print(sql)
