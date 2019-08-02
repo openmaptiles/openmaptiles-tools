@@ -89,17 +89,17 @@ def update_metadata(mbtiles_file, metadata, force=False):
     conn = sqlite3.connect(mbtiles_file)
     cursor = conn.cursor()
 
-    def upsert_entry(key, value):
+    def upsert_entry(entry_key, entry_value):
         # ID should be overwritten always!
-        if not force and key != 'id':
-            cursor.execute("SELECT value FROM metadata WHERE name = ?", key)
-            for row in cursor:
+        if not force and entry_key != 'id':
+            cursor.execute("SELECT value FROM metadata WHERE name = ?", (entry_key, ))
+            for entry_row in cursor:
                 # Skip if the value exists
-                # print(f"{key}={row}")
-                if row[0]:
+                # print(f"{entry_key}={entry_row}")
+                if entry_row[0]:
                     return
-        conn.execute("DELETE FROM metadata WHERE name=?", key)
-        conn.execute("INSERT INTO metadata VALUES(?, ?)", (key, value))
+        conn.execute("DELETE FROM metadata WHERE name=?", (entry_key, ))
+        conn.execute("INSERT INTO metadata VALUES(?, ?)", (entry_key, entry_value, ))
 
     for key, value in metadata.items():
         upsert_entry(key, value)
@@ -110,6 +110,7 @@ def update_metadata(mbtiles_file, metadata, force=False):
     for row in cursor:
         metadata_json = row[1]
         break
+
     if metadata_json:
         obj = json.loads(metadata_json)
         # Remove Layer - contains connections and SQLs
@@ -136,11 +137,12 @@ def update_metadata(mbtiles_file, metadata, force=False):
                     layer['maxzoom'] = maxzoom
         # Save json back into metadata minified
         metadata_json = json.dumps(obj, separators=(',', ':'))
-        cursor.execute("REPLACE INTO metadata VALUES (?, ?)", ('json', metadata_json))
+        cursor.execute("REPLACE INTO metadata VALUES (?, ?)", ('json', metadata_json, ))
         conn.commit()
 
     conn.commit()
     conn.close()
+
 
 if __name__ == '__main__':
     args = docopt(__doc__, version=openmaptiles.__version__, options_first=True)
