@@ -1,11 +1,22 @@
-#from distutils.core import setup
+# from distutils.core import setup
 import setuptools
+import re
+from pathlib import Path
 
-with open("README.md", "r") as fh:
+path = Path('.')
+
+with (path / "README.md").open() as fh:
     long_description = fh.read()
 
-with open("VERSION", "r") as fh:
+with (path / "VERSION").open() as fh:
     version = fh.read().strip()
+
+with (path / "requirements.txt").open(encoding="utf-8") as fh:
+    # Requirements will contain a list of libraries without version restrictions
+    # It seems this is a common practice for the setup.py vs requirements.txt
+    requirements = [m.group(1) for m in (re.match(r'^[ \t]*([^>=<!#\n]+).*', l) for l in fh.readlines()) if m]
+
+scripts = [str(p) for p in path.glob('bin/*') if p.is_file()]
 
 setuptools.setup(
     name='openmaptiles-tools',
@@ -18,22 +29,6 @@ setuptools.setup(
     long_description_content_type="text/markdown",
     url="https://github.com/openmaptiles/openmaptiles-tools",
     license='MIT',
-    scripts=[
-        'bin/generate-doc',
-        'bin/generate-diagram-pngs',
-        'bin/generate-etlgraph',
-        'bin/generate-imposm3',
-        'bin/generate-mapping-graph',
-        'bin/generate-metadata',
-        'bin/generate-sql',
-        'bin/generate-sqlquery',
-        'bin/generate-tm2source',
-        'bin/generate-sqltomvt',
-    ],
-    # Make sure this list is the same as in the requirements.txt
-    install_requires=[
-        'docopt',
-        'pyyaml',
-        'graphviz',
-    ],
+    scripts=scripts,
+    install_requires=requirements,
 )
