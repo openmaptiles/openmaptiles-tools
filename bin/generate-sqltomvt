@@ -24,7 +24,6 @@ Options:
 from __future__ import (absolute_import, division, print_function, unicode_literals)
 
 from docopt import docopt
-import sys
 
 import openmaptiles
 from openmaptiles.sqltomvt import generate_sqltomvt_preparer, generate_sqltomvt_func, generate_sqltomvt_raw
@@ -45,7 +44,4 @@ if __name__ == '__main__':
     else:
         sql = generate_sqltomvt_func(opts)
 
-    if sys.version_info >= (3, 0):
-        print(sql)
-    else:
-        print(sql.encode("utf-8"))
+    print(sql)

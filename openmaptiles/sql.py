@@ -20,16 +20,11 @@ def collect_sql(tileset_filename):
 
 
 def layer_notice(layer_name):
-    return "DO $$ BEGIN RAISE NOTICE 'Layer {0}'; END$$;".format(layer_name)
+    return f"DO $$ BEGIN RAISE NOTICE 'Layer {layer_name}'; END$$;"
 
-SLICE_LANGUAGE_TAGS_SQL="""CREATE OR REPLACE FUNCTION slice_language_tags(tags hstore)
-RETURNS hstore AS $$
-    SELECT delete_empty_keys(slice(tags, ARRAY[{0}]))
-$$ LANGUAGE SQL IMMUTABLE;
-"""
 
 def get_slice_language_tags(languages):
-    include_tags = list(map(lambda l: 'name:'+l, languages))
+    include_tags = list(map(lambda l: 'name:' + l, languages))
     include_tags.append('int_name')
     include_tags.append('loc_name')
     include_tags.append('name')
@@ -38,4 +33,9 @@ def get_slice_language_tags(languages):
 
     tags_sql = "'" + "', '".join(include_tags) + "'"
 
-    return SLICE_LANGUAGE_TAGS_SQL.format(tags_sql)
+    return f"""\
+CREATE OR REPLACE FUNCTION slice_language_tags(tags hstore)
+RETURNS hstore AS $$
+    SELECT delete_empty_keys(slice(tags, ARRAY[{tags_sql}]))
+$$ LANGUAGE SQL IMMUTABLE;
+"""

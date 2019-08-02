@@ -54,12 +54,12 @@ class Layer(object):
                      list(parse_imposm_mappings_str()),
                      list(parse_schemas()))
 
-    def __init__(self, filename, definition, mappings=[], mappings_str=[], schemas=[]):
+    def __init__(self, filename, definition, mappings=None, mappings_str=None, schemas=None):
         self.filename = filename
         self.definition = definition
-        self.imposm_mappings = mappings
-        self.imposm_mappings_str = mappings_str
-        self.schemas = schemas
+        self.imposm_mappings = [] if mappings is None else mappings
+        self.imposm_mappings_str = [] if mappings_str is None else mappings_str
+        self.schemas = [] if schemas is None else schemas
 
     def __getitem__(self, attr):
         if attr in self.definition:
