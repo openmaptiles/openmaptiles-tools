@@ -127,6 +127,8 @@ Uses tileset definition to create a PostgreSQL
  
 Use `--help` to get all parameters.
 
+**NOTE:** Current [openmaptiles/postgis](https://github.com/openmaptiles/postgis) image (v2.9 and before) has incorrect support for the [ST_AsMVT()](https://postgis.net/docs/ST_AsMVT.html). Until Postgis is updated, please use [sophox/postgis docker image](https://hub.docker.com/r/sophox/postgis) (based on the latest [mdillon/postgis:11](https://hub.docker.com/r/mdillon/postgis) base image).
+
 ```
 generate-sqltomvt <tileset>
 ```
