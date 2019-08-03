@@ -112,7 +112,7 @@ def serve(port, pghost, pgport, dbname, user, password, metadata, tileset_path, 
                  .replace("z(!scale_denominator!)", "0")
                  .replace("!pixel_width!", str(PIXEL_SCALE))
                  .replace("!pixel_height!", str(PIXEL_SCALE)))
-        cursor.execute(f"SELECT * FROM {query} LIMIT 0")
+        cursor.execute(f"SELECT * FROM {query} WHERE false LIMIT 0")
         fields = {fld.name: pg_types[fld.type_code] for fld in cursor.description if fld.type_code in pg_types}
 
         vector_layers.append(dict(
