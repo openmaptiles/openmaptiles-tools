@@ -1,7 +1,6 @@
+from .consts import PIXEL_SCALE
 from .tileset import Tileset
 from .language import languages_to_sql
-
-PIXEL_SCALE = 256
 
 
 def generate_sqltomvt_func(opts):
@@ -37,7 +36,7 @@ def generate_sqltomvt_raw(opts):
 
 
 def generate_query(opts, bbox, zoom):
-    tileset = Tileset.parse(opts['tileset']) if opts['tileset'] is str else opts['tileset']
+    tileset = Tileset.parse(opts['tileset']) if isinstance(opts['tileset'], str) else opts['tileset']
     query_tokens = {
         'name_languages': languages_to_sql(tileset.definition.get('languages', []))
     }

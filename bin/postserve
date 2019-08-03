@@ -36,10 +36,8 @@ from docopt import docopt
 import os.path
 import openmaptiles
 from openmaptiles.postserve import serve
-from openmaptiles.sqltomvt import generate_sqltomvt_preparer, PIXEL_SCALE
 from openmaptiles.utils import Bbox, coalesce
 from openmaptiles.consts import *
-from openmaptiles.tileset import Tileset
 
 if __name__ == '__main__':
     args = docopt(__doc__, version=openmaptiles.__version__)

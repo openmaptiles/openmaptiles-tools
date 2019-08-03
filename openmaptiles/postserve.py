@@ -4,8 +4,10 @@ import psycopg2
 import tornado.ioloop
 import tornado.web
 from datetime import datetime
+
+from openmaptiles.consts import PIXEL_SCALE
 from openmaptiles.language import languages_to_sql
-from openmaptiles.sqltomvt import PIXEL_SCALE, generate_sqltomvt_preparer
+from openmaptiles.sqltomvt import generate_sqltomvt_preparer
 from openmaptiles.tileset import Tileset
 
 
