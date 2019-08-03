@@ -13,12 +13,8 @@ Options:
   --user=<user>       PostGIS user.
   --password=<pw>     PostGIS password.
 """
-from __future__ import (absolute_import, division, print_function,
-                        unicode_literals)
-
 from docopt import docopt
 import yaml
-
 import openmaptiles
 from openmaptiles.tmsource import DbParams, generate_tm2source
 

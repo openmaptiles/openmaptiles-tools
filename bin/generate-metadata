@@ -15,70 +15,13 @@ Options:
 This script reads environment variable: METADATA_* for overwriting metadata values.
 This script parses BBOX, MIN_ZOOM, MAX_ZOOM and CENTER_ZOOM to prepare bounds and center values.
 """
-
-from __future__ import print_function
-
+from docopt import docopt
 import sqlite3
-import os
 import os.path
 import json
-from docopt import docopt
 import openmaptiles
-
-
-META_NAME = os.environ.get('METADATA_NAME', 'OpenMapTiles')
-META_ID = os.environ.get('METADATA_ID', 'openmaptiles')
-META_VERSION = os.environ.get('METADATA_VERSION', '3.10')
-META_ATTRIBUTION = os.environ.get(
-    'METADATA_ATTRIBUTION',
-    '<a href="https://openmaptiles.org/" target="_blank">&copy; OpenMapTiles</a> '
-    '<a href="https://www.openstreetmap.org/copyright" target="_blank">&copy; OpenStreetMap contributors</a>')
-META_DESCRIPTION = os.environ.get(
-    'METADATA_DESCRIPTION',
-    'Development OpenMapTiles extract, based on https://openmaptiles.org')
-META_TYPE = os.environ.get('METADATA_TYPE', 'baselayer')
-
-
-class Extract(object):
-
-    def __init__(self, extract, country, city, top, left, bottom, right,
-                 min_zoom=0, max_zoom=14, center_zoom=10):
-        self.extract = extract
-        self.country = country
-        self.city = city
-
-        self.min_lon = float(left)
-        self.min_lat = float(bottom)
-        self.max_lon = float(right)
-        self.max_lat = float(top)
-
-        self.min_zoom = min_zoom
-        self.max_zoom = max_zoom
-        self.center_zoom = center_zoom
-
-    def bounds(self):
-        return f"{self.min_lon},{self.min_lat},{self.max_lon},{self.max_lat}"
-
-    def center(self):
-        center_lon = (self.min_lon + self.max_lon) / 2.0
-        center_lat = (self.min_lat + self.max_lat) / 2.0
-        return f"{center_lon},{center_lat},{self.center_zoom}"
-
-    def metadata(self, extract_file):
-        return {
-            "type": META_TYPE,
-            "attribution": META_ATTRIBUTION,
-            "description": META_DESCRIPTION,
-            "version": META_VERSION,
-            "minzoom": self.min_zoom,
-            "maxzoom": self.max_zoom,
-            "name": META_NAME,
-            "id": META_ID,
-            "bounds": self.bounds(),
-            "center": self.center(),
-            "basename": os.path.basename(extract_file),
-            "filesize": os.path.getsize(extract_file)
-        }
+from openmaptiles.utils import Bbox
+from openmaptiles.consts import *
 
 
 def update_metadata(mbtiles_file, metadata, force=False):
@@ -123,8 +66,7 @@ def update_metadata(mbtiles_file, metadata, force=False):
         if 'vector_layers' in obj:
             # find out maxzoom from metadata
             maxzoom = 0
-            cursor.execute(
-                "SELECT name, value FROM metadata WHERE name='maxzoom'")
+            cursor.execute("SELECT name, value FROM metadata WHERE name='maxzoom'")
             for row in cursor:
                 try:
                     maxzoom = int(row[1])
@@ -144,33 +86,33 @@ def update_metadata(mbtiles_file, metadata, force=False):
     conn.close()
 
 
-if __name__ == '__main__':
-    args = docopt(__doc__, version=openmaptiles.__version__, options_first=True)
-    force = args.get('--force', False)
-
+def main(args):
     extract_file = args['<mbtiles>']
+    bbox = Bbox(bbox=os.environ.get('BBOX'),
+                top=args.get('<north>'),
+                left=args.get('<west>'),
+                bottom=args.get('<south>'),
+                right=args.get('<east>'),
+                center_zoom=os.environ.get('CENTER_ZOOM'))
 
-    bbox = os.environ.get('BBOX', '-180.0,-85.0511,180.0,85.0511')
-    # $lon_min,$lat_min,$lon_max,$lat_max
-    # left,bottom,right,top
-    left, bottom, right, top = bbox.split(',')
-    left = args.get('<west>') or left
-    bottom = args.get('<south>') or bottom
-    right = args.get('<east>') or right
-    top = args.get('<north>') or top
-
-    extract = Extract(
-        extract_file,
-        country=None,
-        city=None,
-        left=left,
-        right=right,
-        top=top,
-        bottom=bottom,
-        center_zoom=os.environ.get('CENTER_ZOOM', 5),
-        min_zoom=os.environ.get('MIN_ZOOM', 0),
-        max_zoom=os.environ.get('MAX_ZOOM', 14),
-    )
+    metadata = {
+        "type": os.environ.get('METADATA_TYPE', METADATA_TYPE),
+        "attribution": os.environ.get('METADATA_ATTRIBUTION', METADATA_ATTRIBUTION),
+        "description": os.environ.get('METADATA_DESCRIPTION', METADATA_DESCRIPTION),
+        "version": os.environ.get('METADATA_VERSION', METADATA_VERSION),
+        "minzoom": os.environ.get('MIN_ZOOM', MIN_ZOOM),
+        "maxzoom": os.environ.get('MAX_ZOOM', MAX_ZOOM),
+        "name": os.environ.get('METADATA_NAME', METADATA_NAME),
+        "id": os.environ.get('METADATA_ID', METADATA_ID),
+        "bounds": bbox.bounds_str(),
+        "center": bbox.center_str(),
+        "basename": os.path.basename(extract_file) if extract_file else None,
+        "filesize": os.path.getsize(extract_file) if extract_file else None,
+    }
 
     print(f'Update metadata {extract_file}')
-    update_metadata(extract_file, extract.metadata(extract_file), force)
+    update_metadata(extract_file, metadata, args.get('--force', False))
+
+
+if __name__ == '__main__':
+    main(docopt(__doc__, version=openmaptiles.__version__, options_first=True))

@@ -8,12 +8,8 @@ Options:
   --help              Show this screen.
   --version           Show version.
 """
-from __future__ import (absolute_import, division, print_function,
-                        unicode_literals)
-
 from docopt import docopt
 import yaml
-
 import openmaptiles
 from openmaptiles.imposm import create_imposm3_mapping
 

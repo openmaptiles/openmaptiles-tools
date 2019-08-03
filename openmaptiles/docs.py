@@ -1,7 +1,3 @@
-from __future__ import (absolute_import, division, print_function,
-                        unicode_literals)
-
-
 def generate_field_doc(field_name, field_spec):
     field_doc = f"### {field_name.strip()}\n"
 

@@ -1,9 +1,5 @@
-from __future__ import (absolute_import, division, print_function,
-                        unicode_literals)
-
-from .tileset import Tileset
-
 import re
+from .tileset import Tileset
 
 
 def zres(pixel_scale, zoom):
