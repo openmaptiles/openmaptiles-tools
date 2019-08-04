@@ -28,7 +28,11 @@ END $$;
 
 -- Run this statement with   EXECUTE {opts['fname']}(zoom, x, y)
 PREPARE {opts['fname']}(integer, integer, integer) AS
-{generate_query(opts, "TileBBox($1, $2, $3)", "$1")};"""
+{generate_sqltomvt_query(opts)};"""
+
+
+def generate_sqltomvt_query(opts):
+    return generate_query(opts, "TileBBox($1, $2, $3)", "$1")
 
 
 def generate_sqltomvt_raw(opts):
