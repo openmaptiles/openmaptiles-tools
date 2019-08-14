@@ -18,4 +18,4 @@ docker run --rm \
     openmaptiles/import-water
 ```
 ## Version of OpenStreetMapData
-**2019-05-13**
+**2019-08-05**
