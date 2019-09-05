@@ -9,15 +9,9 @@ Options:
   --help               Show this screen.
   --version            Show version.
 """
-
-from __future__ import (absolute_import, division, print_function,
-                        unicode_literals)
-
 from docopt import docopt
-
-import openmaptiles
 import re
-
+import openmaptiles
 from openmaptiles.tileset import Layer
 from openmaptiles.language import languages_to_sql
 

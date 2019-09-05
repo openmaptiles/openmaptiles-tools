@@ -13,7 +13,7 @@ You need either just Docker or Python 3 installed on your system.  If running wi
 
 The easiest is to use docker directly to run this command. You do not need to clone `openmaptiles-tools` locally, just clone the [openmaptiles repo](https://github.com/openmaptiles/openmaptiles) and run from its root.
 
-_**Note:** container scripts can only access files from the given directory and below, e.g. in this example - `${PWD}` - current dir._ 
+_**Note:** container scripts can only access files from the given directory and below, e.g. in this example - `${PWD}` - current dir._
 ```bash
 docker run -it --rm -u $(id -u ${USER}):$(id -g ${USER}) \
            -v "${PWD}:/tileset" \
@@ -203,3 +203,14 @@ You need to provide PostgreSQL database connection settings before generating th
 ```
 generate-tm2source <tileset> --host="localhost" --port=5432 --database="osm" --user="osm" --password="osm"
 ```
+
+# Test tiles
+
+Postserve is an OpenMapTiles map vector tile test server that dynamically generates metadata and tiles
+ directly from PostgreSQL database based on the tileset file definition. Use `--help` for all parameters.
+
+```
+postserve <tileset> ...
+```
+
+Set Maputnik's data source to `http://localhost:8090`

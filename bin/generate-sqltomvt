@@ -4,7 +4,7 @@ This script generates a single SQL statement (either as an SQL function or as a 
 to generate a vector tile (MVT) for the given zoom and bounding box.
 
 Usage:
-  generate-sqltomvt <tileset> [--fname <name>] [--function | --prepared | --raw] [--mask-layer=<layer> --mask-zoom=<z>]
+  generate-sqltomvt <tileset> [--fname <name>] [--function | --prepared | --query | --raw] [--mask-layer=<layer> --mask-zoom=<z>]
   generate-sqltomvt --help
   generate-sqltomvt --version
 
@@ -13,6 +13,7 @@ Usage:
 Options:
   -f --function          Generate function generation SQL [default]
   -p --prepared          Generate prepared statement SQL
+  -q --query             Generate a query SQL with $1,$2,$3 meaning zoom,x,y
   -r --raw               Generate raw query without any wrappers (good for debugging SQL)
   --mask-layer=<layer>   If tile only has this layer covering for the whole tile (e.g. 'water'),
                          and requested zoom is more than --mask-zoom parameter, returns empty result
@@ -21,12 +22,9 @@ Options:
   --help                 Show this screen.
   --version              Show version.
 """
-from __future__ import (absolute_import, division, print_function, unicode_literals)
-
 from docopt import docopt
-
 import openmaptiles
-from openmaptiles.sqltomvt import generate_sqltomvt_preparer, generate_sqltomvt_func, generate_sqltomvt_raw
+from openmaptiles.sqltomvt import *
 
 if __name__ == '__main__':
     args = docopt(__doc__, version=openmaptiles.__version__)
@@ -39,9 +37,12 @@ if __name__ == '__main__':
 
     if args['--prepared']:
         sql = generate_sqltomvt_preparer(opts)
+    elif args['--query']:
+        sql = generate_sqltomvt_query(opts)
     elif args['--raw']:
         sql = generate_sqltomvt_raw(opts)
     else:
+        # --function or default
         sql = generate_sqltomvt_func(opts)
 
     print(sql)

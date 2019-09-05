@@ -1,6 +1,4 @@
-from __future__ import (absolute_import, division, print_function,
-                        unicode_literals)
-
+from .consts import PIXEL_SCALE
 from .tileset import Tileset
 from .language import languages_to_sql
 
@@ -30,7 +28,11 @@ END $$;
 
 -- Run this statement with   EXECUTE {opts['fname']}(zoom, x, y)
 PREPARE {opts['fname']}(integer, integer, integer) AS
-{generate_query(opts, "TileBBox($1, $2, $3)", "$1")};"""
+{generate_sqltomvt_query(opts)};"""
+
+
+def generate_sqltomvt_query(opts):
+    return generate_query(opts, "TileBBox($1, $2, $3)", "$1")
 
 
 def generate_sqltomvt_raw(opts):
@@ -38,13 +40,13 @@ def generate_sqltomvt_raw(opts):
 
 
 def generate_query(opts, bbox, zoom):
-    tileset = Tileset.parse(opts['tileset'])
+    tileset = Tileset.parse(opts['tileset']) if isinstance(opts['tileset'], str) else opts['tileset']
     query_tokens = {
         'name_languages': languages_to_sql(tileset.definition.get('languages', []))
     }
     extent = 4096
-    pixel_width = 256
-    pixel_height = 256
+    pixel_width = PIXEL_SCALE
+    pixel_height = PIXEL_SCALE
 
     queries = []
     for layer in tileset.layers:

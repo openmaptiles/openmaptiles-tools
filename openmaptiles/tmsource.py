@@ -1,8 +1,4 @@
-from __future__ import (absolute_import, division, print_function,
-                        unicode_literals)
-
 import collections
-
 from .tileset import Tileset
 from .language import languages_to_sql
 

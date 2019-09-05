@@ -1,5 +1,7 @@
 ## This list is also used by setup.py - install_requires
 ## But there it removes all version restrictions
-docopt
-pyyaml
-graphviz
+docopt==0.6.2
+pyyaml==5.1.2
+graphviz==0.11.1
+tornado==6.0.3
+psycopg2-binary==2.8.3
