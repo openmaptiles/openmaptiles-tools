@@ -213,4 +213,21 @@ Postserve is an OpenMapTiles map vector tile test server that dynamically genera
 postserve <tileset> ...
 ```
 
-Set Maputnik's data source to `http://localhost:8090`
+Use `postserve <tileset>` to start serving. Use `--help` to get the list of Postgres connection parameters.
+
+## Postserve quickstart with docker
+* clone [openmaptiles repo](https://github.com/openmaptiles/openmaptiles) (`openmaptiles-tools` repo is not needed with docker)
+* get a PostgreSQL server running with the openmaptiles-imported OSM data, e.g. by following quickstart guide.
+* run `docker pull openmaptiles/openmaptiles-tools` to download the latest tools version
+* from inside the openmaptiles repo dir, run this command.
+(This assumes PostgreSQL is on the localhost:5432, but if it runs inside docker, you may want to change `--net=host` to `--net=openmaptiles_postgres_conn` to match the openmaptiles quickstart, and also expose port 8090 to the host with `-p 8090:8090`)
+```
+docker run -it --rm -u $(id -u ${USER}):$(id -g ${USER}) \
+    -v "${PWD}:/tileset" --net=host \
+    openmaptiles/openmaptiles-tools \
+    postserve openmaptiles.yaml 
+```
+
+Add `--help` to see all additional parameters.
+
+* Run Maputnik and set its data source to `http://localhost:8090`
