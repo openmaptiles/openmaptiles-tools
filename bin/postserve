@@ -76,5 +76,5 @@ if __name__ == '__main__':
         sql_file=args.get('--file'),
         mask_layer=mask_layer,
         mask_zoom=mask_zoom,
-        verbose=args.get('--file'),
+        verbose=args.get('--verbose'),
     )
