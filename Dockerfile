@@ -1,25 +1,37 @@
-FROM python:3.6
+FROM python:3.7
+
+WORKDIR /usr/src/app
+
+# Using VT_UTIL_DIR and OMT_UTIL_DIR vars allow users to provide custom util files:
+# postgis-vt-util.sql and language.sql
+# See README
+ENV PATH="/usr/src/app:${PATH}" \
+    VT_UTIL_DIR=/opt/postgis-vt-util \
+    OMT_UTIL_DIR=/usr/src/app/sql \
+    SQL_DIR=/sql
 
 RUN apt-get update \
     && apt-get install  -y --no-install-recommends \
         graphviz \
         sqlite3 \
+        postgresql-client \
     && rm -rf /var/lib/apt/lists/
 
-WORKDIR /usr/src/app
 # Copy requirements.txt first to avoid pip install on every code change
 COPY ./requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
-RUN mv bin/* . && \
+RUN curl -OL https://raw.githubusercontent.com/mapbox/postgis-vt-util/v1.0.0/postgis-vt-util.sql && \
+    mkdir -p "$VT_UTIL_DIR" && \
+    mv postgis-vt-util.sql ${VT_UTIL_DIR}/ && \
+    mv bin/* . && \
     rm -rf bin && \
     rm requirements.txt
 
-ENV PATH="/usr/src/app:${PATH}"
-
 WORKDIR /tileset
 VOLUME /tileset
+VOLUME /sql
 
 # In case there are no parameters, print a list of available scripts
 CMD echo "*******************************************************************" && \
@@ -27,4 +39,4 @@ CMD echo "*******************************************************************" &
     echo "  Use script name with --help to get more information." && \
     echo "  Use 'bash' to start a shell inside the tools container." && \
     echo "*******************************************************************" && \
-    find /usr/src/app -maxdepth 1 -executable -type f -printf " * %f\n"
+    find /usr/src/app -maxdepth 1 -executable -type f -printf " * %f\n" | sort
