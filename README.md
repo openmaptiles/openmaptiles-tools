@@ -1,6 +1,6 @@
 # OpenMapTiles Tools [![Build Status](https://api.travis-ci.org/openmaptiles/openmaptiles-tools.svg?branch=master)](https://travis-ci.org/openmaptiles/openmaptiles-tools) [![Docker Automated build](https://img.shields.io/docker/automated/openmaptiles/openmaptiles-tools.svg)](https://hub.docker.com/r/openmaptiles/openmaptiles-tools) [![](https://images.microbadger.com/badges/image/openmaptiles/openmaptiles-tools.svg)](https://microbadger.com/images/openmaptiles/openmaptiles-tools)
 
-The OpenMapTiles tools for generating TM2Source projects, imposm3 mappings and SQL instructions
+The OpenMapTiles toolbox for generating TM2Source projects, imposm3 mappings and SQL instructions
 from OpenMapTiles layers. We encourage other people to use this for their vector tile projects as well since this approach works well for us.
 
 Check out the [OpenMapTiles project](https://github.com/openmaptiles/openmaptiles/) for a real world example.
@@ -231,3 +231,23 @@ docker run -it --rm -u $(id -u ${USER}):$(id -g ${USER}) \
 Add `--help` to see all additional parameters.
 
 * Run Maputnik and set its data source to `http://localhost:8090`
+
+
+## Importing into Postgres
+The `import_sql.sh` script can execute a single SQL file in Postgres when the file is given as the first parameter.
+
+If ran without any arguments, `import_sql.sh` executes all of the following:
+* SQL files from `$OMT_UTIL_DIR`  -  by default contains the [sql/language.sql](./sql/language.sql) script.
+* SQL files from `$VT_UTIL_DIR`  - by default contains Mapbox's [postgis-vt-util.sql](https://github.com/mapbox/postgis-vt-util/blob/v1.0.0/postgis-vt-util.sql) helper functions.
+* SQL files from `$SQL_DIR`  - defaults to `/sql` -- this volume is empty initially, but should contain build results of running other generation scripts. 
+
+Postgres connection requires `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_HOST`, `POSTGRES_DB`, and optionally `POSTGRES_PORT` environment variables.
+
+Generating and importing SQL could be done in a single step with `&&`, e.g.
+
+```bash
+generate-sqltomvt openmaptiles.yaml > "$SQL_DIR/mvt.sql" && import_sql.sh
+```
+
+Optionally you may pass extra arguments to `psql` by using `PSQL_OPTIONS` environment variable. For example `PSQL_OPTIONS=-a` makes psql echo all commands read from a file into stdout.
+`PSQL_OPTIONS` allows multiple arguments as well, and understands quotes, e.g. you can pass a whole query as a single argument surrounded by quotes -- `PSQL_OPTIONS="-a -c 'SELECT ...'"`
