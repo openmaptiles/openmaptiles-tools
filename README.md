@@ -18,7 +18,7 @@ The **import-osm** Docker container will take the first PBF file in the volume m
 Volumes:
  - Mount your PBFs into the `/import` folder
  - Mount your `mapping.yaml` into the `/mapping` folder
- - If you want to use diff mode mountn a persistent location to the `/cache` folder for later reuse
+ - If you want to use diff mode mount a persistent location to the `/cache` folder for later reuse
 
 ```bash
 docker run --rm \
