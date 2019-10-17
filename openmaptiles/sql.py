@@ -17,7 +17,7 @@ def collect_sql(tileset_filename, parallel=False):
         sql = layer_notice(layer['layer']['id'])
         for schema in layer.schemas:
             sql += schema
-        parallel_sql.append(schema)
+        parallel_sql.append(sql)
 
     if parallel:
         return shared_sql, parallel_sql

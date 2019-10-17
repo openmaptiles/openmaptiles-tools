@@ -26,7 +26,6 @@ if __name__ == '__main__':
 
         path = Path(args['--dir'])
         path.mkdir(parents=True, exist_ok=True)
-        (path / 'run_first.sql').write_text(init_sql)
         parallel_dir = path / 'parallel'
         parallel_dir.mkdir(exist_ok=True)
 
@@ -40,6 +39,7 @@ if __name__ == '__main__':
         if deleted_files:
             print(f"Remvoed {deleted_files} existing files in dir {parallel_dir}")
 
+        (path / 'run_first.sql').write_text(init_sql)
         for idx, sql in enumerate(parallel_sql):
             (parallel_dir / f'{idx:03}.sql').write_text(sql)
         print(f'Created {len(parallel_sql)} sql files for parallel execution and a common file in dir {path}')
