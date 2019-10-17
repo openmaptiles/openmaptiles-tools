@@ -9,10 +9,10 @@ def collect_sql(tileset_filename, parallel=False):
 
     definition = tileset.definition
     languages = map(lambda l: str(l), definition.get('languages', []))
-    shared_sql = get_slice_language_tags(languages)
+    run_first = get_slice_language_tags(languages)
+    run_last = ''  # at this point we don't have any SQL to run at the end
 
     parallel_sql = []
-
     for layer in tileset.layers:
         sql = layer_notice(layer['layer']['id'])
         for schema in layer.schemas:
@@ -20,9 +20,9 @@ def collect_sql(tileset_filename, parallel=False):
         parallel_sql.append(sql)
 
     if parallel:
-        return shared_sql, parallel_sql
+        return run_first, parallel_sql, run_last
     else:
-        return shared_sql + ''.join(parallel_sql)
+        return run_first + ''.join(parallel_sql) + run_last
 
 
 def layer_notice(layer_name):

@@ -22,7 +22,7 @@ if __name__ == '__main__':
     if not args['--dir']:
         print(collect_sql(args['<tileset>']))
     else:
-        init_sql, parallel_sql = collect_sql(args['<tileset>'], parallel=True)
+        run_first, parallel_sql, run_last  = collect_sql(args['<tileset>'], parallel=True)
 
         path = Path(args['--dir'])
         path.mkdir(parents=True, exist_ok=True)
@@ -39,7 +39,8 @@ if __name__ == '__main__':
         if deleted_files:
             print(f"Remvoed {deleted_files} existing files in dir {parallel_dir}")
 
-        (path / 'run_first.sql').write_text(init_sql)
+        (path / 'run_first.sql').write_text(run_first)
+        (path / 'run_last.sql').write_text(run_last)
         for idx, sql in enumerate(parallel_sql):
             (parallel_dir / f'{idx:03}.sql').write_text(sql)
         print(f'Created {len(parallel_sql)} sql files for parallel execution and a common file in dir {path}')
