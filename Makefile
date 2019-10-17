@@ -27,6 +27,7 @@ build-tests: \
     build/tm2source.yml \
     build/imposm3.yaml \
     build/sql.sql \
+    build/parallel_sql \
     build/mvttile_func.sql \
     build/mvttile_zd_func.sql \
     build/mvttile_prep.sql \
@@ -62,6 +63,8 @@ build/imposm3.yaml: prepare
 	$(RUN_CMD) generate-imposm3  testdata/testlayers/testmaptiles.yaml                               > build/imposm3.yaml
 build/sql.sql: prepare
 	$(RUN_CMD) generate-sql      testdata/testlayers/testmaptiles.yaml                               > build/sql.sql
+build/parallel_sql: prepare
+	$(RUN_CMD) generate-sql      testdata/testlayers/testmaptiles.yaml --dir build/parallel_sql
 build/mvttile_func.sql: prepare
 	$(RUN_CMD) generate-sqltomvt testdata/testlayers/testmaptiles.yaml                               > build/mvttile_func.sql
 build/mvttile_zd_func.sql: prepare
