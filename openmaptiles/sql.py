@@ -1,19 +1,28 @@
 from .tileset import Tileset
 
 
-def collect_sql(tileset_filename):
+def collect_sql(tileset_filename, parallel=False):
+    """If parallel is True, returns a sql value that must be executed first,
+        and a lists of sql values that can be ran in parallel.
+        If parallel is False, returns a single sql string"""
     tileset = Tileset.parse(tileset_filename)
-    sql = ''
 
     definition = tileset.definition
     languages = map(lambda l: str(l), definition.get('languages', []))
-    sql += get_slice_language_tags(languages)
+    shared_sql = get_slice_language_tags(languages)
+
+    parallel_sql = []
 
     for layer in tileset.layers:
-        sql += layer_notice(layer['layer']['id'])
+        sql = layer_notice(layer['layer']['id'])
         for schema in layer.schemas:
             sql += schema
-    return sql
+        parallel_sql.append(schema)
+
+    if parallel:
+        return shared_sql, parallel_sql
+    else:
+        return shared_sql + ''.join(parallel_sql)
 
 
 def layer_notice(layer_name):

@@ -1,13 +1,17 @@
 #!/usr/bin/env python
 """
 Usage:
-  generate-sql <tileset>
+  generate-sql <tileset> [--dir <dir>]
   generate-sql --help
   generate-sql --version
+
 Options:
+  -d --dir=<dir>      Output multiple sql files into this directory. Prints to STDOUT by default.
   --help              Show this screen.
   --version           Show version.
 """
+import re
+from pathlib import Path
 from docopt import docopt
 import openmaptiles
 from openmaptiles.sql import collect_sql
@@ -15,5 +19,27 @@ from openmaptiles.sql import collect_sql
 
 if __name__ == '__main__':
     args = docopt(__doc__, version=openmaptiles.__version__)
-    sql = collect_sql(args['<tileset>'])
-    print(sql)
+    if not args['--dir']:
+        print(collect_sql(args['<tileset>']))
+    else:
+        init_sql, parallel_sql = collect_sql(args['<tileset>'], parallel=True)
+
+        path = Path(args['--dir'])
+        path.mkdir(parents=True, exist_ok=True)
+        (path / 'run_first.sql').write_text(init_sql)
+        parallel_dir = path / 'parallel'
+        parallel_dir.mkdir(exist_ok=True)
+
+        deleted_files = 0
+        for file in parallel_dir.glob('*.sql'):
+            if re.match(r'^\d+\.sql$', file.name):
+                file.unlink()
+                deleted_files += 1
+            else:
+                print(f"Unexpected file {file} is ignored")
+        if deleted_files:
+            print(f"Remvoed {deleted_files} existing files in dir {parallel_dir}")
+
+        for idx, sql in enumerate(parallel_sql):
+            (parallel_dir / f'{idx:03}.sql').write_text(sql)
+        print(f'Created {len(parallel_sql)} sql files for parallel execution and a common file in dir {path}')
