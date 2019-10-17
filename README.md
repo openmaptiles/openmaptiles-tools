@@ -239,7 +239,7 @@ The `import_sql.sh` script can execute a single SQL file in Postgres when the fi
 If ran without any arguments, `import_sql.sh` executes all of the following:
 * SQL files from `$OMT_UTIL_DIR`  -  by default contains the [sql/language.sql](./sql/language.sql) script.
 * SQL files from `$VT_UTIL_DIR`  - by default contains Mapbox's [postgis-vt-util.sql](https://github.com/mapbox/postgis-vt-util/blob/v1.0.0/postgis-vt-util.sql) helper functions.
-* SQL files from `$SQL_DIR`  - defaults to `/sql` -- this volume is empty initially, but should contain build results of running other generation scripts. 
+* SQL files from `$SQL_DIR`  - defaults to `/sql` -- this volume is empty initially, but should contain build results of running other generation scripts. If this directory contains `parallel/` subdirectory, `import_sql.sh` will assume the parallel/*.sql files are safe to execute in parallel, up to `MAX_PARALLEL_PSQL` at a time (defaults to 5). The script will also execute `run_first.sql` before, and `run_last.sql` after the files in `parallel/` dir (if they exist).
 
 Postgres connection requires `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_HOST`, `POSTGRES_DB`, and optionally `POSTGRES_PORT` environment variables.
 
