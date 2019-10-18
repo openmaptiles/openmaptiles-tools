@@ -1,4 +1,5 @@
-DO $$ BEGIN RAISE NOTICE 'Layer housenumber'; END$$;
+DO $$ BEGIN RAISE NOTICE 'Processing layer housenumber'; END$$;
+
 -- etldoc: osm_housenumber_point -> osm_housenumber_point
 UPDATE osm_housenumber_point SET geometry=topoint(geometry)
 WHERE ST_GeometryType(geometry) <> 'ST_Point';
@@ -12,3 +13,5 @@ RETURNS TABLE(osm_id bigint, geometry geometry, housenumber text, tags hstore) A
     SELECT osm_id, geometry, housenumber, tags FROM osm_housenumber_point
     WHERE zoom_level >= 14 AND geometry && bbox;
 $$ LANGUAGE SQL IMMUTABLE;
+
+DO $$ BEGIN RAISE NOTICE 'Finished layer housenumber'; END$$;

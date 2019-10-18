@@ -14,19 +14,20 @@ def collect_sql(tileset_filename, parallel=False):
 
     parallel_sql = []
     for layer in tileset.layers:
-        sql = layer_notice(layer['layer']['id'])
-        for schema in layer.schemas:
-            sql += schema
-        parallel_sql.append(sql)
+        name = layer['layer']['id']
+        schemas = '\n\n'.join((v.strip() for v in layer.schemas))
+        parallel_sql.append(f"""\
+DO $$ BEGIN RAISE NOTICE 'Processing layer {name}'; END$$;
+
+{schemas}
+
+DO $$ BEGIN RAISE NOTICE 'Finished layer {name}'; END$$;
+""")
 
     if parallel:
         return run_first, parallel_sql, run_last
     else:
-        return run_first + ''.join(parallel_sql) + run_last
-
-
-def layer_notice(layer_name):
-    return f"DO $$ BEGIN RAISE NOTICE 'Layer {layer_name}'; END$$;"
+        return run_first + '\n'.join(parallel_sql) + run_last
 
 
 def get_slice_language_tags(languages):
