@@ -29,10 +29,13 @@ build-tests: \
     build/sql.sql \
     build/mvttile_func.sql \
     build/mvttile_zd_func.sql \
+    build/mvttile_zd2_func.sql \
     build/mvttile_prep.sql \
     build/mvttile_zd_prep.sql \
+    build/mvttile_zd2_prep.sql \
     build/mvttile_query.sql \
     build/mvttile_zd_query.sql \
+    build/mvttile_zd2_query.sql \
     build/doc/doc.md \
     build/sqlquery.sql \
     build/devdoc
@@ -59,25 +62,31 @@ build-docker:
 build/tm2source.yml: prepare
 	$(RUN_CMD) generate-tm2source testdata/testlayers/testmaptiles.yaml --host="pghost" --port=5432 --database="pgdb" --user="pguser" --password="pgpswd" > build/tm2source.yml
 build/imposm3.yaml: prepare
-	$(RUN_CMD) generate-imposm3  testdata/testlayers/testmaptiles.yaml                               > build/imposm3.yaml
+	$(RUN_CMD) generate-imposm3  testdata/testlayers/testmaptiles.yaml                                      > build/imposm3.yaml
 build/sql.sql: prepare
-	$(RUN_CMD) generate-sql      testdata/testlayers/testmaptiles.yaml                               > build/sql.sql
+	$(RUN_CMD) generate-sql      testdata/testlayers/testmaptiles.yaml                                      > build/sql.sql
 build/mvttile_func.sql: prepare
-	$(RUN_CMD) generate-sqltomvt testdata/testlayers/testmaptiles.yaml                               > build/mvttile_func.sql
+	$(RUN_CMD) generate-sqltomvt testdata/testlayers/testmaptiles.yaml                                      > build/mvttile_func.sql
 build/mvttile_zd_func.sql: prepare
-	$(RUN_CMD) generate-sqltomvt testdata/testlayers/testmaptiles.yaml --mask-layer=water            > build/mvttile_zd_func.sql
+	$(RUN_CMD) generate-sqltomvt testdata/testlayers/testmaptiles.yaml --mask-layer=water                   > build/mvttile_zd_func.sql
+build/mvttile_zd2_func.sql: prepare
+	$(RUN_CMD) generate-sqltomvt testdata/testlayers/testmaptiles.yaml --mask-layer=housenumber             > build/mvttile_zd2_func.sql
 build/mvttile_prep.sql: prepare
-	$(RUN_CMD) generate-sqltomvt testdata/testlayers/testmaptiles.yaml --prepared                    > build/mvttile_prep.sql
+	$(RUN_CMD) generate-sqltomvt testdata/testlayers/testmaptiles.yaml --prepared                           > build/mvttile_prep.sql
 build/mvttile_zd_prep.sql: prepare
-	$(RUN_CMD) generate-sqltomvt testdata/testlayers/testmaptiles.yaml --prepared --mask-layer=water > build/mvttile_zd_prep.sql
+	$(RUN_CMD) generate-sqltomvt testdata/testlayers/testmaptiles.yaml --prepared --mask-layer=water        > build/mvttile_zd_prep.sql
+build/mvttile_zd2_prep.sql: prepare
+	$(RUN_CMD) generate-sqltomvt testdata/testlayers/testmaptiles.yaml --prepared --mask-layer=housenumber  > build/mvttile_zd2_prep.sql
 build/mvttile_query.sql: prepare
-	$(RUN_CMD) generate-sqltomvt testdata/testlayers/testmaptiles.yaml --query                       > build/mvttile_query.sql
+	$(RUN_CMD) generate-sqltomvt testdata/testlayers/testmaptiles.yaml --query                              > build/mvttile_query.sql
 build/mvttile_zd_query.sql: prepare
-	$(RUN_CMD) generate-sqltomvt testdata/testlayers/testmaptiles.yaml --query --mask-layer=water    > build/mvttile_zd_query.sql
+	$(RUN_CMD) generate-sqltomvt testdata/testlayers/testmaptiles.yaml --query --mask-layer=water           > build/mvttile_zd_query.sql
+build/mvttile_zd2_query.sql: prepare
+	$(RUN_CMD) generate-sqltomvt testdata/testlayers/testmaptiles.yaml --query --mask-layer=housenumber     > build/mvttile_zd2_query.sql
 build/doc/doc.md: prepare
-	$(RUN_CMD) generate-doc      testdata/testlayers/housenumber/housenumber.yaml                    > build/doc.md
+	$(RUN_CMD) generate-doc      testdata/testlayers/housenumber/housenumber.yaml                           > build/doc.md
 build/sqlquery.sql: prepare
-	$(RUN_CMD) generate-sqlquery testdata/testlayers/housenumber/housenumber.yaml 14                 > build/sqlquery.sql
+	$(RUN_CMD) generate-sqlquery testdata/testlayers/housenumber/housenumber.yaml 14                        > build/sqlquery.sql
 build/devdoc: prepare
 	mkdir -p build/devdoc
 	$(RUN_CMD) generate-etlgraph testdata/testlayers/housenumber/housenumber.yaml build/devdoc

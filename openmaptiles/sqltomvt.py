@@ -35,12 +35,19 @@ def generate_sqltomvt_query(opts):
     return generate_query(opts, "TileBBox($1, $2, $3)", "$1")
 
 
+def generate_sqltomvt_psql(opts):
+    return generate_query(opts, "TileBBox(:zoom, :x, :y)", ":zoom")
+
+
 def generate_sqltomvt_raw(opts):
     return generate_query(opts, None, None)
 
 
 def generate_query(opts, bbox, zoom):
-    tileset = Tileset.parse(opts['tileset']) if isinstance(opts['tileset'], str) else opts['tileset']
+    if isinstance(opts['tileset'], str):
+        tileset = Tileset.parse(opts['tileset'])
+    else:
+        tileset = opts['tileset']
     query_tokens = {
         'name_languages': languages_to_sql(tileset.definition.get('languages', []))
     }
@@ -50,9 +57,10 @@ def generate_query(opts, bbox, zoom):
 
     queries = []
     for layer in tileset.layers:
-        # If mask-layer is set (e.g. to 'water'), add an extra column 'IsEmpty' to each layer's result row
-        # For non-water, or for water in zoom <= mask-zoom, always set it to FALSE
-        # For zoom > mask-zoom, test if the polygon spanning the entire tile is fully within layer's geometry
+        # If mask-layer is set (e.g. to 'water'), add an extra column 'IsEmpty'
+        # to each layer's result row. For non-water, or for water in zoom <= mask-zoom,
+        # always set it to FALSE. For zoom > mask-zoom, test if the polygon spanning
+        # the entire tile is fully within layer's geometry
         if not opts['mask-layer']:
             empty_zoom = False
         elif layer["layer"]['id'] == opts['mask-layer']:
@@ -61,17 +69,18 @@ def generate_query(opts, bbox, zoom):
             empty_zoom = True
         queries.append(generate_layer(layer, query_tokens, extent, empty_zoom))
 
-    from_clause = "FROM (\n  " + "\n    UNION ALL\n  ".join(queries) + "\n) AS all_layers\n"
+    from_clause = "FROM (\n  " + \
+                  "\n    UNION ALL\n  ".join(queries) + "\n) AS all_layers\n"
 
-    # If mask-layer is set, wrap query to detect when the IsEmpty column is TRUE (for water),
-    # and there are no other rows, and if so, return nothing
+    # If mask-layer is set, wrap query to detect when the IsEmpty column
+    # is TRUE (for water), and there are no other rows, and if so, return nothing.
     if opts['mask-layer']:
         from_clause = (
-                "FROM (\n" +
-                "SELECT IsEmpty, count(*) OVER () AS LayerCount, mvtl " +
-                from_clause +
-                ") AS counter_layers\n" +
-                "HAVING BOOL_AND(NOT IsEmpty OR LayerCount <> 1)")
+            "FROM (\n" +
+            "SELECT IsEmpty, count(*) OVER () AS LayerCount, mvtl " +
+            from_clause +
+            ") AS counter_layers\n" +
+            "HAVING BOOL_AND(NOT IsEmpty OR LayerCount <> 1)")
 
     query = "SELECT STRING_AGG(mvtl, '') AS mvt " + from_clause
 
@@ -85,8 +94,10 @@ def generate_query(opts, bbox, zoom):
              .replace("!pixel_height!", str(pixel_height)))
 
     if '!scale_denominator!' in query:
-        raise ValueError('We made invalid assumption that "!scale_denominator!" is always used '
-                         'as a parameter to z() function. Either change the layer queries, or fix this code')
+        raise ValueError(
+            'We made an invalid assumption that "!scale_denominator!" is always '
+            'used as a parameter to z() function. Either change the layer queries, '
+            'or fix this code')
 
     return query
 
@@ -94,37 +105,50 @@ def generate_query(opts, bbox, zoom):
 def generate_layer(layer_def, query_tokens, extent, empty_zoom):
     """
     If empty_zoom is True, adds an extra sql column with a constant value,
-    otherwise if it is an integer, tests if the geometry of this layer covers the whole tile, and outputs true/false,
-    otherwise no extra column is added
+    otherwise if it is an integer, tests if the geometry of this layer covers the whole
+    tile, and outputs true/false, otherwise no extra column is added
     """
     layer = layer_def["layer"]
+    fields = ', '.join(layer['fields'].keys())
     buffer = layer['buffer_size']
     query = layer["datasource"]["query"].format(**query_tokens)
 
-    if query.startswith("("):
-        # Remove the first and last parenthesis and "AS t"
-        query = query[1:query.rfind(")")]
-
-    query = query.replace(
-        "geometry",
-        f"ST_AsMVTGeom(geometry, !bbox!, {extent}, {buffer}, true) AS mvtgeometry")
-
     if isinstance(empty_zoom, bool):
-        is_empty = "FALSE AS IsEmpty, " if empty_zoom else ""
+        is_empty_fld = "FALSE AS IsEmpty, " if empty_zoom else ""
+        is_empty_geom = ""
     else:
-        # Test that geometry covers the whole tile
+        # Test that geometry covers the whole tile.
+        # Create a polygon covering the whole tile without invisible margins.
         zero = 0
-        wkt_polygon = f"POLYGON(({zero} {extent},{zero} {zero},{extent} {zero},{extent} {extent},{zero} {extent}))"
-        is_empty = f"""\
+        wkt_polygon = f"""POLYGON(\
+({zero} {extent},{zero} {zero},{extent} {zero},{extent} {extent},{zero} {extent}))"""
+
+        # for zooms higher than empty_zoom test all MVT geometries
+        is_empty_geom = f"""\
 CASE z(!scale_denominator!) <= {empty_zoom} \
 WHEN TRUE THEN FALSE \
-ELSE ST_WITHIN(ST_GeomFromText('{wkt_polygon}', 3857), ST_UNION(mvtgeometry)) \
+ELSE ST_WITHIN(ST_GeomFromText('{wkt_polygon}', 3857), mvtgeometry) \
 END AS IsEmpty, """
+
+        # Aggregation of all IsEmpty fields
+        is_empty_fld = "(sum(IsEmpty::int) != 0) AS IsEmpty, "
+
+    # We assume there is a "geometry" field in addition to the ones in layer['fields']
+    # Convert geometry to a clipped MVT geometry for the given extent and buffer
+    query = f"""(\
+SELECT ST_AsMVTGeom(geometry, !bbox!, {extent}, {buffer}, true) AS mvtgeometry, \
+{fields} FROM {query}\
+) AS mvtl1"""
+
+    # Remove any NULL MVT geometries (TBD if this is required, and if needs ST_IsValid)
+    query = f"""(\
+SELECT {is_empty_geom}mvtgeometry, {fields} FROM {query} WHERE mvtgeometry is not null\
+) AS mvtl2"""
 
     # Combine all layer's features into a single MVT blob representing one layer
     # only if the MVT geometry is not NULL
     # Skip the whole layer if there is nothing in it
     return f"""\
-SELECT {is_empty}ST_AsMVT(tile, '{layer['id']}', {extent}, 'mvtgeometry') as mvtl \
-FROM ({query} WHERE ST_AsMVTGeom(geometry, !bbox!, {extent}, {buffer}, true) IS NOT NULL) AS tile \
+SELECT {is_empty_fld}ST_AsMVT(mvtl2, '{layer['id']}', {extent}, 'mvtgeometry') as mvtl \
+FROM {query} \
 HAVING COUNT(*) > 0"""

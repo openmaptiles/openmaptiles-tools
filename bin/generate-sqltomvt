@@ -4,7 +4,7 @@ This script generates a single SQL statement (either as an SQL function or as a 
 to generate a vector tile (MVT) for the given zoom and bounding box.
 
 Usage:
-  generate-sqltomvt <tileset> [--fname <name>] [--function | --prepared | --query | --raw] [--mask-layer=<layer> --mask-zoom=<z>]
+  generate-sqltomvt <tileset> [--fname <name>] [--function | --prepared | --query | --psql | --raw] [--mask-layer=<layer> --mask-zoom=<z>]
   generate-sqltomvt --help
   generate-sqltomvt --version
 
@@ -14,6 +14,7 @@ Options:
   -f --function          Generate function generation SQL [default]
   -p --prepared          Generate prepared statement SQL
   -q --query             Generate a query SQL with $1,$2,$3 meaning zoom,x,y
+  -d --psql              Generate a query SQL with :zoom,:x,:y vars to simplify PSQL debugging with  \set :zoom 5
   -r --raw               Generate raw query without any wrappers (good for debugging SQL)
   --mask-layer=<layer>   If tile only has this layer covering for the whole tile (e.g. 'water'),
                          and requested zoom is more than --mask-zoom parameter, returns empty result
@@ -39,6 +40,8 @@ if __name__ == '__main__':
         sql = generate_sqltomvt_preparer(opts)
     elif args['--query']:
         sql = generate_sqltomvt_query(opts)
+    elif args['--psql']:
+        sql = generate_sqltomvt_psql(opts)
     elif args['--raw']:
         sql = generate_sqltomvt_raw(opts)
     else:
