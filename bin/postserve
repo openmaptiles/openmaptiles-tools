@@ -66,11 +66,21 @@ if __name__ == '__main__':
 
     serve(
         port=int(args['--port']),
-        pghost=coalesce(args.get("--pghost"), os.getenv('POSTGRES_HOST'), 'localhost'),
-        pgport=coalesce(args.get("--pgport"), os.getenv('POSTGRES_PORT'), '5432'),
-        dbname=coalesce(args.get("--dbname"), os.getenv('POSTGRES_DB'), 'openmaptiles'),
-        user=coalesce(args.get("--user"), os.getenv('POSTGRES_USER'), 'openmaptiles'),
-        password=coalesce(args.get("--password"), os.getenv('POSTGRES_PASSWORD'), 'openmaptiles'),
+        pghost=coalesce(
+            args.get("--pghost"), os.getenv('POSTGRES_HOST'), os.getenv('PGHOST'),
+            'localhost'),
+        pgport=coalesce(
+            args.get("--pgport"), os.getenv('POSTGRES_PORT'), os.getenv('PGPORT'),
+            '5432'),
+        dbname=coalesce(
+            args.get("--dbname"), os.getenv('POSTGRES_DB'), os.getenv('PGDATABASE'),
+            'openmaptiles'),
+        user=coalesce(
+            args.get("--user"), os.getenv('POSTGRES_USER'), os.getenv('PGUSER'),
+            'openmaptiles'),
+        password=coalesce(
+            args.get("--password"), os.getenv('POSTGRES_PASSWORD'),
+            os.getenv('PGPASSWORD'), 'openmaptiles'),
         metadata=metadata,
         tileset_path=args['<tileset>'],
         sql_file=args.get('--file'),
