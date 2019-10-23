@@ -1,23 +1,33 @@
 from .tileset import Tileset
 
 
-def collect_sql(tileset_filename):
+def collect_sql(tileset_filename, parallel=False):
+    """If parallel is True, returns a sql value that must be executed first,
+        and a lists of sql values that can be ran in parallel.
+        If parallel is False, returns a single sql string"""
     tileset = Tileset.parse(tileset_filename)
-    sql = ''
 
     definition = tileset.definition
     languages = map(lambda l: str(l), definition.get('languages', []))
-    sql += get_slice_language_tags(languages)
+    run_first = get_slice_language_tags(languages)
+    run_last = ''  # at this point we don't have any SQL to run at the end
 
+    parallel_sql = []
     for layer in tileset.layers:
-        sql += layer_notice(layer['layer']['id'])
-        for schema in layer.schemas:
-            sql += schema
-    return sql
+        name = layer['layer']['id']
+        schemas = '\n\n'.join((v.strip() for v in layer.schemas))
+        parallel_sql.append(f"""\
+DO $$ BEGIN RAISE NOTICE 'Processing layer {name}'; END$$;
 
+{schemas}
 
-def layer_notice(layer_name):
-    return f"DO $$ BEGIN RAISE NOTICE 'Layer {layer_name}'; END$$;"
+DO $$ BEGIN RAISE NOTICE 'Finished layer {name}'; END$$;
+""")
+
+    if parallel:
+        return run_first, parallel_sql, run_last
+    else:
+        return run_first + '\n'.join(parallel_sql) + run_last
 
 
 def get_slice_language_tags(languages):

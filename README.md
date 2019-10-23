@@ -141,12 +141,14 @@ Takes a tileset definition an generates an imposm3 mapping file for importing OS
 generate-imposm3 <tileset>
 ```
 
-### Collect SQL schemas
+### Generate SQL scripts
 
-Takes a tileset definition and collects all SQL referenced in the layer definitions.
+Assembles all SQL referenced in the layer definitions into an SQL script that can be executed with psql.
+If `--dir` option  is given, generates `.sql` files that can be executed in parallel.
 
 ```
 generate-sql <tileset>
+generate-sql <tileset> --dir <outputdir>
 ```
 
 ### Generate Markdown Documentation
