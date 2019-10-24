@@ -7,6 +7,8 @@ WORKDIR /usr/src/app
 # See README
 ENV PATH="/usr/src/app:${PATH}" \
     VT_UTIL_DIR=/opt/postgis-vt-util \
+    VT_UTIL_URL="https://raw.githubusercontent.com/mapbox/postgis-vt-util/v1.0.0/postgis-vt-util.sql" \
+    VT_TILEBBOX_URL="https://raw.githubusercontent.com/mapbox/postgis-vt-util/master/src/TileBBox.sql" \
     OMT_UTIL_DIR=/usr/src/app/sql \
     SQL_DIR=/sql
 
@@ -22,9 +24,10 @@ COPY ./requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
-RUN curl -OL https://raw.githubusercontent.com/mapbox/postgis-vt-util/v1.0.0/postgis-vt-util.sql && \
+RUN curl -OL $VT_UTIL_URL && \
+    curl -OL $VT_TILEBBOX_URL && \
     mkdir -p "$VT_UTIL_DIR" && \
-    mv postgis-vt-util.sql ${VT_UTIL_DIR}/ && \
+    mv postgis-vt-util.sql TileBBox.sql ${VT_UTIL_DIR}/ && \
     mv bin/* . && \
     rm -rf bin && \
     rm requirements.txt

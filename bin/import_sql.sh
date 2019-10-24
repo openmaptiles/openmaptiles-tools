@@ -73,7 +73,7 @@ if [[ $# -eq 0 ]]; then
   fi
 
   import_all_sql_files "$OMT_UTIL_DIR"  # import language.sql
-  import_all_sql_files "$VT_UTIL_DIR"  # import postgis-vt-util.sql
+  import_all_sql_files "$VT_UTIL_DIR"  # import postgis-vt-util.sql and TileBBox.sql
   import_all_sql_files "$SQL_DIR"  # import compiled tileset.sql
 else
   exec_psql_file "$1"
