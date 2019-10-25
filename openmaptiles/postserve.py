@@ -1,13 +1,14 @@
+import asyncpg
 import logging
 import io
-import psycopg2
 import tornado.ioloop
 import tornado.web
 from datetime import datetime
+from functools import partial
 
 from openmaptiles.consts import PIXEL_SCALE
 from openmaptiles.language import languages_to_sql
-from openmaptiles.sqltomvt import generate_sqltomvt_preparer
+from openmaptiles.sqltomvt import generate_sqltomvt_query
 from openmaptiles.tileset import Tileset
 
 
@@ -23,38 +24,18 @@ class RequestHandledWithCors(tornado.web.RequestHandler):
         self.finish()
 
 
-# noinspection PyAbstractClass
 class GetTile(RequestHandledWithCors):
+    def initialize(self, pool, query):
+        self.pool = pool
+        self.query = query
 
-    # noinspection PyAttributeOutsideInit
-    def initialize(self, fname, connection, query):
-        self.fname = fname
-        self.db_connection = connection
-        self.db_query = query
-
-    def get(self, z, x, y):
-        start = datetime.utcnow()
-        elapsed = lambda: str(datetime.utcnow() - start)
-        z, x, y = int(z), int(x), int(y)
-        cursor = self.db_connection.cursor()
-        try:
-            cursor.execute(self.db_query, (z, x, y))
-            result = cursor.fetchall()
-            if result:
-                self.set_header("Content-Type", "application/x-protobuf")
-                self.set_header("Content-Disposition", "attachment")
-                value = io.BytesIO(result[0][0]).getvalue()
-                self.write(value)
-                print(f'{len(value): >8,} bytes, {elapsed(): >16},  {f"{self.fname}({z},{x},{y})"}')
-            else:
-                self.clear()
-                self.set_status(404)
-                print(f'{self.fname}({z},{x},{y}) is EMPTY, time={elapsed()}')
-        except Exception as err:
-            print(f'{self.fname}({z},{x},{y}) threw an exception, time={elapsed()}')
-            raise
-        finally:
-            cursor.close()
+    async def get(self, zoom,x,y):
+        self.set_header("Content-Type", "application/x-protobuf")
+        self.set_header("Content-Disposition", "attachment")
+        self.set_header("Access-Control-Allow-Origin", "*")
+        async with self.pool.acquire() as connection:
+            tile = await connection.fetchval(self.query, int(zoom), int(x), int(y))
+            self.write(tile)
 
 
 # noinspection PyAbstractClass
@@ -68,76 +49,63 @@ class GetMetadata(RequestHandledWithCors):
         self.write(self.metadata)
         print('Returning metadata')
 
+async def generate_metadata(pool, tileset, port, metadata):
+    async with pool.acquire() as connection:
+        # Get all Postgres types and keep those we know about (could be optimized further)
+        known_types = dict(bool="Boolean", text="String", int4="Number", int8="Number")
+        types = await connection.fetch("select oid, typname from pg_type")
+        pg_types = {row[0]: known_types[row[1]] for row in types if row[1] in known_types}
+
+        vector_layers = []
+        for layer_def in tileset.layers:
+            layer = layer_def["layer"]
+
+            # Get field names and types by executing a dummy query
+            query = (layer['datasource']['query']
+                     .format(name_languages=languages_to_sql(tileset.definition.get('languages', [])))
+                     .replace("!bbox!", "TileBBox(0, 0, 0)")
+                     .replace("z(!scale_denominator!)", "0")
+                     .replace("!pixel_width!", str(PIXEL_SCALE))
+                     .replace("!pixel_height!", str(PIXEL_SCALE)))
+            st = await connection.prepare(f"SELECT * FROM {query} WHERE false LIMIT 0")
+            fields = {fld.name: pg_types[fld.type.oid] for fld in st.get_attributes() if fld.type.oid in pg_types}
+
+            vector_layers.append(dict(
+                id=layer["id"],
+                fields=fields,
+                maxzoom=metadata["maxzoom"],
+                minzoom=metadata["minzoom"],
+                description=layer["description"],
+            ))
+
+        metadata["vector_layers"] = vector_layers
+        metadata["tiles"] = [f"http://localhost:{port}" + "/tiles/{z}/{x}/{y}.pbf"]
 
 def serve(port, pghost, pgport, dbname, user, password, metadata, tileset_path, sql_file, mask_layer, mask_zoom,
           verbose):
-    fname = 'getTile'
     tileset = Tileset.parse(tileset_path)
 
     if sql_file:
         with open(sql_file) as stream:
-            prepared_sql = stream.read()
+            query = stream.read()
         print(f'Loaded {sql_file}')
     else:
-        prepared_sql = generate_sqltomvt_preparer({
+        query = generate_sqltomvt_query({
             'tileset': tileset,
-            'fname': fname,
             'mask-layer': mask_layer,
             'mask-zoom': mask_zoom,
         })
 
-    print(f'Connecting to PostgreSQL at {pghost}:{pgport}, db={dbname}, user={user}...')
-    connection = psycopg2.connect(
-        dbname=dbname,
-        host=pghost,
-        port=pgport,
-        user=user,
-        password=password,
-    )
-    cursor = connection.cursor()
-
-    # Get all Postgres types and keep those we know about (could be optimized further)
-    known_types = dict(bool="Boolean", text="String", int4="Number", int8="Number")
-    cursor.execute("select oid, typname from pg_type")
-    pg_types = {row[0]: known_types[row[1]] for row in cursor.fetchall() if row[1] in known_types}
-
-    vector_layers = []
-    for layer_def in tileset.layers:
-        layer = layer_def["layer"]
-
-        # Get field names and types by executing a dummy query
-        query = (layer['datasource']['query']
-                 .format(name_languages=languages_to_sql(tileset.definition.get('languages', [])))
-                 .replace("!bbox!", "TileBBox(0, 0, 0)")
-                 .replace("z(!scale_denominator!)", "0")
-                 .replace("!pixel_width!", str(PIXEL_SCALE))
-                 .replace("!pixel_height!", str(PIXEL_SCALE)))
-        cursor.execute(f"SELECT * FROM {query} WHERE false LIMIT 0")
-        fields = {fld.name: pg_types[fld.type_code] for fld in cursor.description if fld.type_code in pg_types}
-
-        vector_layers.append(dict(
-            id=layer["id"],
-            fields=fields,
-            maxzoom=metadata["maxzoom"],
-            minzoom=metadata["minzoom"],
-            description=layer["description"],
-        ))
-
-    metadata["vector_layers"] = vector_layers
-    metadata["tiles"] = [f"http://localhost:{port}" + "/tiles/{z}/{x}/{y}.pbf"]
-
     if verbose:
-        print(f'Using prepared SQL:\n\n-------\n\n{prepared_sql}\n\n-------\n\n')
-
-    try:
-        cursor.execute(prepared_sql)
-    finally:
-        cursor.close()
-
-    query = f"EXECUTE {fname}(%s, %s, %s)"
-    print(f'Will use "{query}" to get vector tiles.')
+        print(f'Using SQL query:\n\n-------\n\n{query}\n\n-------\n\n')
 
     tornado.log.access_log.setLevel(logging.INFO if verbose else logging.ERROR)
+
+    dsn = 'postgresql://'+user+':'+password+'@'+pghost+':'+pgport+'/'+dbname
+
+    io_loop = tornado.ioloop.IOLoop.current()
+    pool = io_loop.run_sync(partial(asyncpg.create_pool, dsn=dsn))
+    io_loop.run_sync(partial(generate_metadata, pool=pool, tileset=tileset, port=port, metadata=metadata))
 
     application = tornado.web.Application([
         (
@@ -148,12 +116,11 @@ def serve(port, pghost, pgport, dbname, user, password, metadata, tileset_path, 
         (
             r"/tiles/([0-9]+)/([0-9]+)/([0-9]+).pbf",
             GetTile,
-            dict(fname=fname, connection=connection, query=query)
+            dict(pool=pool, query=query)
         ),
     ])
 
     application.listen(port)
     print(f"Postserve started, listening on 0.0.0.0:{port}")
     print(f"Use http://localhost:{port} as the data source")
-
     tornado.ioloop.IOLoop.instance().start()
