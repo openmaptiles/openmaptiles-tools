@@ -10,11 +10,15 @@ ENV PATH="/usr/src/app:${PATH}" \
     OMT_UTIL_DIR=/usr/src/app/sql \
     SQL_DIR=/sql
 
-RUN apt-get update \
+ARG PG_MAJOR=12
+
+RUN curl https://www.postgresql.org/media/keys/ACCC4CF8.asc | apt-key add - \
+    && echo 'deb http://apt.postgresql.org/pub/repos/apt/ buster-pgdg main $pg_major' > /etc/apt/sources.list.d/pgdg.list \
+    && apt-get update \
     && apt-get install  -y --no-install-recommends \
         graphviz \
         sqlite3 \
-        postgresql-client \
+        postgresql-client-${PG_MAJOR} \
     && rm -rf /var/lib/apt/lists/
 
 # Copy requirements.txt first to avoid pip install on every code change
