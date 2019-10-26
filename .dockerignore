@@ -2,11 +2,13 @@
 .git/
 .gitignore
 .travis.yml
+build/
 docker-run.sh
 Dockerfile
 Makefile
-testdata/
 setup.py
+testdata/
+tests/
 
 #
 #

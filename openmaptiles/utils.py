@@ -1,3 +1,7 @@
+import asyncio
+from asyncio.futures import Future
+from typing import List, Callable, Any, Dict, Awaitable
+
 from .consts import *
 
 
@@ -35,3 +39,86 @@ class Bbox:
             (self.min_lon + self.max_lon) / 2.0,
             (self.min_lat + self.max_lat) / 2.0,
             self.center_zoom)
+
+
+class Action:
+    _result: Future = None
+
+    def __init__(self, action_id: str, depends_on: List[str] = None):
+        self.action_id = action_id
+        self.depends_on = depends_on or []
+
+
+async def run_actions(actions: List[Action],
+                      executor: Callable[[Action, List[Any]], Awaitable[Any]],
+                      ignore_unknown: bool = False,
+                      verbose: bool = False):
+    """
+    Executes all actions in parallel. If action lists dependencies,
+    make sure dependent actions finish running first.
+    :param actions: list of Action objects, each action having a unique ID, and
+        with optional depends_on being an array of other action IDs that must complete
+        before this action executes. The action._result is a Future.
+        All other values will be ignored (could be used by executor).
+    :param executor: runs a single action. Must return a future or be an async func.
+        The returned is set as each action's result.
+    :param ignore_unknown ignore when dependency ID is not found in actions
+    :param verbose print additional debugging info
+    :return: all action results
+    """
+    lookup = _validate_actions(actions, ignore_unknown)
+
+    async def _run(action):
+        # noinspection PyProtectedMember
+        values = [lookup[v]._result for v in action.depends_on]
+        if values:
+            values = await asyncio.gather(*values)
+        return await executor(action, values)
+
+    # _run() doesn't execute until after this loop is done,
+    # and by that time all action results will be set.
+    for act in actions:
+        act._result = asyncio.ensure_future(_run(act))
+
+    return await asyncio.gather(*[v._result for v in actions])
+
+
+def _validate_actions(
+    actions: List[Action],
+    remove_missing_deps=False,
+    verbose=False,
+) -> Dict[str, Action]:
+    """
+    Make sure there is no infinite loop, and all IDs exist and not duplicated
+    :return dictionary of action IDs and corresponding action objects
+    """
+    lookup = {v.action_id: v for v in actions}
+    if len(lookup) < len(actions):
+        ids = [v.action_id for v in actions]
+        duplicates = "', '".join(set([v for v in ids if ids.count(v) > 1]))
+        raise ValueError(f"Found duplicate action IDs: '{duplicates}'")
+
+    pending = set(lookup.keys())
+    last_pending_count = 0
+    while len(pending) != last_pending_count:
+        last_pending_count = len(pending)
+        for action_id in list(pending):
+            action = lookup[action_id]
+            for dep in list(action.depends_on):
+                if dep not in lookup:
+                    msg = f"Action '{action.action_id}' depends " \
+                          f"on an undefined action '{dep}'"
+                    if remove_missing_deps:
+                        if verbose:
+                            print(f"{msg} [ignoring]")
+                        action.depends_on.remove(dep)
+                    else:
+                        raise ValueError(msg)
+                elif dep in pending:
+                    break
+            else:
+                pending.remove(action_id)
+    if pending:
+        raise ValueError(f"Found circular dependencies between {', '.join(pending)}")
+
+    return lookup
