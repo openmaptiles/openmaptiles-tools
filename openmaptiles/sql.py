@@ -1,3 +1,5 @@
+import re
+
 from .tileset import Tileset
 
 
@@ -15,7 +17,7 @@ def collect_sql(tileset_filename, parallel=False):
     parallel_sql = []
     for layer in tileset.layers:
         name = layer['layer']['id']
-        schemas = '\n\n'.join((v.strip() for v in layer.schemas))
+        schemas = '\n\n'.join((to_sql(v, layer) for v in layer.schemas))
         parallel_sql.append(f"""\
 DO $$ BEGIN RAISE NOTICE 'Processing layer {name}'; END$$;
 
@@ -46,3 +48,52 @@ RETURNS hstore AS $$
     SELECT delete_empty_keys(slice(tags, ARRAY[{tags_sql}]))
 $$ LANGUAGE SQL IMMUTABLE;
 """
+
+
+def to_sql(sql, layer):
+    """Clean up SQL, and perform any needed code injections"""
+    sql = sql.strip()
+
+    # Replace "%%FIELD_MAPPING: <fieldname>%%" with fields from layer definition
+    def field_map(match):
+        indent = match.group(1)
+        field = match.group(2)
+        fields = layer.definition['layer']['fields']
+        if field not in fields:
+            raise ValueError(f"Field '{field}' not found in the layer definition file")
+        if 'values' not in fields[field]:
+            raise ValueError(
+                f"Field '{field}' has no values defined in the layer definition file")
+        values = fields[field]['values']
+        if not isinstance(values, dict):
+            raise ValueError(f"Definition for {field}/values has to be a dictionary")
+        conditions = []
+        for map_to, mapping in values.items():
+            # mapping is a dictionary of input_fields -> (a value or a list of values)
+            whens = []
+            for in_fld, in_vals in mapping.items():
+                if isinstance(in_vals, str):
+                    in_vals = [in_vals]
+                if len(in_vals) == 1:
+                    expr = f"={sql_value(in_vals[0])}"
+                else:
+                    expr = f" IN ({', '.join((sql_value(v) for v in in_vals))})"
+                whens.append(f'{sql_field(in_fld)}{expr}')
+            cond = f'\n{indent}    OR '.join(whens) + \
+                   (' ' if len(whens) == 1 else f'\n{indent}    ')
+            conditions.append(f"WHEN {cond}THEN {sql_value(map_to)}")
+        return indent + f'\n{indent}'.join(conditions)
+
+    sql = re.sub(r'( *)%%\s*FIELD_MAPPING\s*:\s*([a-zA-Z0-9_-]+)\s*%%', field_map, sql)
+
+    return sql
+
+
+def sql_field(field):
+    return f'"{field}"'
+
+
+def sql_value(value):
+    if "'" not in value:
+        return f"'{value}'"
+    return "E'" + value.replace('\\', '\\\\').replace("'", "\\'") + "'"

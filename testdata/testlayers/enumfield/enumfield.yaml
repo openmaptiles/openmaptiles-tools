@@ -1,0 +1,20 @@
+layer:
+  id: enumfield
+  description: |
+    Test for converting enumfields
+  buffer_size: 0
+  fields:
+    class:
+      description: |
+        test field
+      values:
+        rock:
+          natural: ['bare_rock']
+        grass:
+          natural: 'grassland'
+          landuse: ['grass', 'meadow', 'allotments', 'grassland', 'park', 'village_green', 'recreation_ground']
+  datasource:
+    query: ''
+schema:
+  - ./enumfield.sql
+datasources: []

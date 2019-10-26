@@ -1,6 +1,7 @@
 tileset:
   layers:
     - housenumber/housenumber.yaml
+    - enumfield/enumfield.yaml
   name: TestMapTiles v1.0
   description: "Simple tileset for testing."
   attribution: "<a href=\"http://www.openstreetmap.org/about/\" target=\"_blank\">&copy; OpenStreetMap contributors</a>"

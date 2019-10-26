@@ -26,6 +26,29 @@ Layer:
     buffer-size: 8
   srs: +proj=merc +a=6378137 +b=6378137 +lat_ts=0.0 +lon_0=0.0 +x_0=0.0 +y_0=0.0 +k=1.0
     +units=m +nadgrids=@null +wktext +no_defs +over
+- Datasource:
+    dbname: pgdb
+    extent:
+    - -20037508.34
+    - -20037508.34
+    - 20037508.34
+    - 20037508.34
+    geometry_field: geometry
+    host: pghost
+    key_field: ''
+    key_field_as_attribute: ''
+    max_size: 512
+    password: pgpswd
+    port: 5432
+    srid: 900913
+    table: ''
+    type: postgis
+    user: pguser
+  id: enumfield
+  properties:
+    buffer-size: 0
+  srs: +proj=merc +a=6378137 +b=6378137 +lat_ts=0.0 +lon_0=0.0 +x_0=0.0 +y_0=0.0 +k=1.0
+    +units=m +nadgrids=@null +wktext +no_defs +over
 attribution: <a href="http://www.openstreetmap.org/about/" target="_blank">&copy;
   OpenStreetMap contributors</a>
 bounds:
