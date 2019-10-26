@@ -26,7 +26,8 @@ CREATE OR REPLACE FUNCTION map_landuse_class("natural" VARCHAR, landuse VARCHAR)
     SELECT CASE
         WHEN "natural"='bare_rock' THEN 'rock'
         WHEN "natural"='grassland'
-            OR "landuse" IN ('grass', 'meadow', 'allotments', 'grassland', 'park', 'village_green', 'recreation_ground')
+            OR "landuse" IN ('grass', 'allotments', 'grassland', 'park', 'village_green', 'recreation_ground')
+            OR "landuse" LIKE 'meadow%'
             THEN 'grass'
         ELSE NULL
 END;

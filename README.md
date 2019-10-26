@@ -97,7 +97,7 @@ layer:
           subclass: ['school','kindergarten']
         alcohol_place:
           shop: ['bar']
-          subclass: ['alcohol','beverages','wine']
+          subclass: ['alcohol','beverages','wine%']
 schema:
   - ./building.sql
 datasources:
@@ -123,7 +123,8 @@ into
 SELECT CASE
     WHEN "subclass" IN ('school', 'kindergarten') THEN 'school'
     WHEN "shop"='bar'
-        OR "subclass" IN ('alcohol','beverages','wine')
+        OR "subclass" IN ('alcohol','beverages')
+        OR "subclass" LIKE 'wine%'
         THEN 'alcohol_place'
     ELSE NULL
 END, ...
