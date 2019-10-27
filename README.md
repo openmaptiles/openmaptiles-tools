@@ -264,3 +264,6 @@ generate-sqltomvt openmaptiles.yaml > "$SQL_DIR/mvt.sql" && import_sql.sh
 
 Optionally you may pass extra arguments to `psql` by using `PSQL_OPTIONS` environment variable. For example `PSQL_OPTIONS=-a` makes psql echo all commands read from a file into stdout.
 `PSQL_OPTIONS` allows multiple arguments as well, and understands quotes, e.g. you can pass a whole query as a single argument surrounded by quotes -- `PSQL_OPTIONS="-a -c 'SELECT ...'"`
+
+### Performance optimizations
+Materialized views can be refreshed in parallel using `run-sql refresh-views` command. This could be especially useful if the `CREATE MATERIALIZED VIEW` statements had `WITH NO DATA` clause.
