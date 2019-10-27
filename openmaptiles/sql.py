@@ -97,8 +97,8 @@ def to_sql(sql, layer):
                 conditions.append(f"WHEN {cond}THEN {sql_value(map_to)}")
             else:
                 ignored.append(map_to)
-        if ignored:
-            print(f"Assuming manual SQL handling of field '{field}' values "
+        if ignored and not stderr.isatty():
+            print(f"-- Assuming manual SQL handling of field '{field}' values "
                   f"[{','.join(ignored)}] in layer {layer_def['id']}", file=stderr)
         return indent + f'\n{indent}'.join(conditions)
 
