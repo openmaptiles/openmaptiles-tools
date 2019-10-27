@@ -49,7 +49,7 @@ class GetMetadata(RequestHandledWithCors):
         self.write(self.metadata)
         print('Returning metadata')
 
-async def generate_metadata(pool, tileset, port, metadata):
+async def generate_metadata(pool, tileset, host, port, metadata):
     async with pool.acquire() as connection:
         # Get all Postgres types and keep those we know about (could be optimized further)
         known_types = dict(bool="Boolean", text="String", int4="Number", int8="Number")
@@ -79,9 +79,9 @@ async def generate_metadata(pool, tileset, port, metadata):
             ))
 
         metadata["vector_layers"] = vector_layers
-        metadata["tiles"] = [f"http://localhost:{port}" + "/tiles/{z}/{x}/{y}.pbf"]
+        metadata["tiles"] = [f"http://{host}:{port}" + "/tiles/{z}/{x}/{y}.pbf"]
 
-def serve(port, pghost, pgport, dbname, user, password, metadata, tileset_path, sql_file, mask_layer, mask_zoom,
+def serve(host, port, pghost, pgport, dbname, user, password, metadata, tileset_path, sql_file, mask_layer, mask_zoom,
           verbose):
     tileset = Tileset.parse(tileset_path)
 
@@ -105,7 +105,7 @@ def serve(port, pghost, pgport, dbname, user, password, metadata, tileset_path, 
 
     io_loop = tornado.ioloop.IOLoop.current()
     pool = io_loop.run_sync(partial(asyncpg.create_pool, dsn=dsn))
-    io_loop.run_sync(partial(generate_metadata, pool=pool, tileset=tileset, port=port, metadata=metadata))
+    io_loop.run_sync(partial(generate_metadata, pool=pool, tileset=tileset, host=host, port=port, metadata=metadata))
 
     application = tornado.web.Application([
         (
@@ -122,5 +122,5 @@ def serve(port, pghost, pgport, dbname, user, password, metadata, tileset_path, 
 
     application.listen(port)
     print(f"Postserve started, listening on 0.0.0.0:{port}")
-    print(f"Use http://localhost:{port} as the data source")
+    print(f"Use http://{host}:{port} as the data source")
     tornado.ioloop.IOLoop.instance().start()
