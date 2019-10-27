@@ -38,15 +38,15 @@ def replace_generalization_postfix(table_name):
 def merge_grouped_mappings(mappings):
     """Merge multiple mappings into a single mapping for drawing"""
     for mapping_group, mapping_value in mappings.items():
-        yield mapping_group, mapping_value['mapping']
+        yield mapping_group, mapping_value
 
 
 def find_tables(config):
     for table_name, table_value in config['tables'].items():
         fields = table_value.get('fields')
 
-        if table_value.get('mappings'):
-            mapping = list(merge_grouped_mappings(table_value['mappings']))
+        if table_value.get('type_mappings'):
+            mapping = list(merge_grouped_mappings(table_value['type_mappings']))
         else:
             mapping = table_value.get('mapping', {}).items()
 
