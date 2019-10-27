@@ -35,6 +35,10 @@ def generate_sqltomvt_query(opts):
     return generate_query(opts, "TileBBox($1, $2, $3)", "$1")
 
 
+def generate_sqltomvt_psql(opts):
+    return generate_query(opts, "TileBBox(:zoom, :x, :y)", ":zoom")
+
+
 def generate_sqltomvt_raw(opts):
     return generate_query(opts, None, None)
 
@@ -50,9 +54,10 @@ def generate_query(opts, bbox, zoom):
 
     queries = []
     for layer in tileset.layers:
-        # If mask-layer is set (e.g. to 'water'), add an extra column 'IsEmpty' to each layer's result row
-        # For non-water, or for water in zoom <= mask-zoom, always set it to FALSE
-        # For zoom > mask-zoom, test if the polygon spanning the entire tile is fully within layer's geometry
+        # If mask-layer is set (e.g. to 'water'), add an extra column 'IsEmpty'
+        # to each layer's result row. For non-water, or for water in zoom <= mask-zoom,
+        # always set it to FALSE. For zoom > mask-zoom, test if the polygon spanning
+        # the entire tile is fully within layer's geometry
         if not opts['mask-layer']:
             empty_zoom = False
         elif layer["layer"]['id'] == opts['mask-layer']:
@@ -85,8 +90,10 @@ def generate_query(opts, bbox, zoom):
              .replace("!pixel_height!", str(pixel_height)))
 
     if '!scale_denominator!' in query:
-        raise ValueError('We made invalid assumption that "!scale_denominator!" is always used '
-                         'as a parameter to z() function. Either change the layer queries, or fix this code')
+        raise ValueError(
+            'We made an invalid assumption that "!scale_denominator!" is always '
+            'used as a parameter to z() function. Either change the layer queries, '
+            'or fix this code')
 
     return query
 
@@ -94,8 +101,8 @@ def generate_query(opts, bbox, zoom):
 def generate_layer(layer_def, query_tokens, extent, empty_zoom):
     """
     If empty_zoom is True, adds an extra sql column with a constant value,
-    otherwise if it is an integer, tests if the geometry of this layer covers the whole tile, and outputs true/false,
-    otherwise no extra column is added
+    otherwise if it is an integer, tests if the geometry of this layer covers the whole
+    tile, and outputs true/false, otherwise no extra column is added
     """
     layer = layer_def["layer"]
     buffer = layer['buffer_size']
