@@ -13,7 +13,7 @@ ENV PATH="/usr/src/app:${PATH}" \
 ARG PG_MAJOR=12
 
 RUN curl https://www.postgresql.org/media/keys/ACCC4CF8.asc | apt-key add - \
-    && /bin/bash -c 'source /etc/os-release && echo "deb http://apt.postgresql.org/pub/repos/apt/ ${VERSION_CODENAME}-pgdg main $pg_major" > /etc/apt/sources.list.d/pgdg.list' \
+    && /bin/bash -c 'source /etc/os-release && echo "deb http://apt.postgresql.org/pub/repos/apt/ ${VERSION_CODENAME}-pgdg main $PG_MAJOR" > /etc/apt/sources.list.d/pgdg.list' \
     && apt-get update \
     && apt-get install  -y --no-install-recommends \
         graphviz \
