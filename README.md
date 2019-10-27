@@ -132,7 +132,11 @@ Uses tileset definition to create a PostgreSQL
  
 Use `--help` to get all parameters.
 
-**NOTE:** Current [openmaptiles/postgis](https://github.com/openmaptiles/postgis) image (v2.9 and before) has incorrect support for the [ST_AsMVT()](https://postgis.net/docs/ST_AsMVT.html). Until Postgis is updated, please use [sophox/postgis docker image](https://hub.docker.com/r/sophox/postgis) (based on the latest [mdillon/postgis:11](https://hub.docker.com/r/mdillon/postgis) base image).
+**NOTE:** Current [openmaptiles/postgis](https://github.com/openmaptiles/postgis) image (v2.9 and before) has incorrect
+ support for the [ST_AsMVT()](https://postgis.net/docs/ST_AsMVT.html). Until Postgis is updated, please use
+ [sophox/postgis docker image](https://hub.docker.com/r/sophox/postgis) (based on the latest
+ [mdillon/postgis:11](https://hub.docker.com/r/mdillon/postgis) base image). Another known bug is PostgreSQL JIT could
+ make tile generation horribly slow in PG11+, and may need to be disabled.
 
 ```
 generate-sqltomvt <tileset>
@@ -214,20 +218,24 @@ generate-tm2source <tileset> --host="localhost" --port=5432 --database="osm" --u
 # Test tiles
 
 Postserve is an OpenMapTiles map vector tile test server that dynamically generates metadata and tiles
- directly from PostgreSQL database based on the tileset file definition. Use `--help` for all parameters.
+ directly from PostgreSQL database based on the tileset file definition.
 
 ```
 postserve <tileset> ...
 ```
 
 Use `postserve <tileset>` to start serving. Use `--help` to get the list of Postgres connection parameters.
+ If you have a full planet database, you may want to use `MIN_ZOOM=6 postserve ...` to avoid accidental slow low-zoom
+ tile generation.
 
 ## Postserve quickstart with docker
 * clone [openmaptiles repo](https://github.com/openmaptiles/openmaptiles) (`openmaptiles-tools` repo is not needed with docker)
 * get a PostgreSQL server running with the openmaptiles-imported OSM data, e.g. by following quickstart guide.
 * run `docker pull openmaptiles/openmaptiles-tools` to download the latest tools version
 * from inside the openmaptiles repo dir, run this command.
-(This assumes PostgreSQL is on the localhost:5432, but if it runs inside docker, you may want to change `--net=host` to `--net=openmaptiles_postgres_conn` to match the openmaptiles quickstart, and also expose port 8090 to the host with `-p 8090:8090`)
+(This assumes PostgreSQL is on the localhost:5432, but if it runs inside docker, you may want to change
+ `--net=host` to `--net=openmaptiles_postgres_conn` to match the openmaptiles quickstart, and also expose
+  port 8090 to the host with `-p 8090:8090`)
 ```
 docker run -it --rm -u $(id -u ${USER}):$(id -g ${USER}) \
     -v "${PWD}:/tileset" --net=host \
@@ -235,9 +243,7 @@ docker run -it --rm -u $(id -u ${USER}):$(id -g ${USER}) \
     postserve openmaptiles.yaml 
 ```
 
-Add `--help` to see all additional parameters.
-
-* Run Maputnik and set its data source to `http://localhost:8090`
+* Open [Maputnik editor](https://maputnik.github.io/editor) online and change the data source to `http://localhost:8090`
 
 
 ## Importing into Postgres
