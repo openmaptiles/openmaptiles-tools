@@ -13,8 +13,8 @@ Usage:
 Options:
   --mask-layer=<layer>  If tile only has this layer covering for the whole tile (e.g. 'water'),
                         and requested zoom is more than --mask-zoom parameter, returns empty result
-  --mask-zoom=<z>       If --mask-layer is set, tiles will be checked for empty after given zoom [default: 8]
-  -s --serve=<port>     Return this hostname as tileserver URL in metadata [default: localhost]
+  --mask-zoom=<z>       If --mask-layer is set, tiles will be checked for empty after given zoom  [default: 8]
+  -s --serve=<port>     Return this hostname as tileserver URL in metadata  [default: localhost]
   -p --port=<port>      Serve on this port  [default: 8090]
   -v --verbose          Print additional debugging information
   --help                Show this screen.
