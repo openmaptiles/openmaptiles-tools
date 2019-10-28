@@ -1,9 +1,11 @@
 import logging
 from functools import partial
+from typing import Union
 
 import asyncpg
 import tornado.ioloop
 import tornado.web
+from asyncpg import Connection, ConnectionDoesNotExistError
 from asyncpg.pool import Pool
 
 from openmaptiles.consts import PIXEL_SCALE
@@ -26,18 +28,44 @@ class RequestHandledWithCors(tornado.web.RequestHandler):
 class GetTile(RequestHandledWithCors):
     pool: Pool
     query: str
+    verbose: bool
+    connection: Union[Connection, None]
+    cancelled: bool
 
-    def initialize(self, pool, query):
+    def initialize(self, pool, query, verbose):
         self.pool = pool
         self.query = query
+        self.verbose = verbose
+        self.connection = None
+        self.cancelled = False
 
     async def get(self, zoom, x, y):
         self.set_header("Content-Type", "application/x-protobuf")
         self.set_header("Content-Disposition", "attachment")
         self.set_header("Access-Control-Allow-Origin", "*")
-        async with self.pool.acquire() as connection:
-            tile = await connection.fetchval(self.query, int(zoom), int(x), int(y))
-            self.write(tile)
+        try:
+            async with self.pool.acquire() as connection:
+                self.connection = connection
+                tile = await connection.fetchval(self.query, int(zoom), int(x), int(y))
+                if tile:
+                    self.write(tile)
+                else:
+                    self.set_status(204)
+                    if self.verbose:
+                        print(f"Tile {zoom}/{x}/{y} is empty.")
+
+        except ConnectionDoesNotExistError as err:
+            if not self.cancelled:
+                raise err
+            elif self.verbose:
+                print(f"Tile request {zoom}/{x}/{y} was cancelled.")
+        finally:
+            self.connection = None
+
+    def on_connection_close(self):
+        if self.connection:
+            self.cancelled = True
+            self.connection.terminate()
 
 
 class GetMetadata(RequestHandledWithCors):
@@ -124,7 +152,7 @@ def serve(host, port, pghost, pgport, dbname, user, password, metadata, tileset_
         (
             r"/tiles/([0-9]+)/([0-9]+)/([0-9]+).pbf",
             GetTile,
-            dict(pool=pool, query=query)
+            dict(pool=pool, query=query, verbose=verbose)
         ),
     ])
 
