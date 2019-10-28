@@ -88,11 +88,46 @@ layer:
     query: (SELECT geometry FROM layer_building(!bbox!, z(!scale_denominator!))) AS t
   fields:
     render_height: An approximated height from levels and height of building.
+    class:
+      description: Defines a subclass of a building (one of the known values).
+      # Values can be either a list of strings, or a dictionary
+      # Dictionary defines mapping of OSM values to the OMT field value
+      values:
+        school:
+          subclass: ['school','kindergarten']
+        alcohol_place:
+          shop: ['bar']
+          subclass: ['alcohol','beverages','wine%']
 schema:
   - ./building.sql
 datasources:
   - type: imposm3
     mapping_file: ./mapping.yaml
+```
+
+For the well known values (enums), the `fields` section can also contain the mapping of the input (OSM) values.
+The above example has two output fields - `render_height` and `class`. The `class` field could be one of the predefined
+values. An object would have `class=school` if the OSM object has `subclass` either `school` or `kindergarten`.
+An object would have `class=alcohol_place` if it either has `shop=bar` or `subclass` having one of the 3 values.
+
+If a layer SQL files contains `%%FIELD_MAPPING: class%%`, `generate-sql` script will replace it
+
+```sql
+SELECT CASE
+    %%FIELD_MAPPING: class%%
+    ELSE NULL
+END, ...
+```
+into
+```sql
+SELECT CASE
+    WHEN "subclass" IN ('school', 'kindergarten') THEN 'school'
+    WHEN "shop"='bar'
+        OR "subclass" IN ('alcohol','beverages')
+        OR "subclass" LIKE 'wine%'
+        THEN 'alcohol_place'
+    ELSE NULL
+END, ...
 ```
 
 ### Define your own Tileset

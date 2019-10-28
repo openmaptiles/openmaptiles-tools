@@ -1,0 +1,24 @@
+layer:
+  id: enumfield
+  description: |
+    Test for converting enumfields
+  buffer_size: 0
+  fields:
+    class:
+      description: |
+        test field
+      values:
+        rock:
+          natural: ['bare_rock']
+        grass:
+          natural: 'grassland'
+          # Anything with % should use 'LIKE' instead of equality
+          landuse: ['grass', 'meadow%', 'allotments', 'grassland', 'park', 'village_green', 'recreation_ground']
+        # These options are not auto-generated
+        other1: {}
+        other2: false
+  datasource:
+    query: ''
+schema:
+  - ./enumfield.sql
+datasources: []
