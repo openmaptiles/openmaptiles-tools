@@ -47,7 +47,13 @@ class GetTile(RequestHandledWithCors):
             async with self.pool.acquire() as connection:
                 self.connection = connection
                 tile = await connection.fetchval(self.query, int(zoom), int(x), int(y))
-                self.write(tile)
+                if tile:
+                    self.write(tile)
+                else:
+                    self.set_status(204)
+                    if self.verbose:
+                        print(f"Tile {zoom}/{x}/{y} is empty.")
+
         except ConnectionDoesNotExistError as err:
             if not self.cancelled:
                 raise err
