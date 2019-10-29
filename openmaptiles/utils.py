@@ -1,5 +1,6 @@
 import asyncio
 from asyncio.futures import Future
+from datetime import timedelta
 from typing import List, Callable, Any, Dict, Awaitable
 
 from .consts import *
@@ -122,3 +123,11 @@ def _validate_actions(
         raise ValueError(f"Found circular dependencies between {', '.join(pending)}")
 
     return lookup
+
+
+def round_td(delta: timedelta):
+    """Round timedelta by microseconds"""
+    diff = delta.microseconds
+    if diff >= 1000000 / 2:
+        diff = 1000000 - diff
+    return delta - timedelta(microseconds=diff)

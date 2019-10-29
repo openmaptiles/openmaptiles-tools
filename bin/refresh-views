@@ -3,25 +3,26 @@
 Refresh all PostgreSQL materialized views in parallel, taking into account cross-dependencies.
 
 Usage:
-  run-sql refresh-views [--parallel=<count>] [--schema=<schema>]
-          [--pghost=<host>] [--pgport=<port>] [--dbname=<db>]
-          [--user=<user>] [--password=<password>] [--verbose]
-  run-sql --help
-  run-sql --version
+  refresh-views [--parallel=<count>] [--schema=<schema>]
+  refresh-views --help
+  refresh-views --version
 
 Options:
   -p --parallel=<count> Run up to this many parallel queries at the same time  [default: 4].
   -s --schema=<schema>  Limit refreshes to a single schema.
+  -v --verbose          Print additional debugging information.
+  --help                Show this screen.
+  --version             Show version.
+
+PostgreSQL Connection Options:
   -h --pghost=<host>    Postgres hostname. By default uses PGHOST env or "localhost" if not set.
   -P --pgport=<port>    Postgres port. By default uses PGPORT env or "5432" if not set.
   -d --dbname=<db>      Postgres db name. By default uses PGDATABASE env or "openmaptiles" if not set.
   -U --user=<user>      Postgres user. By default uses PGUSER env or "openmaptiles" if not set.
   --password=<password> Postgres password. By default uses PGPASSWORD env or "openmaptiles" if not set.
-  -v --verbose          Print additional debugging information.
-  --help                Show this screen.
-  --version             Show version.
 
-  These legacy env vars should not be used, but they are still supported:
+Postgres
+  These legacy environment variables should not be used, but they are still supported:
      POSTGRES_HOST, POSTGRES_PORT, POSTGRES_DB, POSTGRES_USER, POSTGRES_PASSWORD
 """
 import asyncio
