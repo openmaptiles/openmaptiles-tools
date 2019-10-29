@@ -5,12 +5,14 @@ This is a simple vector tile server that returns a PBF tile for  /tiles/{z}/{x}/
 Usage:
   postserve <tileset> [--mask-layer=<layer> --mask-zoom=<z>] [--serve=<host>] [--port=<port>] [--file=<sql-file>] [--verbose]
                       [--pghost=<host>] [--pgport=<port>] [--dbname=<db>] [--user=<user>] [--password=<password>]
+                      [--layer=<layer>]...
   postserve --help
   postserve --version
 
   <tileset>             Tileset definition yaml file
 
 Options:
+  -l --layer=<layer>    If set, limit tile generation to just this layer (could be multiple)
   --mask-layer=<layer>  If tile only has this layer covering for the whole tile (e.g. 'water'),
                         and requested zoom is more than --mask-zoom parameter, returns empty result
   --mask-zoom=<z>       If --mask-layer is set, tiles will be checked for empty after given zoom  [default: 8]
@@ -36,7 +38,7 @@ Additional ENV variables:
 from docopt import docopt
 import os.path
 import openmaptiles
-from openmaptiles.postserve import serve
+from openmaptiles.postserve import Postserve
 from openmaptiles.utils import Bbox, coalesce
 from openmaptiles.consts import *
 
@@ -65,7 +67,7 @@ if __name__ == '__main__':
         mask_zoom = int(args['--mask-zoom'])
         metadata['maskLevel'] = mask_zoom
 
-    serve(
+    Postserve(
         host=args['--serve'],
         port=int(args['--port']),
         pghost=coalesce(
@@ -84,9 +86,10 @@ if __name__ == '__main__':
             args.get("--password"), os.getenv('POSTGRES_PASSWORD'),
             os.getenv('PGPASSWORD'), 'openmaptiles'),
         metadata=metadata,
+        layers=args['--layer'],
         tileset_path=args['<tileset>'],
         sql_file=args.get('--file'),
         mask_layer=mask_layer,
         mask_zoom=mask_zoom,
         verbose=args.get('--verbose'),
-    )
+    ).serve()

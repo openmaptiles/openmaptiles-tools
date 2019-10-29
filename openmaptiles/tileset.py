@@ -72,6 +72,20 @@ class Layer(object):
         else:
             raise KeyError
 
+    def get_fields(self):
+        layer = self['layer']
+        datasource = layer['datasource']
+        layer_fields = list(layer['fields'].keys())
+        geo_fld = datasource['geometry'] if 'geometry' in datasource else 'geometry'
+        osm_fld = datasource['key_field'] if 'key_field' in datasource else False
+        if geo_fld in layer_fields:
+            raise ValueError(
+                f"Layer '{layer['id']}' must not have the implicit 'geometry' field "
+                f"declared in the 'fields' section of the yaml file")
+        if osm_fld:
+            layer_fields.append(osm_fld)
+        return layer_fields, geo_fld
+
 
 class Tileset(object):
     @staticmethod

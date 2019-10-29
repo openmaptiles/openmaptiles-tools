@@ -9,8 +9,8 @@ from asyncpg import Connection, ConnectionDoesNotExistError
 from asyncpg.pool import Pool
 
 from openmaptiles.consts import PIXEL_SCALE
-from openmaptiles.language import languages_to_sql
-from openmaptiles.sqltomvt import generate_sqltomvt_query
+from openmaptiles.language import languages_to_sql, language_codes_to_names
+from openmaptiles.sqltomvt import MvtGenerator
 from openmaptiles.tileset import Tileset
 
 
@@ -46,7 +46,12 @@ class GetTile(RequestHandledWithCors):
         try:
             async with self.pool.acquire() as connection:
                 self.connection = connection
-                tile = await connection.fetchval(self.query, int(zoom), int(x), int(y))
+                query = self.query
+                zoom, x, y = int(zoom), int(x), int(y)
+                if self.verbose:
+                    # Make it easier to track queries in pg_stat_activity table
+                    query = f"/* {zoom}/{x}/{y} */ " + query
+                tile = await connection.fetchval(query, zoom, x, y)
                 if tile:
                     self.write(tile)
                 else:
@@ -79,84 +84,132 @@ class GetMetadata(RequestHandledWithCors):
         print('Returning metadata')
 
 
-async def generate_metadata(pool, tileset, host, port, metadata):
-    async with pool.acquire() as connection:
-        # Get all Postgres types and keep those we know about
-        known_types = dict(bool="Boolean", text="String", int4="Number", int8="Number")
-        types = await connection.fetch("select oid, typname from pg_type")
-        pg_types = {row[0]: known_types[row[1]] for row in types if
-                    row[1] in known_types}
+class Postserve:
+    known_types = dict(bool="Boolean", text="String", int4="Number", int8="Number")
+    pool: Pool
 
-        vector_layers = []
-        for layer_def in tileset.layers:
-            layer = layer_def["layer"]
+    def __init__(self, host, port, pghost, pgport, dbname, user, password, metadata,
+                 layers, tileset_path, sql_file, mask_layer, mask_zoom, verbose):
+        self.host = host
+        self.port = port
+        self.pghost = pghost
+        self.pgport = pgport
+        self.dbname = dbname
+        self.user = user
+        self.password = password
+        self.metadata = metadata
+        self.layers = layers
+        self.tileset_path = tileset_path
+        self.sql_file = sql_file
+        self.mask_layer = mask_layer
+        self.mask_zoom = mask_zoom
+        self.verbose = verbose
 
-            # Get field names and types by executing a dummy query
-            langs = languages_to_sql(tileset.definition.get('languages', []))
-            query = (layer['datasource']['query']
-                     .format(name_languages=langs)
-                     .replace("!bbox!", "TileBBox(0, 0, 0)")
-                     .replace("z(!scale_denominator!)", "0")
-                     .replace("!pixel_width!", str(PIXEL_SCALE))
-                     .replace("!pixel_height!", str(PIXEL_SCALE)))
-            st = await connection.prepare(f"SELECT * FROM {query} WHERE false LIMIT 0")
+        self.tileset = Tileset.parse(self.tileset_path)
+
+    async def generate_metadata(self):
+        async with self.pool.acquire() as connection:
+            # Get all Postgres types and keep those we know about
+            types = await connection.fetch("select oid, typname from pg_type")
+            pg_types = {row[0]: self.known_types[row[1]] for row in types
+                        if row[1] in self.known_types}
+
+            vector_layers = []
+            for layer_def in self.tileset.layers:
+                layer = layer_def["layer"]
+
+                # Get field names and types by executing a dummy query
+                query = layer['datasource']['query']
+                if '{name_languages}' in query:
+                    languages = self.tileset.definition.get('languages', [])
+                else:
+                    languages = False
+                if languages:
+                    query = query.format(name_languages=languages_to_sql(languages))
+                query = (query
+                         .replace("!bbox!", "TileBBox(0, 0, 0)")
+                         .replace("z(!scale_denominator!)", "0")
+                         .replace("!pixel_width!", str(PIXEL_SCALE))
+                         .replace("!pixel_height!", str(PIXEL_SCALE)))
+                st = await connection.prepare(
+                    f"SELECT * FROM {query} WHERE false LIMIT 0")
+
+                query_fields = {v.name for v in st.get_attributes()}
+                layer_fields, geometry_field = layer_def.get_fields()
+                if languages:
+                    layer_fields += language_codes_to_names(languages)
+                layer_fields = set(layer_fields)
+
+                if geometry_field not in query_fields:
+                    raise ValueError(f"Layer '{layer['id']}' query does not generate "
+                                     f"expected 'geometry' field")
+                query_fields.remove(geometry_field)
+
+                if layer_fields != query_fields:
+                    same = layer_fields.intersection(query_fields)
+                    layer_fields -= same
+                    query_fields -= same
+                    error = f"Declared fields in layer '{layer['id']}' do not match " \
+                            f"the fields received from a query:\n"
+                    if layer_fields:
+                        error += f"  These fields were declared, but not returned by " \
+                                 f"the query: {', '.join(layer_fields)}"
+                    if query_fields:
+                        error += f"  These fields were returned by the query, " \
+                                 f"but not declared: {', '.join(query_fields)}"
+                    raise ValueError(error)
+
             fields = {fld.name: pg_types[fld.type.oid]
                       for fld in st.get_attributes() if fld.type.oid in pg_types}
-
             vector_layers.append(dict(
                 id=layer["id"],
                 fields=fields,
-                maxzoom=metadata["maxzoom"],
-                minzoom=metadata["minzoom"],
+                maxzoom=self.metadata["maxzoom"],
+                minzoom=self.metadata["minzoom"],
                 description=layer["description"],
             ))
 
-        metadata["vector_layers"] = vector_layers
-        metadata["tiles"] = [f"http://{host}:{port}" + "/tiles/{z}/{x}/{y}.pbf"]
+        self.metadata["vector_layers"] = vector_layers
+        self.metadata["tiles"] = [
+            f"http://{self.host}:{self.port}" + "/tiles/{z}/{x}/{y}.pbf",
+        ]
 
+    def serve(self):
+        if self.sql_file:
+            with open(self.sql_file) as stream:
+                query = stream.read()
+            print(f'Loaded {self.sql_file}')
+        else:
+            mvt = MvtGenerator(self.tileset, self.mask_layer, self.mask_zoom,
+                               layer_ids=self.layers)
+            query = mvt.generate_sqltomvt_query()
 
-def serve(host, port, pghost, pgport, dbname, user, password, metadata, tileset_path,
-          sql_file, mask_layer, mask_zoom, verbose):
-    tileset = Tileset.parse(tileset_path)
+        if self.verbose:
+            print(f'Using SQL query:\n\n-------\n\n{query}\n\n-------\n\n')
 
-    if sql_file:
-        with open(sql_file) as stream:
-            query = stream.read()
-        print(f'Loaded {sql_file}')
-    else:
-        query = generate_sqltomvt_query({
-            'tileset': tileset,
-            'mask-layer': mask_layer,
-            'mask-zoom': mask_zoom,
-        })
+        tornado.log.access_log.setLevel(logging.INFO if self.verbose else logging.ERROR)
 
-    if verbose:
-        print(f'Using SQL query:\n\n-------\n\n{query}\n\n-------\n\n')
+        dsn = f"postgresql://{self.user}:{self.password}@" \
+              f"{self.pghost}:{self.pgport}/{self.dbname}"
 
-    tornado.log.access_log.setLevel(logging.INFO if verbose else logging.ERROR)
+        io_loop = tornado.ioloop.IOLoop.current()
+        self.pool = io_loop.run_sync(partial(asyncpg.create_pool, dsn=dsn))
+        io_loop.run_sync(partial(self.generate_metadata))
 
-    dsn = f"postgresql://{user}:{password}@{pghost}:{pgport}/{dbname}"
+        application = tornado.web.Application([
+            (
+                r"/",
+                GetMetadata,
+                dict(metadata=self.metadata)
+            ),
+            (
+                r"/tiles/([0-9]+)/([0-9]+)/([0-9]+).pbf",
+                GetTile,
+                dict(pool=self.pool, query=query, verbose=self.verbose)
+            ),
+        ])
 
-    io_loop = tornado.ioloop.IOLoop.current()
-    pool = io_loop.run_sync(partial(asyncpg.create_pool, dsn=dsn))
-    io_loop.run_sync(
-        partial(generate_metadata, pool=pool, tileset=tileset, host=host, port=port,
-                metadata=metadata))
-
-    application = tornado.web.Application([
-        (
-            r"/",
-            GetMetadata,
-            dict(metadata=metadata)
-        ),
-        (
-            r"/tiles/([0-9]+)/([0-9]+)/([0-9]+).pbf",
-            GetTile,
-            dict(pool=pool, query=query, verbose=verbose)
-        ),
-    ])
-
-    application.listen(port)
-    print(f"Postserve started, listening on 0.0.0.0:{port}")
-    print(f"Use http://{host}:{port} as the data source")
-    tornado.ioloop.IOLoop.instance().start()
+        application.listen(self.port)
+        print(f"Postserve started, listening on 0.0.0.0:{self.port}")
+        print(f"Use http://{self.host}:{self.port} as the data source")
+        tornado.ioloop.IOLoop.instance().start()
