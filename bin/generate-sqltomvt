@@ -25,27 +25,26 @@ Options:
 """
 from docopt import docopt
 import openmaptiles
-from openmaptiles.sqltomvt import *
+from openmaptiles.sqltomvt import MvtGenerator
 
 if __name__ == '__main__':
     args = docopt(__doc__, version=openmaptiles.__version__)
-    opts = {
-        'tileset': args['<tileset>'],
-        'fname': args['--fname'],
-        'mask-layer': args['--mask-layer'],
-        'mask-zoom': int(args['--mask-zoom']),
-    }
+    mvt = MvtGenerator(
+        tileset=args['<tileset>'],
+        mask_layer=args['--mask-layer'],
+        mask_zoom=int(args['--mask-zoom']),
+    )
 
     if args['--prepared']:
-        sql = generate_sqltomvt_preparer(opts)
+        sql = mvt.generate_sqltomvt_preparer(args['--fname'])
     elif args['--query']:
-        sql = generate_sqltomvt_query(opts)
+        sql = mvt.generate_sqltomvt_query()
     elif args['--psql']:
-        sql = generate_sqltomvt_psql(opts)
+        sql = mvt.generate_sqltomvt_psql()
     elif args['--raw']:
-        sql = generate_sqltomvt_raw(opts)
+        sql = mvt.generate_sqltomvt_raw()
     else:
         # --function or default
-        sql = generate_sqltomvt_func(opts)
+        sql = mvt.generate_sqltomvt_func(args['--fname'])
 
     print(sql)

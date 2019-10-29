@@ -1,7 +1,12 @@
 def languages_to_sql(languages):
-    name_languages = list(map(lambda l: "NULLIF(tags->'name:" + l + "', '') AS \"name:" + l + "\"", languages))
-    name_languages.append("NULLIF(tags->'name_int', '') AS \"name_int\"")
-    name_languages.append("NULLIF(tags->'name:latin', '') AS \"name:latin\"")
-    name_languages.append("NULLIF(tags->'name:nonlatin', '') AS \"name:nonlatin\"")
-    name_languages = ', '.join(name_languages)
-    return name_languages
+    return ', '.join(languages_as_fields(languages))
+
+
+def languages_as_fields(languages):
+    return [f"NULLIF(tags->'{l}', '') AS \"{l}\"" for l in
+            language_codes_to_names(languages)]
+
+
+def language_codes_to_names(languages):
+    return [f"name:{lang}" for lang in languages] + \
+           ['name_int', 'name:latin', 'name:nonlatin']
