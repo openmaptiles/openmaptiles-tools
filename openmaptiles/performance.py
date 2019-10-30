@@ -104,7 +104,6 @@ class PerfTester:
         self.summary = summary
         self.buckets = buckets
         self.verbose = verbose
-        self.tty_width = shutil.get_terminal_size((100, 20)).columns
 
         for test in tests:
             if test not in self.TEST_CASES:
@@ -118,6 +117,11 @@ class PerfTester:
             for test in tests:
                 for z in zooms:
                     self.tests.append(self.create_testcase(test, z, layer or layers))
+
+        width = shutil.get_terminal_size((100, 20)).columns
+        self.bytes_graph = Pyasciigraph(human_readable='cs', float_format='{:,.1f}',
+                                        line_length=width)
+        self.speed_graph = Pyasciigraph(float_format='{:,.1f}', line_length=width)
 
     async def run(self):
         print(f'Connecting to PostgreSQL at {self.pghost}:{self.pgport}, '
@@ -154,12 +158,12 @@ class PerfTester:
                     f"per tile at z{z}, {info}",
                     float(tile_sizes[z]) / tile_counts[z]))
             if len(speed_data) > 1:
-                graph = Pyasciigraph(line_length=self.tty_width)
-                for line in graph.graph(f"Per-zoom generation speed", speed_data):
+                for line in self.speed_graph.graph(f"Per-zoom generation speed",
+                                                   speed_data):
                     print(line)
                 print()
-                graph = Pyasciigraph(human_readable='cs', line_length=self.tty_width)
-                for line in graph.graph(f"Per-zoom average tile sizes", size_data):
+                for line in self.bytes_graph.graph(f"Per-zoom average tile sizes",
+                                                   size_data):
                     print(line)
                 print()
 
@@ -251,7 +255,7 @@ generate_series(CAST($4 as int), CAST($5 as int)) AS yval(y);
         for i in range(buckets):
             frm = results[first[i]]
             utl = results[last[i]]
-            info = f"avg B/tile, {frm[1]:,} B ({'/'.join(map(str, frm[0]))}) .. " \
+            info = f"avg tile size, {frm[1]:,} B ({'/'.join(map(str, frm[0]))}) — " \
                    f"{utl[1]:,} B ({'/'.join(map(str, utl[0]))})"
             data.append((info, (round(sums[i] / (last[i] - first[i] + 1), 1))))
 
@@ -259,10 +263,9 @@ generate_series(CAST($4 as int), CAST($5 as int)) AS yval(y);
             print(f"Query returned no data after {test.duration}")
             return
 
-        graph = Pyasciigraph(line_length=self.tty_width)
         header = f"Tile size distribution for {tile_count:,} generated tiles " \
                  f"({tile_count / buckets:.0f} per line) generated in " \
                  f"{round_td(test.duration)} " \
                  f"({tile_count / test.duration.total_seconds():,.1f} tiles/s)"
-        for line in graph.graph(header, data):
+        for line in self.bytes_graph.graph(header, data):
             print(line)
