@@ -251,7 +251,7 @@ generate_series(CAST($4 as int), CAST($5 as int)) AS yval(y);
         for i in range(buckets):
             frm = results[first[i]]
             utl = results[last[i]]
-            info = f"avg per tile, {frm[1]:,} ({'/'.join(map(str, frm[0]))}) ‥ " \
+            info = f"avg per tile, {frm[1]:,} ({'/'.join(map(str, frm[0]))}) .. " \
                    f"{utl[1]:,} ({'/'.join(map(str, utl[0]))})"
             data.append((info, (round(sums[i] / (last[i] - first[i] + 1), 1))))
 
