@@ -3,7 +3,7 @@
 This is a Docker image to import centered linestrings for labelling OpenStreetMap lakes from the [osm-lakelines](https://github.com/lukasmartinelli/osm-lakelines) repo.
 ## Usage
 
-Provide the database credentials and run `import-water`.
+Provide the database credentials and run `import-lakelines`.
 
 ```bash
 docker run --rm \
