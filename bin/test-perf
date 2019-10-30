@@ -6,7 +6,6 @@ Usage:
   test-perf <tileset> [--test=<set>]... [--layer=<layer>]... [--per-layer] [--summary]
               ([--zoom=<zoom>]... | [--minzoom=<min>] [--maxzoom=<max>])
               [--buckets=<count>] [--verbose]
-
   test-perf --help
   test-perf --version
 

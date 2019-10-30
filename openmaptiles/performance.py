@@ -26,6 +26,7 @@ class TestCase:
     layers: str = None
     query: str = None
     duration: timedelta = None
+    bytes: int = 0
 
     def __post_init__(self):
         assert self.id and self.desc
@@ -69,15 +70,25 @@ class TestCase:
 class PerfTester:
     # All test cases are defined on z14 by default. Second x,y pair is exclusive.
     # ATTENTION: Do not change tile ranges once they are published
+    # Use this site to get tile coordinates (use Google's variant)
+    # https://www.maptiler.com/google-maps-coordinates-tile-bounds-projection/
     TEST_CASES: Dict[str, TestCase] = {v.id: v for v in [
-        TestCase(
-            'null',
-            'Empty set, useful for query validation.',
-            (0, 0), (0, 0)),  # DO NOT CHANGE THESE COORDINATES
         TestCase(
             'us-across',
             'A line from Pacific ocean across US via New York and some Atlantic ocean',
             (2490, 6158), (4851, 6159)),  # DO NOT CHANGE THESE COORDINATES
+        TestCase(
+            'eu-prague',
+            'A region around Prague, CZ',
+            (8832, 5536), (8863, 5567)),  # DO NOT CHANGE THESE COORDINATES
+        TestCase(
+            'ocean',
+            'Ocean tiles without much content',
+            (8065, 8065), (8302, 8101)),  # DO NOT CHANGE THESE COORDINATES
+        TestCase(
+            'null',
+            'Empty set, useful for query validation.',
+            (0, 0), (0, 0)),  # DO NOT CHANGE THESE COORDINATES
     ]}
 
     def __init__(self, tileset: str, tests: List[str], layers: List[str],
@@ -125,26 +136,39 @@ class PerfTester:
         if len(zooms) > 1:
             zooms.sort()
             durations = defaultdict(timedelta)
+            tile_sizes = defaultdict(int)
             tile_counts = defaultdict(int)
             for res in self.tests:
                 durations[res.zoom] += res.duration
+                tile_sizes[res.zoom] += res.bytes
                 tile_counts[res.zoom] += res.size()
-            data = []
+            speed_data = []
+            size_data = []
             for z in zooms:
-                info = f"tiles/s at z{z}, {tile_counts[z]:,} total tiles in " \
+                info = f"{tile_counts[z]:,} total tiles in " \
                        f"{round_td(durations[z])}"
-                data.append(
-                    (info, float(tile_counts[z]) / durations[z].total_seconds()))
-            if len(data) > 1:
+                speed_data.append((
+                    f"tiles/s at z{z}, {info}",
+                    float(tile_counts[z]) / durations[z].total_seconds()))
+                size_data.append((
+                    f"per tile at z{z}, {info}",
+                    float(tile_sizes[z]) / tile_counts[z]))
+            if len(speed_data) > 1:
                 graph = Pyasciigraph(line_length=self.tty_width)
-                for line in graph.graph(f"Per-zoom summary statistics:", data):
+                for line in graph.graph(f"Per-zoom generation speed", speed_data):
+                    print(line)
+                print()
+                graph = Pyasciigraph(human_readable='cs', line_length=self.tty_width)
+                for line in graph.graph(f"Per-zoom average tile sizes", size_data):
                     print(line)
                 print()
 
         total_duration = reduce(lambda a, b: a + b, (v.duration for v in self.tests))
-        total_size = reduce(lambda a, b: a + b, (v.size() for v in self.tests))
-        print(f"Generated {total_size:,} tiles in {round_td(total_duration)}, "
-              f"{total_size / total_duration.total_seconds():,.1f} tiles/s")
+        total_tiles = reduce(lambda a, b: a + b, (v.size() for v in self.tests))
+        total_bytes = reduce(lambda a, b: a + b, (v.bytes for v in self.tests))
+        print(f"Generated {total_tiles:,} tiles in {round_td(total_duration)}, "
+              f"{total_tiles / total_duration.total_seconds():,.1f} tiles/s, "
+              f"{total_bytes / total_tiles:,.1f} bytes per tiles.")
 
     def create_testcase(self, test, zoom, layers):
         mvt = MvtGenerator(self.tileset, layer_ids=layers)
@@ -191,16 +215,17 @@ generate_series(CAST($4 as int), CAST($5 as int)) AS yval(y);
         ]
         start = datetime.utcnow()
         if self.summary:
-            results = await conn.fetchval(*args)
+            test.bytes = await conn.fetchval(*args)
         else:
             for row in await conn.fetch(*args):
                 results.append(((row['z'], row['x'], row['y']), row['len']))
+                test.bytes += row['len']
         test.duration = datetime.utcnow() - start
 
         if self.summary:
             size = test.size()
             print(f"Generated {size:,} tiles in {round_td(test.duration)}, "
-                  f"average {float(results) / size if size else 0:,.1f} bytes/tile, "
+                  f"average {float(test.bytes) / size if size else 0:,.1f} bytes/tile, "
                   f"{size / test.duration.total_seconds():,.1f} tiles/s")
             return
 
@@ -215,7 +240,7 @@ generate_series(CAST($4 as int), CAST($5 as int)) AS yval(y);
         last = [buckets + 1] * buckets
         last_ind = -1
         for ind, val in enumerate(results):
-            i = int(ind / ceil(tile_count / buckets))
+            i = int(float(ind) / tile_count * buckets)
             sums[i] += val[1]
             last[i] = ind
             if last_ind != i:
@@ -226,7 +251,7 @@ generate_series(CAST($4 as int), CAST($5 as int)) AS yval(y);
         for i in range(buckets):
             frm = results[first[i]]
             utl = results[last[i]]
-            info = f"{frm[1]:,} ({'/'.join(map(str, frm[0]))}) ‥ " \
+            info = f"avg per tile, {frm[1]:,} ({'/'.join(map(str, frm[0]))}) ‥ " \
                    f"{utl[1]:,} ({'/'.join(map(str, utl[0]))})"
             data.append((info, (round(sums[i] / (last[i] - first[i] + 1), 1))))
 
