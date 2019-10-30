@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from datetime import timedelta, datetime
 from functools import reduce
 from math import ceil
-from typing import Tuple, Dict, List
+from typing import Tuple, Dict, List, Callable, Any
 
 import asyncpg
 from ascii_graph import Pyasciigraph
@@ -52,19 +52,21 @@ class TestCase:
         if self.size() > 0:
             pos = f" [{self.start[0]}/{self.start[1]}]" \
                   f"x[{self.before[0] - 1}/{self.before[1] - 1}]"
-        res = f"* {self.id:10} {self.desc} ({self.size():,} tiles at z{self.zoom}{pos})"
-        return res
+        return f"* {self.id:10} {self.desc} ({self.size():,} " \
+               f"tiles at z{self.zoom}{pos})"
 
     def format(self) -> str:
+        return f"{self.fmt_layers()} test '{self.id}' at zoom {self.zoom} " \
+               f"({self.size():,} tiles) - {self.desc}"
+
+    def fmt_layers(self):
         if self.layers:
             if len(self.layers) == 1:
-                layers = f"layer {self.layers[0]}"
+                return f"layer {self.layers[0]}"
             else:
-                layers = f"layers [{','.join(self.layers)}]"
+                return f"layers [{','.join(self.layers)}]"
         else:
-            layers = 'all layers'
-        return f"{layers} test '{self.id}' at zoom {self.zoom} " \
-               f"({self.size():,} tiles) - {self.desc}"
+            return 'all layers'
 
 
 class PerfTester:
@@ -104,6 +106,7 @@ class PerfTester:
         self.summary = summary
         self.buckets = buckets
         self.verbose = verbose
+        self.per_layer = per_layer
 
         for test in tests:
             if test not in self.TEST_CASES:
@@ -111,17 +114,20 @@ class PerfTester:
                 raise DocoptExit(f"Test '{test}' is not defined. "
                                  f"Available tests are:\n{cases}\n")
         if per_layer and not layers:
-            layers = [l["layer"]['id'] for l in self.tileset.layers]
+            layers = [[l["layer"]['id']] for l in self.tileset.layers]
         self.tests = []
         for layer in (layers if per_layer else [None]):
             for test in tests:
                 for z in zooms:
                     self.tests.append(self.create_testcase(test, z, layer or layers))
 
-        width = shutil.get_terminal_size((100, 20)).columns
-        self.bytes_graph = Pyasciigraph(human_readable='cs', float_format='{:,.1f}',
-                                        line_length=width)
-        self.speed_graph = Pyasciigraph(float_format='{:,.1f}', line_length=width)
+        common = dict(
+            float_format='{:,.1f}',
+            min_graph_length=20,
+            line_length=shutil.get_terminal_size((100, 20)).columns
+        )
+        self.bytes_graph = Pyasciigraph(**common, human_readable='cs')
+        self.speed_graph = Pyasciigraph(**common)
 
     async def run(self):
         print(f'Connecting to PostgreSQL at {self.pghost}:{self.pgport}, '
@@ -136,36 +142,9 @@ class PerfTester:
                     await self.run_test(conn, testcase)
 
         print(f"\n\n================ SUMMARY ================")
-        zooms = list({v.zoom for v in self.tests})
-        if len(zooms) > 1:
-            zooms.sort()
-            durations = defaultdict(timedelta)
-            tile_sizes = defaultdict(int)
-            tile_counts = defaultdict(int)
-            for res in self.tests:
-                durations[res.zoom] += res.duration
-                tile_sizes[res.zoom] += res.bytes
-                tile_counts[res.zoom] += res.size()
-            speed_data = []
-            size_data = []
-            for z in zooms:
-                info = f"{tile_counts[z]:,} total tiles in " \
-                       f"{round_td(durations[z])}"
-                speed_data.append((
-                    f"tiles/s at z{z}, {info}",
-                    float(tile_counts[z]) / durations[z].total_seconds()))
-                size_data.append((
-                    f"per tile at z{z}, {info}",
-                    float(tile_sizes[z]) / tile_counts[z]))
-            if len(speed_data) > 1:
-                for line in self.speed_graph.graph(f"Per-zoom generation speed",
-                                                   speed_data):
-                    print(line)
-                print()
-                for line in self.bytes_graph.graph(f"Per-zoom average tile sizes",
-                                                   size_data):
-                    print(line)
-                print()
+        self.print_summary_graphs(lambda tc: tc.zoom, 'at z', 'Per-zoom')
+        if self.per_layer:
+            self.print_summary_graphs(TestCase.fmt_layers, 'at ', 'Per-layer')
 
         total_duration = reduce(lambda a, b: a + b, (v.duration for v in self.tests))
         total_tiles = reduce(lambda a, b: a + b, (v.size() for v in self.tests))
@@ -173,6 +152,42 @@ class PerfTester:
         print(f"Generated {total_tiles:,} tiles in {round_td(total_duration)}, "
               f"{total_tiles / total_duration.total_seconds():,.1f} tiles/s, "
               f"{total_bytes / total_tiles:,.1f} bytes per tile.")
+
+    def print_summary_graphs(self, key: Callable[[TestCase], Any], short, long):
+        groups = list({key(v) for v in self.tests})
+        if len(groups) <= 1:
+            return  # do not print one-liner graphs
+        groups.sort()
+        durations = defaultdict(timedelta)
+        tile_sizes = defaultdict(int)
+        tile_counts = defaultdict(int)
+        for res in self.tests:
+            durations[key(res)] += res.duration
+            tile_sizes[key(res)] += res.bytes
+            tile_counts[key(res)] += res.size()
+        speed_data = []
+        size_data = []
+        for grp in groups:
+            info = f"{tile_counts[grp]:,} total tiles in " \
+                   f"{round_td(durations[grp])}"
+            speed_data.append((
+                f"tiles/s {short}{grp}, {info}",
+                float(tile_counts[grp]) / durations[grp].total_seconds()))
+            size_data.append((
+                f"per tile {short}{grp}, {info}",
+                float(tile_sizes[grp]) / tile_counts[grp]))
+        for line in self.speed_graph.graph(
+            f"{long} generation speed (longer is better)",
+            speed_data
+        ):
+            print(line)
+        print()
+        for line in self.bytes_graph.graph(
+            f"{long} average tile sizes (shorter is better)",
+            size_data
+        ):
+            print(line)
+        print()
 
     def create_testcase(self, test, zoom, layers):
         mvt = MvtGenerator(self.tileset, layer_ids=layers)

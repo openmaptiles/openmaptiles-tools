@@ -13,7 +13,7 @@ Usage:
 
 Options:
   -t --test=<set>       Which predefined test to run.  [default: us-across]
-  -p --per-layer        Run tests for each layer individually
+  -p --per-layer        Test each layer individually, also show per-layer summary graph.
   -s --summary          Run summary tests, without per-tile break-down.
   -l --layer=<layers>   Limit testing to a specific layer (could be more than one)
   -z --zoom=<zoom>      Limit testing to a specific zoom. If set, ignores min/max.
