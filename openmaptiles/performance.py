@@ -168,7 +168,7 @@ class PerfTester:
         total_bytes = reduce(lambda a, b: a + b, (v.bytes for v in self.tests))
         print(f"Generated {total_tiles:,} tiles in {round_td(total_duration)}, "
               f"{total_tiles / total_duration.total_seconds():,.1f} tiles/s, "
-              f"{total_bytes / total_tiles:,.1f} bytes per tiles.")
+              f"{total_bytes / total_tiles:,.1f} bytes per tile.")
 
     def create_testcase(self, test, zoom, layers):
         mvt = MvtGenerator(self.tileset, layer_ids=layers)
