@@ -138,6 +138,10 @@ class PerfTester:
         ) as pool:
             async with pool.acquire() as conn:
                 await self.show_settings(conn)
+                print("\nValidating SQL fields in all layers of the tileset")
+                mvt = MvtGenerator(self.tileset)
+                for layer_id, layer_def in mvt.get_layers():
+                    await mvt.validate_layer_fields(conn, layer_id, layer_def)
                 for testcase in self.tests:
                     await self.run_test(conn, testcase)
 
@@ -176,16 +180,12 @@ class PerfTester:
             size_data.append((
                 f"per tile {short}{grp}, {info}",
                 float(tile_sizes[grp]) / tile_counts[grp]))
-        for line in self.speed_graph.graph(
-            f"{long} generation speed (longer is better)",
-            speed_data
-        ):
+        title = f"{long} generation speed (longer is better)"
+        for line in self.speed_graph.graph(title, speed_data):
             print(line)
         print()
-        for line in self.bytes_graph.graph(
-            f"{long} average tile sizes (shorter is better)",
-            size_data
-        ):
+        title = f"{long} average tile sizes (shorter is better)"
+        for line in self.bytes_graph.graph(title, size_data):
             print(line)
         print()
 

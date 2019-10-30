@@ -24,3 +24,4 @@ BBOX_RIGHT = 180.0
 BBOX_TOP = 85.0511
 
 PIXEL_SCALE = 256
+sql_to_mvt_types = dict(bool="Boolean", text="String", int4="Number", int8="Number")
