@@ -1,4 +1,5 @@
 import asyncio
+import re
 from asyncio.futures import Future
 from datetime import timedelta
 from typing import List, Callable, Any, Dict, Awaitable
@@ -126,8 +127,9 @@ def _validate_actions(
 
 
 def round_td(delta: timedelta):
-    """Round timedelta by microseconds"""
+    """Round timedelta by first digit after the dot"""
     diff = delta.microseconds
-    if diff >= 1000000 / 2:
-        diff = 1000000 - diff
-    return delta - timedelta(microseconds=diff)
+    zero = 1000000 - diff if diff >= 1000000 / 2 else diff
+    zero -= int(zero / 100000) * 100000
+    s = str(delta - timedelta(microseconds=zero))
+    return re.match(r'^([^.]+(\.\d)?)', s).group(1)
