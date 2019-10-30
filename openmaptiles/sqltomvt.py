@@ -1,6 +1,7 @@
 from .consts import PIXEL_SCALE
 from .language import languages_to_sql
 from .tileset import Tileset
+from docopt import DocoptExit
 
 
 class MvtGenerator:
@@ -73,11 +74,15 @@ PREPARE {fname}(integer, integer, integer) AS
             queries.append(query)
         if self.layers_ids and self.layers_ids != found_layers:
             unknown = sorted(self.layers_ids - found_layers)
-            known = [v["layer"]['id'] for v in self.tileset.layers]
-            raise ValueError(f"Unable to find layer [{', '.join(unknown)}].\n"
-                             f"Available: [{', '.join(known)}]")
+            raise DocoptExit(
+                f"Unable to find layer [{', '.join(unknown)}]. Available layers:\n" +
+                '\n'.join(f"* {v['layer']['id']}" + (
+                    f"\n{v['layer']['description']}" if v['layer'].get('description')
+                    else ''
+                ) for v in self.tileset.layers)
+            )
         if not queries:
-            raise ValueError('Could not find any layer definitions')
+            raise DocoptExit('Could not find any layer definitions')
 
         from_clause = "FROM (\n  " + \
                       "\n    UNION ALL\n  ".join(queries) + "\n) AS all_layers\n"

@@ -1,0 +1,81 @@
+#!/usr/bin/env python
+"""
+Refresh all PostgreSQL materialized views in parallel, taking into account cross-dependencies.
+
+Usage:
+  test-perf <tileset> [--test=<set>]... [--layer=<layer>]... [--per-layer] [--summary]
+              ([--zoom=<zoom>]... | [--minzoom=<min>] [--maxzoom=<max>])
+              [--buckets=<count>] [--verbose]
+  test-perf --help
+  test-perf --version
+
+  <tileset>             Tileset definition yaml file
+
+Options:
+  -t --test=<set>       Which predefined test to run.  [default: us-across]
+  -p --per-layer        Run tests for each layer individually
+  -s --summary          Run summary tests, without per-tile break-down.
+  -l --layer=<layers>   Limit testing to a specific layer (could be more than one)
+  -z --zoom=<zoom>      Limit testing to a specific zoom. If set, ignores min/max.
+  -m --minzoom=<min>    Test tiles in zooms more or equal to this value  [default: 14]
+  -n --maxzoom=<max>    Test tiles in zooms less or equal to this value  [default: 14]
+  -b --buckets=<count>  Show up to this many buckets in a graph  [default: 10]
+  -v --verbose          Print additional debugging information.
+  --help                Show this screen.
+  --version             Show version.
+
+PostgreSQL Connection Options:
+  -h --pghost=<host>    Postgres hostname. By default uses PGHOST env or "localhost" if not set.
+  -P --pgport=<port>    Postgres port. By default uses PGPORT env or "5432" if not set.
+  -d --dbname=<db>      Postgres db name. By default uses PGDATABASE env or "openmaptiles" if not set.
+  -U --user=<user>      Postgres user. By default uses PGUSER env or "openmaptiles" if not set.
+  --password=<password> Postgres password. By default uses PGPASSWORD env or "openmaptiles" if not set.
+
+Postgres
+  These legacy environment variables should not be used, but they are still supported:
+     POSTGRES_HOST, POSTGRES_PORT, POSTGRES_DB, POSTGRES_USER, POSTGRES_PASSWORD
+"""
+import asyncio
+import os.path
+
+from docopt import docopt
+
+import openmaptiles
+from openmaptiles.performance import PerfTester
+from openmaptiles.utils import coalesce
+
+
+def main(args):
+    zooms = [int(v) for v in args['--zoom']]
+    if not zooms:
+        zooms = list(range(int(args['--minzoom']), int(args['--maxzoom']) + 1))
+    perf = PerfTester(
+        tileset=args['<tileset>'],
+        tests=args['--test'],
+        summary=args['--summary'],
+        per_layer=args['--per-layer'],
+        layers=args['--layer'],
+        buckets=int(args['--buckets']),
+        zooms=zooms,
+        pghost=coalesce(
+            args.get("--pghost"), os.getenv('POSTGRES_HOST'), os.getenv('PGHOST'),
+            'localhost'),
+        pgport=coalesce(
+            args.get("--pgport"), os.getenv('POSTGRES_PORT'), os.getenv('PGPORT'),
+            '5432'),
+        dbname=coalesce(
+            args.get("--dbname"), os.getenv('POSTGRES_DB'), os.getenv('PGDATABASE'),
+            'openmaptiles'),
+        user=coalesce(
+            args.get("--user"), os.getenv('POSTGRES_USER'), os.getenv('PGUSER'),
+            'openmaptiles'),
+        password=coalesce(
+            args.get("--password"), os.getenv('POSTGRES_PASSWORD'),
+            os.getenv('PGPASSWORD'), 'openmaptiles'),
+        verbose=args.get('--verbose'),
+    )
+    asyncio.run(perf.run())
+
+
+if __name__ == '__main__':
+    main(docopt(__doc__, version=openmaptiles.__version__))

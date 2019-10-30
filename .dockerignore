@@ -5,6 +5,7 @@
 build/
 docker-run.sh
 Dockerfile
+docs/
 Makefile
 setup.py
 testdata/

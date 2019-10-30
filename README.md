@@ -26,12 +26,11 @@ Where the `<script-name>` could be any of the scripts in the [bin/](./bin) direc
 #### Using without Docker
 
 ```bash
-python3 -m pip install openmaptiles-tools
-# OR you can also install the package directly from git
-python3 -m pip install git+https://github.com/openmaptiles/openmaptiles-tools
-
 # Some tool require these packages. On Debian/Ubuntu you can install them with
 sudo apt install graphviz sqlite3
+
+# install the package directly from git
+python3 -m pip install git+https://github.com/openmaptiles/openmaptiles-tools
 
 # Run the script you want, e.g. from the openmaptiles dir:
 generate-imposm3 openmaptiles.yaml
@@ -43,7 +42,7 @@ generate-imposm3 openmaptiles.yaml
 
 #### Running from source
 
-Make sure you have all dependencies from the [Usage](#Usage) section above.
+Make sure you have all dependencies from the [Usage](#Usage) section above.  You should have the latest Python (3.6+)
 ```bash
 # Get OpenMapTiles layer data
 git clone https://github.com/openmaptiles/openmaptiles.git
@@ -51,11 +50,13 @@ git clone https://github.com/openmaptiles/openmaptiles.git
 git clone https://github.com/openmaptiles/openmaptiles-tools.git
 # Run scripts from the root of the tools repository
 cd openmaptiles-tools
+# Install required dependencies (might need to run with sudo
+python3.6 -m pip install -r requirements.txt
 # The PYTHONPATH=$PWD allows script to find its modules located in the current dir.
 PYTHONPATH=$PWD python3 bin/generate-imposm3 ../openmaptiles/openmaptiles.yaml
 ```
 
-#### Development
+#### Tools Development
 
 Use `make test` to run all of the tests locally.  The Makefile will build a docker image with all the code, run all tests, and compare the build result with the files in the [testdata/expected](./testdata/expected) dir.
 
@@ -155,6 +156,54 @@ tileset:
       srid: 900913
 ```
 
+## Testing tiles
+### Tile size and build speed
+Use `test-perf` to evaluate tile generation performance against a PostgreSQL database.
+This utility can test individual layers, several layers at once, as well as the whole tile.
+It has several pre-defined testing areas to provide cross-test consistency.
+Results are printed as histogram graphs, showing tile size distribution.
+If multiple zoom levels are tested, another histogram shows per-zoom size distribution.
+Run with `--help` to see all options.
+
+```
+test-perf <tileset> ...
+```
+
+Just like `postserve` below, `test-perf` requires PostgreSQL connection.
+
+![](./docs/test-perf.png)
+
+### Realtime tile server
+
+Postserve is an OpenMapTiles map vector tile test server that dynamically generates metadata and tiles
+ directly from PostgreSQL database based on the tileset file definition.
+
+```
+postserve <tileset> ...
+```
+
+Use `postserve <tileset>` to start serving. Use `--help` to get the list of Postgres connection parameters.
+ If you have a full planet database, you may want to use `MIN_ZOOM=6 postserve ...` to avoid accidental slow low-zoom
+ tile generation.
+
+## Postserve quickstart with docker
+* clone [openmaptiles repo](https://github.com/openmaptiles/openmaptiles) (`openmaptiles-tools` repo is not needed with docker)
+* get a PostgreSQL server running with the openmaptiles-imported OSM data, e.g. by following quickstart guide.
+* run `docker pull openmaptiles/openmaptiles-tools` to download the latest tools version
+* from inside the openmaptiles repo dir, run this command.
+(This assumes PostgreSQL is on the localhost:5432, but if it runs inside docker, you may want to change
+ `--net=host` to `--net=openmaptiles_postgres_conn` to match the openmaptiles quickstart, and also expose
+  port 8090 to the host with `-p 8090:8090`)
+```
+docker run -it --rm -u $(id -u ${USER}):$(id -g ${USER}) \
+    -v "${PWD}:/tileset" --net=host \
+    openmaptiles/openmaptiles-tools \
+    postserve openmaptiles.yaml 
+```
+
+* Open [Maputnik editor](https://maputnik.github.io/editor) online and change the data source to `http://localhost:8090`
+
+
 ## Scripts
 
 ### Generate SQL code to create MVT tiles directly by PostGIS
@@ -250,37 +299,6 @@ You need to provide PostgreSQL database connection settings before generating th
 generate-tm2source <tileset> --host="localhost" --port=5432 --database="osm" --user="osm" --password="osm"
 ```
 
-# Test tiles
-
-Postserve is an OpenMapTiles map vector tile test server that dynamically generates metadata and tiles
- directly from PostgreSQL database based on the tileset file definition.
-
-```
-postserve <tileset> ...
-```
-
-Use `postserve <tileset>` to start serving. Use `--help` to get the list of Postgres connection parameters.
- If you have a full planet database, you may want to use `MIN_ZOOM=6 postserve ...` to avoid accidental slow low-zoom
- tile generation.
-
-## Postserve quickstart with docker
-* clone [openmaptiles repo](https://github.com/openmaptiles/openmaptiles) (`openmaptiles-tools` repo is not needed with docker)
-* get a PostgreSQL server running with the openmaptiles-imported OSM data, e.g. by following quickstart guide.
-* run `docker pull openmaptiles/openmaptiles-tools` to download the latest tools version
-* from inside the openmaptiles repo dir, run this command.
-(This assumes PostgreSQL is on the localhost:5432, but if it runs inside docker, you may want to change
- `--net=host` to `--net=openmaptiles_postgres_conn` to match the openmaptiles quickstart, and also expose
-  port 8090 to the host with `-p 8090:8090`)
-```
-docker run -it --rm -u $(id -u ${USER}):$(id -g ${USER}) \
-    -v "${PWD}:/tileset" --net=host \
-    openmaptiles/openmaptiles-tools \
-    postserve openmaptiles.yaml 
-```
-
-* Open [Maputnik editor](https://maputnik.github.io/editor) online and change the data source to `http://localhost:8090`
-
-
 ## Importing into Postgres
 The `import_sql.sh` script can execute a single SQL file in Postgres when the file is given as the first parameter.
 
@@ -301,4 +319,4 @@ Optionally you may pass extra arguments to `psql` by using `PSQL_OPTIONS` enviro
 `PSQL_OPTIONS` allows multiple arguments as well, and understands quotes, e.g. you can pass a whole query as a single argument surrounded by quotes -- `PSQL_OPTIONS="-a -c 'SELECT ...'"`
 
 ### Performance optimizations
-Materialized views can be refreshed in parallel using `run-sql refresh-views` command. This could be especially useful if the `CREATE MATERIALIZED VIEW` statements had `WITH NO DATA` clause.
+Materialized views can be refreshed in parallel using `refresh-views` command. This could be especially useful if the `CREATE MATERIALIZED VIEW` statements had `WITH NO DATA` clause.
