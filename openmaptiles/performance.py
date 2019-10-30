@@ -251,15 +251,15 @@ generate_series(CAST($4 as int), CAST($5 as int)) AS yval(y);
         for i in range(buckets):
             frm = results[first[i]]
             utl = results[last[i]]
-            info = f"avg per tile, {frm[1]:,} ({'/'.join(map(str, frm[0]))}) .. " \
-                   f"{utl[1]:,} ({'/'.join(map(str, utl[0]))})"
+            info = f"avg B/tile, {frm[1]:,} B ({'/'.join(map(str, frm[0]))}) .. " \
+                   f"{utl[1]:,} B ({'/'.join(map(str, utl[0]))})"
             data.append((info, (round(sums[i] / (last[i] - first[i] + 1), 1))))
 
         if not data:
             print(f"Query returned no data after {test.duration}")
             return
 
-        graph = Pyasciigraph(human_readable='cs', line_length=self.tty_width)
+        graph = Pyasciigraph(line_length=self.tty_width)
         header = f"Tile size distribution for {tile_count:,} generated tiles " \
                  f"({tile_count / buckets:.0f} per line) generated in " \
                  f"{round_td(test.duration)} " \
