@@ -3,7 +3,7 @@ from typing import Iterable, Tuple, Dict
 from asyncpg import Connection
 from docopt import DocoptExit
 
-from openmaptiles.consts import sql_to_mvt_types, PIXEL_SCALE
+from openmaptiles.consts import PIXEL_SCALE
 from openmaptiles.language import language_codes_to_names, languages_to_sql
 from openmaptiles.tileset import Tileset
 
@@ -110,6 +110,7 @@ PREPARE {fname}(integer, integer, integer) AS
         """
         layer = layer_def["layer"]
         query = layer['datasource']['query']
+        layer_fields, geom_fld = layer_def.get_fields()
         has_languages = '{name_languages}' in query
         if has_languages:
             languages = self.tileset.definition.get('languages', [])
@@ -122,8 +123,8 @@ PREPARE {fname}(integer, integer, integer) AS
 
         ext = self.extent
         query = query.replace(
-            "geometry",
-            f"ST_AsMVTGeom(geometry, !bbox!, {ext}, {buffer}, true) AS mvtgeometry")
+            geom_fld,
+            f"ST_AsMVTGeom({geom_fld}, !bbox!, {ext}, {buffer}, true) AS mvtgeometry")
 
         if isinstance(empty_zoom, bool):
             is_empty = "FALSE AS IsEmpty, " if empty_zoom else ""
@@ -142,7 +143,7 @@ END AS IsEmpty, """
         # Skip the whole layer if there is nothing in it
         query = f"""\
 SELECT {is_empty}ST_AsMVT(tile, '{layer['id']}', {ext}, 'mvtgeometry') as mvtl \
-FROM ({query} WHERE ST_AsMVTGeom(geometry, !bbox!, {ext}, {buffer}, true) IS NOT NULL) \
+FROM ({query} WHERE ST_AsMVTGeom({geom_fld}, !bbox!, {ext}, {buffer}, true) IS NOT NULL) \
 AS tile \
 HAVING COUNT(*) > 0"""
 
@@ -166,7 +167,7 @@ HAVING COUNT(*) > 0"""
     async def validate_layer_fields(
         self, connection, layer_id, layer_def
     ) -> Dict[str, str]:
-        query_field_map, languages = await self.get_fields(connection, layer_def)
+        query_field_map, languages = await self.get_sql_fields(connection, layer_def)
         query_fields = set(query_field_map.keys())
         layer_fields, geom_fld = layer_def.get_fields()
         if languages:
@@ -192,7 +193,7 @@ HAVING COUNT(*) > 0"""
             raise ValueError(error)
         return query_field_map
 
-    async def get_fields(
+    async def get_sql_fields(
         self, connection: Connection, layer_def
     ) -> Tuple[Dict[str, str], Iterable[str]]:
         """Get field names => SQL types (oid) by executing a dummy query"""
@@ -213,10 +214,3 @@ HAVING COUNT(*) > 0"""
             layer_id = layer["layer"]['id']
             if not self.layers_ids or layer_id in self.layers_ids:
                 yield layer_id, layer
-
-
-async def get_sql_types(connection: Connection):
-    # Get all Postgres types and keep those we know about
-    types = await connection.fetch("select oid, typname from pg_type")
-    return {row[0]: sql_to_mvt_types[row[1]] for row in types
-            if row[1] in sql_to_mvt_types}

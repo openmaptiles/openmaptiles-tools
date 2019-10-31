@@ -8,7 +8,7 @@ import tornado.web
 from asyncpg import Connection, ConnectionDoesNotExistError
 from asyncpg.pool import Pool
 
-from .sqltomvt import get_sql_types, MvtGenerator
+from .sqltomvt import MvtGenerator
 from .tileset import Tileset
 
 
@@ -112,6 +112,14 @@ class Postserve:
             pg_types = await get_sql_types(conn)
             for layer_id, layer_def in self.mvt.get_layers():
                 fields = await self.mvt.validate_layer_fields(conn, layer_id, layer_def)
+                unknown = {
+                    name: oid for name, oid in fields.items()
+                    if oid not in pg_types and name != 'geometry'
+                }
+                if unknown:
+                    print(f"Ignoring fields with unknown SQL types (OIDs): "
+                          f"[{', '.join([f'{n} ({o})' for n, o in unknown.items()])}]")
+
                 self.metadata["vector_layers"].append(dict(
                     id=(layer_def["layer"]['id']),
                     fields={name: pg_types[type_oid]
@@ -159,3 +167,21 @@ class Postserve:
         print(f"Postserve started, listening on 0.0.0.0:{self.port}")
         print(f"Use http://{self.host}:{self.port} as the data source")
         tornado.ioloop.IOLoop.instance().start()
+
+
+async def get_sql_types(connection: Connection):
+    """
+    Get Postgres types that we can handle,
+    and return the mapping of OSM type id (oid) => MVT style type
+    """
+    sql_to_mvt_types = dict(
+        bool="Boolean",
+        text="String",
+        int4="Number",
+        int8="Number",
+    )
+    types = await connection.fetch(
+        "select oid, typname from pg_type where typname = ANY($1::text[])",
+        list(sql_to_mvt_types.keys())
+    )
+    return {row['oid']: sql_to_mvt_types[row['typname']] for row in types}
