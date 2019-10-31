@@ -1,7 +1,11 @@
-from .consts import PIXEL_SCALE
-from .language import languages_to_sql
-from .tileset import Tileset
+from typing import Iterable, Tuple, Dict
+
+from asyncpg import Connection
 from docopt import DocoptExit
+
+from openmaptiles.consts import PIXEL_SCALE
+from openmaptiles.language import language_codes_to_names, languages_to_sql
+from openmaptiles.tileset import Tileset
 
 
 class MvtGenerator:
@@ -55,10 +59,7 @@ PREPARE {fname}(integer, integer, integer) AS
     def generate_query(self, bbox, zoom):
         queries = []
         found_layers = set()
-        for layer in self.tileset.layers:
-            layer_id = layer["layer"]['id']
-            if self.layers_ids and layer_id not in self.layers_ids:
-                continue
+        for layer_id, layer in self.get_layers():
             found_layers.add(layer_id)
             # If mask-layer is set (e.g. to 'water'), add an extra column 'IsEmpty'
             # to each layer's result row. For non-water or water in zoom <= mask-zoom,
@@ -109,6 +110,7 @@ PREPARE {fname}(integer, integer, integer) AS
         """
         layer = layer_def["layer"]
         query = layer['datasource']['query']
+        layer_fields, geom_fld = layer_def.get_fields()
         has_languages = '{name_languages}' in query
         if has_languages:
             languages = self.tileset.definition.get('languages', [])
@@ -121,8 +123,8 @@ PREPARE {fname}(integer, integer, integer) AS
 
         ext = self.extent
         query = query.replace(
-            "geometry",
-            f"ST_AsMVTGeom(geometry, !bbox!, {ext}, {buffer}, true) AS mvtgeometry")
+            geom_fld,
+            f"ST_AsMVTGeom({geom_fld}, !bbox!, {ext}, {buffer}, true) AS mvtgeometry")
 
         if isinstance(empty_zoom, bool):
             is_empty = "FALSE AS IsEmpty, " if empty_zoom else ""
@@ -141,18 +143,74 @@ END AS IsEmpty, """
         # Skip the whole layer if there is nothing in it
         query = f"""\
 SELECT {is_empty}ST_AsMVT(tile, '{layer['id']}', {ext}, 'mvtgeometry') as mvtl \
-FROM ({query} WHERE ST_AsMVTGeom(geometry, !bbox!, {ext}, {buffer}, true) IS NOT NULL) AS tile \
+FROM ({query} WHERE ST_AsMVTGeom({geom_fld}, !bbox!, {ext}, {buffer}, true) IS NOT NULL) \
+AS tile \
 HAVING COUNT(*) > 0"""
 
         if bbox:
-            query = (query
-                     .replace("!bbox!", bbox)
-                     .replace("z(!scale_denominator!)", zoom)
-                     .replace("!pixel_width!", str(self.pixel_width))
-                     .replace("!pixel_height!", str(self.pixel_height)))
-            if '!scale_denominator!' in query:
-                raise ValueError(
-                    'MVT made an invalid assumption that "!scale_denominator!" is '
-                    'always used as a parameter to z() function. Either change '
-                    'the layer queries, or fix this code')
+            query = self.substitute_sql(query, bbox, zoom)
         return query
+
+    def substitute_sql(self, query, bbox, zoom):
+        query = (query
+                 .replace("!bbox!", bbox)
+                 .replace("z(!scale_denominator!)", zoom)
+                 .replace("!pixel_width!", str(self.pixel_width))
+                 .replace("!pixel_height!", str(self.pixel_height)))
+        if '!scale_denominator!' in query:
+            raise ValueError(
+                'MVT made an invalid assumption that "!scale_denominator!" is '
+                'always used as a parameter to z() function. Either change '
+                'the layer queries, or fix this code')
+        return query
+
+    async def validate_layer_fields(
+        self, connection, layer_id, layer_def
+    ) -> Dict[str, str]:
+        query_field_map, languages = await self.get_sql_fields(connection, layer_def)
+        query_fields = set(query_field_map.keys())
+        layer_fields, geom_fld = layer_def.get_fields()
+        if languages:
+            layer_fields += language_codes_to_names(languages)
+        layer_fields = set(layer_fields)
+        if geom_fld not in query_fields:
+            raise ValueError(
+                f"Layer '{layer_id}' query does not generate expected '{geom_fld}'"
+                f"{' (geometry)' if geom_fld != 'geometry' else ''} field")
+        query_fields.remove(geom_fld)
+        if layer_fields != query_fields:
+            same = layer_fields.intersection(query_fields)
+            layer_fields -= same
+            query_fields -= same
+            error = f"Declared fields in layer '{layer_id}' do not match " \
+                    f"the fields received from a query:\n"
+            if layer_fields:
+                error += f"  These fields were declared, but not returned by " \
+                         f"the query: {', '.join(layer_fields)}"
+            if query_fields:
+                error += f"  These fields were returned by the query, " \
+                         f"but not declared: {', '.join(query_fields)}"
+            raise ValueError(error)
+        return query_field_map
+
+    async def get_sql_fields(
+        self, connection: Connection, layer_def
+    ) -> Tuple[Dict[str, str], Iterable[str]]:
+        """Get field names => SQL types (oid) by executing a dummy query"""
+        query = layer_def["layer"]['datasource']['query']
+        if '{name_languages}' in query:
+            languages = self.tileset.definition.get('languages', [])
+            query = query.format(name_languages=languages_to_sql(languages))
+        else:
+            languages = False
+        query = self.substitute_sql(query, "TileBBox(0, 0, 0)", "0")
+        st = await connection.prepare(
+            f"SELECT * FROM {query} WHERE false LIMIT 0")
+        query_field_map = {fld.name: fld.type.oid for fld in st.get_attributes()}
+        return query_field_map, languages
+
+    def get_layers(self):
+        for layer in self.tileset.layers:
+            layer_id = layer["layer"]['id']
+            if not self.layers_ids or layer_id in self.layers_ids:
+                yield layer_id, layer
