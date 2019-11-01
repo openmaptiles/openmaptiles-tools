@@ -130,7 +130,7 @@ class PerfTestSummary(PerfSummary):
     id: str = None
     layers: str = None
     zoom: str = None
-    buckets: Union[None, List[PerfBucket]] = None
+    buckets: List[PerfBucket] = field(default_factory=list)
 
 
 @dataclass
@@ -142,6 +142,7 @@ class PerfRoot:
     layers: Dict[str, Dict[str, Any]] = field(default_factory=dict)
     tests: List[PerfTestSummary] = None
     summary: PerfSummary = None
+    test_summary: Dict[str, PerfSummary] = field(default_factory=dict)
     zoom_summary: Dict[str, PerfSummary] = field(default_factory=dict)
     layer_summary: Dict[str, PerfSummary] = field(default_factory=dict)
 
