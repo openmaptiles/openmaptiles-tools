@@ -81,12 +81,13 @@ class PerfTester:
             layers = [l["layer"]['id'] for l in self.tileset.layers]
         # Keep the order, but ensure no duplicates
         layers = list(dict.fromkeys(layers))
+        tests = list(dict.fromkeys(tests))
+        zooms = list(dict.fromkeys(zooms))
         self.tests = []
         old_tests = self.old_run.tests if self.old_run else None
         for layer in (layers if per_layer else [None]):
             for test in tests:
-                # Keep the order, but ensure no duplicates
-                for z in dict.fromkeys(zooms):
+                for z in zooms:
                     tc = self.create_testcase(test, z, layer or layers)
                     if old_tests:
                         tc.old_result = next(
@@ -124,6 +125,8 @@ class PerfTester:
         for testcase in self.tests:
             await self.run_test(conn, testcase)
         print(f"\n\n================ SUMMARY ================")
+        self.print_summary_graphs('test_summary', lambda t: t.id,
+                                  lambda t: f"in test {t.id}", 'Per-test')
         self.print_summary_graphs('zoom_summary', lambda tc: str(tc.zoom),
                                   lambda t: f"at z{t.zoom}", 'Per-zoom')
         if self.per_layer:
