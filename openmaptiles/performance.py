@@ -40,7 +40,7 @@ TEST_CASES: Dict[str, TestCase] = {v.id: v for v in [
 
 
 class PerfTester:
-    def __init__(self, tileset: str, tests: List[str], layers: List[str],
+    def __init__(self, tileset: str, tests: List[str], test_all, layers: List[str],
                  zooms: List[int], dbname: str, pghost, pgport: str, user: str,
                  password: str, summary: bool, per_layer: bool, buckets: int,
                  save_to: Union[None, str, Path], compare_with: Union[None, str, Path],
@@ -74,6 +74,9 @@ class PerfTester:
                 cases = '\n'.join(map(TestCase.fmt_table, TEST_CASES.values()))
                 raise DocoptExit(f"Test '{test}' is not defined. "
                                  f"Available tests are:\n{cases}\n")
+        if test_all:
+            # Do this after validating individual tests, they are ignored but validated
+            tests = [v for v in TEST_CASES.keys() if v != 'null']
         if per_layer and not layers:
             layers = [l["layer"]['id'] for l in self.tileset.layers]
         # Keep the order, but ensure no duplicates
