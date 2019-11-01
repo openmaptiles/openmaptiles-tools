@@ -12,19 +12,27 @@ from dataclasses_json import dataclass_json, config
 
 from openmaptiles.utils import round_td
 
-if stdout.isatty:
-    GREEN = "\x1b[32;107m"
-    RED = "\x1b[31;107m"
-    RESET = "\x1b[0m"
-else:
-    GREEN, RED, RESET = '', '', ''
+GREEN, RED, RESET = '', '', ''
+
+
+def set_color_mode(enable=True):
+    global GREEN, RED, RESET
+    if enable:
+        GREEN = "\x1b[32;107m"
+        RED = "\x1b[31;107m"
+        RESET = "\x1b[0m"
+    else:
+        GREEN, RED, RESET = '', '', ''
+
+
+set_color_mode(stdout.isatty)
 
 
 def change(old, new, more_is_better=False, color=False):
     growth = (new - old) / new if new != 0 else 0
-    if growth == 0:
+    if abs(growth) < 0.001:
         clr = None
-        value = f" (no change)"
+        value = f" ±0.0%"
     elif abs(growth) < 0.1:
         # Small change, show the number but don't highlight
         clr = None
@@ -64,7 +72,7 @@ class PerfSummary:
                 f"{self.gen_speed:,.1f} tiles/s"
                 f"{change(old.gen_speed, self.gen_speed, True) if old else ''}"
                 f", "
-                f"{self.tile_avg_size:,.1f} bytes per tile"
+                f"{self.tile_avg_size:,.1f} bytes/tile"
                 f"{change(old.tile_avg_size, self.tile_avg_size) if old else ''}"
             )
         else:

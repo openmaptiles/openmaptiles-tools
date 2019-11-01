@@ -10,7 +10,7 @@ from asyncpg import Connection, UndefinedFunctionError, UndefinedObjectError
 from docopt import DocoptExit
 
 from openmaptiles.perfutils import change, PerfSummary, PerfBucket, \
-    PerfRoot, TestCase, print_graph
+    PerfRoot, TestCase, print_graph, set_color_mode
 from openmaptiles.sqltomvt import MvtGenerator
 from openmaptiles.tileset import Tileset
 from openmaptiles.utils import round_td
@@ -44,7 +44,9 @@ class PerfTester:
                  zooms: List[int], dbname: str, pghost, pgport: str, user: str,
                  password: str, summary: bool, per_layer: bool, buckets: int,
                  save_to: Union[None, str, Path], compare_with: Union[None, str, Path],
-                 verbose: bool):
+                 disable_colors: Union[None, bool], verbose: bool):
+        if disable_colors is not None:
+            set_color_mode(not disable_colors)
         self.tileset = Tileset.parse(tileset)
         self.dbname = dbname
         self.pghost = pghost

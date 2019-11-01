@@ -5,7 +5,8 @@ Refresh all PostgreSQL materialized views in parallel, taking into account cross
 Usage:
   test-perf <tileset> [--test=<set>]... [--layer=<layer>]... [--per-layer] [--summary]
               ([--zoom=<zoom>]... | [--minzoom=<min>] [--maxzoom=<max>])
-              [--save=<file>] [--compare=<file>] [--buckets=<count>] [--verbose]
+              [--save=<file>] [--compare=<file>] [--buckets=<count>]
+              [--no-color] [--verbose]
   test-perf --help
   test-perf --version
 
@@ -22,6 +23,7 @@ Options:
   -w --save=<file>      Save performance run results into a file
   -c --compare=<file>   Compare performance run results with a previous run
   -b --buckets=<count>  Show up to this many buckets in a graph  [default: 10]
+  --no-color            Disable ANSI colors
   -v --verbose          Print additional debugging information.
   --help                Show this screen.
   --version             Show version.
@@ -74,9 +76,10 @@ def main(args):
         password=coalesce(
             args.get("--password"), os.getenv('POSTGRES_PASSWORD'),
             os.getenv('PGPASSWORD'), 'openmaptiles'),
-        verbose=args.get('--verbose'),
         save_to=args['--save'],
         compare_with=args['--compare'],
+        disable_colors=args.get('--no-color'),
+        verbose=args.get('--verbose'),
     )
     asyncio.run(perf.run())
 
