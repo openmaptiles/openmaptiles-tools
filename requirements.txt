@@ -7,3 +7,4 @@ psycopg2-binary==2.8.3
 pyyaml==5.1.2
 tornado==6.0.3
 ascii_graph==1.5.1
+dataclasses-json==0.3.5

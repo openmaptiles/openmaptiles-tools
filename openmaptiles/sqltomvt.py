@@ -167,6 +167,9 @@ HAVING COUNT(*) > 0"""
     async def validate_layer_fields(
         self, connection, layer_id, layer_def
     ) -> Dict[str, str]:
+        """Validate that fields in the layer definition match the ones
+        returned by the dummy (0-length) SQL query.
+        Returns field names => SQL types (oid)."""
         query_field_map, languages = await self.get_sql_fields(connection, layer_def)
         query_fields = set(query_field_map.keys())
         layer_fields, geom_fld = layer_def.get_fields()

@@ -5,7 +5,7 @@ Refresh all PostgreSQL materialized views in parallel, taking into account cross
 Usage:
   test-perf <tileset> [--test=<set>]... [--layer=<layer>]... [--per-layer] [--summary]
               ([--zoom=<zoom>]... | [--minzoom=<min>] [--maxzoom=<max>])
-              [--buckets=<count>] [--verbose]
+              [--save=<file>] [--compare=<file>] [--buckets=<count>] [--verbose]
   test-perf --help
   test-perf --version
 
@@ -19,6 +19,8 @@ Options:
   -z --zoom=<zoom>      Limit testing to a specific zoom. If set, ignores min/max.
   -m --minzoom=<min>    Test tiles in zooms more or equal to this value  [default: 14]
   -n --maxzoom=<max>    Test tiles in zooms less or equal to this value  [default: 14]
+  -w --save=<file>      Save performance run results into a file
+  -c --compare=<file>   Compare performance run results with a previous run
   -b --buckets=<count>  Show up to this many buckets in a graph  [default: 10]
   -v --verbose          Print additional debugging information.
   --help                Show this screen.
@@ -73,6 +75,8 @@ def main(args):
             args.get("--password"), os.getenv('POSTGRES_PASSWORD'),
             os.getenv('PGPASSWORD'), 'openmaptiles'),
         verbose=args.get('--verbose'),
+        save_to=args['--save'],
+        compare_with=args['--compare'],
     )
     asyncio.run(perf.run())
 

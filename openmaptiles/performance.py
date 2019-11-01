@@ -1,101 +1,49 @@
-import shutil
+import json
 from collections import defaultdict
-from dataclasses import dataclass
-from datetime import timedelta, datetime
-from functools import reduce
-from math import ceil
-from typing import Tuple, Dict, List, Callable, Any
+from datetime import timedelta, datetime as dt
+from pathlib import Path
+from typing import Dict, List, Callable, Any, Union
 
 import asyncpg
-from ascii_graph import Pyasciigraph
 from asyncpg import Connection, UndefinedFunctionError, UndefinedObjectError
+# noinspection PyProtectedMember
 from docopt import DocoptExit
 
+from openmaptiles.perfutils import change, PerfSummary, PerfBucket, \
+    PerfRoot, TestCase, print_graph
 from openmaptiles.sqltomvt import MvtGenerator
 from openmaptiles.tileset import Tileset
 from openmaptiles.utils import round_td
 
-
-@dataclass
-class TestCase:
-    id: str
-    desc: str
-    start: Tuple[int, int]  # inclusive tile coordinate (x,y)
-    before: Tuple[int, int]  # exclusive tile coordinate (x,y)
-    zoom: int = 14
-    layers: str = None
-    query: str = None
-    duration: timedelta = None
-    bytes: int = 0
-
-    def __post_init__(self):
-        assert self.id and self.desc
-        assert isinstance(self.start, tuple) and isinstance(self.before, tuple)
-        assert len(self.start) == 2 and len(self.before) == 2
-        assert self.start[0] <= self.before[0] and self.start[1] <= self.before[1]
-        assert self.size() > 0 or (self.start == (0, 0) and self.before == (0, 0))
-
-    def make_test(self, zoom, layers, query):
-        diff = zoom - self.zoom
-        mult = pow(2, diff) if diff > 0 else 1 / pow(2, -diff)
-        return TestCase(
-            self.id, self.desc,
-            (int(self.start[0] * mult), int(self.start[1] * mult)),
-            (int(ceil(self.before[0] * mult)), int(ceil(self.before[1] * mult))),
-            zoom=zoom, layers=layers, query=query)
-
-    def size(self) -> int:
-        return (self.before[0] - self.start[0]) * (self.before[1] - self.start[1])
-
-    def fmt_table(self) -> str:
-        pos = ''
-        if self.size() > 0:
-            pos = f" [{self.start[0]}/{self.start[1]}]" \
-                  f"x[{self.before[0] - 1}/{self.before[1] - 1}]"
-        return f"* {self.id:10} {self.desc} ({self.size():,} " \
-               f"tiles at z{self.zoom}{pos})"
-
-    def format(self) -> str:
-        return f"{self.fmt_layers()} test '{self.id}' at zoom {self.zoom} " \
-               f"({self.size():,} tiles) - {self.desc}"
-
-    def fmt_layers(self):
-        if self.layers:
-            if len(self.layers) == 1:
-                return f"layer {self.layers[0]}"
-            else:
-                return f"layers [{','.join(self.layers)}]"
-        else:
-            return 'all layers'
+# All test cases are defined on z14 by default. Second x,y pair is exclusive.
+# ATTENTION: Do not change tile ranges once they are published
+# Use this site to get tile coordinates (use Google's variant)
+# https://www.maptiler.com/google-maps-coordinates-tile-bounds-projection/
+TEST_CASES: Dict[str, TestCase] = {v.id: v for v in [
+    TestCase(
+        'us-across',
+        'A line from Pacific ocean across US via New York and some Atlantic ocean',
+        (2490, 6158), (4851, 6159)),  # DO NOT CHANGE THESE COORDINATES
+    TestCase(
+        'eu-prague',
+        'A region around Prague, CZ',
+        (8832, 5536), (8863, 5567)),  # DO NOT CHANGE THESE COORDINATES
+    TestCase(
+        'ocean',
+        'Ocean tiles without much content',
+        (8065, 8065), (8302, 8101)),  # DO NOT CHANGE THESE COORDINATES
+    TestCase(
+        'null',
+        'Empty set, useful for query validation.',
+        (0, 0), (0, 0)),  # DO NOT CHANGE THESE COORDINATES
+]}
 
 
 class PerfTester:
-    # All test cases are defined on z14 by default. Second x,y pair is exclusive.
-    # ATTENTION: Do not change tile ranges once they are published
-    # Use this site to get tile coordinates (use Google's variant)
-    # https://www.maptiler.com/google-maps-coordinates-tile-bounds-projection/
-    TEST_CASES: Dict[str, TestCase] = {v.id: v for v in [
-        TestCase(
-            'us-across',
-            'A line from Pacific ocean across US via New York and some Atlantic ocean',
-            (2490, 6158), (4851, 6159)),  # DO NOT CHANGE THESE COORDINATES
-        TestCase(
-            'eu-prague',
-            'A region around Prague, CZ',
-            (8832, 5536), (8863, 5567)),  # DO NOT CHANGE THESE COORDINATES
-        TestCase(
-            'ocean',
-            'Ocean tiles without much content',
-            (8065, 8065), (8302, 8101)),  # DO NOT CHANGE THESE COORDINATES
-        TestCase(
-            'null',
-            'Empty set, useful for query validation.',
-            (0, 0), (0, 0)),  # DO NOT CHANGE THESE COORDINATES
-    ]}
-
     def __init__(self, tileset: str, tests: List[str], layers: List[str],
                  zooms: List[int], dbname: str, pghost, pgport: str, user: str,
                  password: str, summary: bool, per_layer: bool, buckets: int,
+                 save_to: Union[None, str, Path], compare_with: Union[None, str, Path],
                  verbose: bool):
         self.tileset = Tileset.parse(tileset)
         self.dbname = dbname
@@ -107,27 +55,39 @@ class PerfTester:
         self.buckets = buckets
         self.verbose = verbose
         self.per_layer = per_layer
+        self.save_to = Path(save_to) if save_to else None
+        self.results = PerfRoot()
+
+        if compare_with:
+            path = Path(compare_with).resolve()
+            with path.open('r', encoding='utf-8') as fp:
+                self.old_run: PerfRoot = PerfRoot.from_dict(json.load(fp))
+            since = round_td(dt.utcnow() - dt.fromisoformat(self.old_run.created))
+            print(f"Comparing results with a previous run created {since} ago: {path}")
+        else:
+            self.old_run = None
 
         for test in tests:
-            if test not in self.TEST_CASES:
-                cases = '\n'.join(map(TestCase.fmt_table, self.TEST_CASES.values()))
+            if test not in TEST_CASES:
+                cases = '\n'.join(map(TestCase.fmt_table, TEST_CASES.values()))
                 raise DocoptExit(f"Test '{test}' is not defined. "
                                  f"Available tests are:\n{cases}\n")
         if per_layer and not layers:
-            layers = [[l["layer"]['id']] for l in self.tileset.layers]
+            layers = [l["layer"]['id'] for l in self.tileset.layers]
+        # Keep the order, but ensure no duplicates
+        layers = list(dict.fromkeys(layers))
         self.tests = []
+        old_tests = self.old_run.tests if self.old_run else None
         for layer in (layers if per_layer else [None]):
             for test in tests:
-                for z in zooms:
-                    self.tests.append(self.create_testcase(test, z, layer or layers))
-
-        common = dict(
-            float_format='{:,.1f}',
-            min_graph_length=20,
-            line_length=shutil.get_terminal_size((100, 20)).columns
-        )
-        self.bytes_graph = Pyasciigraph(**common, human_readable='cs')
-        self.speed_graph = Pyasciigraph(**common)
+                # Keep the order, but ensure no duplicates
+                for z in dict.fromkeys(zooms):
+                    tc = self.create_testcase(test, z, layer or layers)
+                    if old_tests:
+                        tc.old_result = next(
+                            (v for v in old_tests if v.id == tc.id and
+                             v.layers == tc.layers_id and v.zoom == tc.zoom), None)
+                    self.tests.append(tc)
 
     async def run(self):
         print(f'Connecting to PostgreSQL at {self.pghost}:{self.pgport}, '
@@ -137,59 +97,70 @@ class PerfTester:
             password=self.password, min_size=1, max_size=1,
         ) as pool:
             async with pool.acquire() as conn:
-                await self.show_settings(conn)
-                print("\nValidating SQL fields in all layers of the tileset")
-                mvt = MvtGenerator(self.tileset)
-                for layer_id, layer_def in mvt.get_layers():
-                    await mvt.validate_layer_fields(conn, layer_id, layer_def)
-                for testcase in self.tests:
-                    await self.run_test(conn, testcase)
+                self.results.created = dt.utcnow().isoformat()
+                self.results.tileset = str(Path(self.tileset.filename).resolve())
+                await self._run(conn)
+                self.results.tests = [v.result for v in self.tests]
+                self.save_results()
 
+    def save_results(self):
+        if self.save_to:
+            print(f"Saving results to {self.save_to}")
+            with self.save_to.open('w', encoding='utf-8') as fp:
+                json.dump(self.results.to_dict(), fp, indent=2)
+
+    async def _run(self, conn: Connection):
+        await self.show_settings(conn)
+        print("\nValidating SQL fields in all layers of the tileset")
+        mvt = MvtGenerator(self.tileset)
+        for layer_id, layer_def in mvt.get_layers():
+            fields = await mvt.validate_layer_fields(conn, layer_id, layer_def)
+            self.results.layers[layer_id] = dict(fields=list(fields.keys()))
+        for testcase in self.tests:
+            await self.run_test(conn, testcase)
         print(f"\n\n================ SUMMARY ================")
-        self.print_summary_graphs(lambda tc: tc.zoom, 'at z', 'Per-zoom')
+        self.print_summary_graphs('zoom_summary', lambda tc: str(tc.zoom),
+                                  lambda t: f"at z{t.zoom}", 'Per-zoom')
         if self.per_layer:
-            self.print_summary_graphs(TestCase.fmt_layers, 'at ', 'Per-layer')
+            self.print_summary_graphs('layer_summary', lambda t: t.layers_id,
+                                      lambda t: f"at {t.fmt_layers()}", 'Per-layer')
+        self.results.summary = PerfSummary(
+            duration=sum((v.result.duration for v in self.tests), timedelta()),
+            tiles=sum(v.size() for v in self.tests),
+            bytes=sum(v.result.bytes for v in self.tests),
+        )
+        print(self.results.summary.perf_format(self.old_run and self.old_run.summary))
 
-        total_duration = reduce(lambda a, b: a + b, (v.duration for v in self.tests))
-        total_tiles = reduce(lambda a, b: a + b, (v.size() for v in self.tests))
-        total_bytes = reduce(lambda a, b: a + b, (v.bytes for v in self.tests))
-        print(f"Generated {total_tiles:,} tiles in {round_td(total_duration)}, "
-              f"{total_tiles / total_duration.total_seconds():,.1f} tiles/s, "
-              f"{total_bytes / total_tiles:,.1f} bytes per tile.")
-
-    def print_summary_graphs(self, key: Callable[[TestCase], Any], short, long):
-        groups = list({key(v) for v in self.tests})
+    def print_summary_graphs(self, kind, key: Callable[[TestCase], Any],
+                             key_fmt: Callable[[TestCase], Any], long_msg):
+        groups = {key(v): key_fmt(v) for v in self.tests}
         if len(groups) <= 1:
             return  # do not print one-liner graphs
-        groups.sort()
         durations = defaultdict(timedelta)
         tile_sizes = defaultdict(int)
         tile_counts = defaultdict(int)
         for res in self.tests:
-            durations[key(res)] += res.duration
-            tile_sizes[key(res)] += res.bytes
+            durations[key(res)] += res.result.duration
+            tile_sizes[key(res)] += res.result.bytes
             tile_counts[key(res)] += res.size()
+        stats = {g: PerfSummary(duration=durations[g], tiles=tile_counts[g],
+                                bytes=tile_sizes[g]) for g in groups}
+        setattr(self.results, kind, stats)
+        old_stats = getattr(self.old_run, kind, None) if self.old_run else None
+
         speed_data = []
         size_data = []
-        for grp in groups:
-            info = f"{tile_counts[grp]:,} total tiles in " \
-                   f"{round_td(durations[grp])}"
-            speed_data.append((
-                f"tiles/s {short}{grp}, {info}",
-                float(tile_counts[grp]) / durations[grp].total_seconds()))
-            size_data.append((
-                f"per tile {short}{grp}, {info}",
-                float(tile_sizes[grp]) / tile_counts[grp]))
-        title = f"{long} generation speed (longer is better)"
-        for line in self.speed_graph.graph(title, speed_data):
-            print(line)
-        print()
-        title = f"{long} average tile sizes (shorter is better)"
-        for line in self.bytes_graph.graph(title, size_data):
-            print(line)
-        print()
+        for grp, grp_desc in groups.items():
+            old = old_stats[grp] if old_stats and grp in old_stats else None
+            speed_data.append(stats[grp].graph_msg(True, grp_desc, old))
+            size_data.append(stats[grp].graph_msg(False, grp_desc, old))
+
+        print_graph(f"{long_msg} generation speed (longer is better)", speed_data)
+        print_graph(f"{long_msg} average tile sizes (shorter is better)",
+                    size_data, is_bytes=True)
 
     def create_testcase(self, test, zoom, layers):
+        layers = [layers] if isinstance(layers, str) else layers
         mvt = MvtGenerator(self.tileset, layer_ids=layers)
         prefix = 'CAST($1 as int) as z, xval.x as x, yval.y as y,' \
             if not self.summary else 'sum'
@@ -200,10 +171,9 @@ SELECT {prefix}(COALESCE(LENGTH((
 generate_series(CAST($2 as int), CAST($3 as int)) AS xval(x),
 generate_series(CAST($4 as int), CAST($5 as int)) AS yval(y);
 """
-        return self.TEST_CASES[test].make_test(zoom, layers, query)
+        return TEST_CASES[test].make_test(zoom, layers, query)
 
-    @staticmethod
-    async def show_settings(conn: Connection):
+    async def show_settings(self, conn: Connection):
         for setting in [
             'version()',
             'postgis_full_version()',
@@ -220,6 +190,7 @@ generate_series(CAST($4 as int), CAST($5 as int)) AS yval(y);
             except (UndefinedFunctionError, UndefinedObjectError) as ex:
                 res = ex.message
             print(f"* {setting:32} = {res}")
+            self.results.settings[setting] = res
 
     async def run_test(self, conn: Connection, test: TestCase):
         results = []
@@ -232,55 +203,59 @@ generate_series(CAST($4 as int), CAST($5 as int)) AS yval(y);
             test.start[0], test.before[0] - 1,
             test.start[1], test.before[1] - 1,
         ]
-        start = datetime.utcnow()
+        start = dt.utcnow()
         if self.summary:
-            test.bytes = await conn.fetchval(*args)
+            test.result.bytes = await conn.fetchval(*args)
         else:
             for row in await conn.fetch(*args):
                 results.append(((row['z'], row['x'], row['y']), row['len']))
-                test.bytes += row['len']
-        test.duration = datetime.utcnow() - start
-
+                test.result.bytes += row['len']
+        test.result.duration = dt.utcnow() - start
+        test.result.__post_init__()
+        old = test.old_result
         if self.summary:
-            size = test.size()
-            print(f"Generated {size:,} tiles in {round_td(test.duration)}, "
-                  f"average {float(test.bytes) / size if size else 0:,.1f} bytes/tile, "
-                  f"{size / test.duration.total_seconds():,.1f} tiles/s")
+            print(test.result.perf_format(old))
+            return
+        if test.size() != len(results):
+            print(f"WARNING: Requested {test.size():,} tiles != got {len(results):,}")
+        if not results:
+            print(f"Query returned no data after {test.result.duration}")
             return
 
-        tile_count = len(results)
-        if tile_count != test.size():
-            print(f"WARNING: Requested {test.size():,} tiles != got {tile_count:,}")
-
+        test.tiles = len(results)
         results.sort(key=lambda v: v[1])
-        buckets = min(tile_count, self.buckets)
-        sums = [0.0] * buckets
+        buckets = min(test.tiles, self.buckets)
+        sums = [0] * buckets
         first = [buckets + 1] * buckets
         last = [buckets + 1] * buckets
         last_ind = -1
         for ind, val in enumerate(results):
-            i = int(float(ind) / tile_count * buckets)
+            i = int(float(ind) / test.tiles * buckets)
             sums[i] += val[1]
             last[i] = ind
             if last_ind != i:
                 first[i] = ind
                 last_ind = i
-
-        data = []
+        test.result.buckets = []
         for i in range(buckets):
-            frm = results[first[i]]
-            utl = results[last[i]]
-            info = f"avg tile size, {frm[1]:,} B ({'/'.join(map(str, frm[0]))}) — " \
-                   f"{utl[1]:,} B ({'/'.join(map(str, utl[0]))})"
-            data.append((info, (round(sums[i] / (last[i] - first[i] + 1), 1))))
+            smallest = results[first[i]]
+            largest = results[last[i]]
+            test.result.buckets.append(PerfBucket(
+                smallest_id='/'.join(map(str, smallest[0])),
+                smallest_size=smallest[1],
+                largest_id='/'.join(map(str, largest[0])),
+                largest_size=largest[1],
+                bytes=sums[i],
+                tiles=(last[i] - first[i] + 1),
+            ))
 
-        if not data:
-            print(f"Query returned no data after {test.duration}")
-            return
-
-        header = f"Tile size distribution for {tile_count:,} generated tiles " \
-                 f"({tile_count / buckets:.0f} per line) generated in " \
-                 f"{round_td(test.duration)} " \
-                 f"({tile_count / test.duration.total_seconds():,.1f} tiles/s)"
-        for line in self.bytes_graph.graph(header, data):
-            print(line)
+        old_buckets = old and old.buckets or []
+        print_graph(
+            f"Tile size distribution for {test.tiles:,} tiles "
+            f"(~{test.tiles / buckets:.0f}/line) generated in "
+            f"{round_td(test.result.duration)} "
+            f"({test.result.gen_speed:,.1f} tiles/s"
+            f"{change(old.gen_speed, test.result.gen_speed, True) if old else ''})",
+            [v.graph_msg(old_buckets[ind] if ind < len(old_buckets) else None)
+             for ind, v in enumerate(test.result.buckets)],
+            is_bytes=True)
