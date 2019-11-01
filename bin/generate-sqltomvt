@@ -4,7 +4,10 @@ This script generates a single SQL statement (either as an SQL function or as a 
 to generate a vector tile (MVT) for the given zoom and bounding box.
 
 Usage:
-  generate-sqltomvt <tileset> [--fname <name>] [--function | --prepared | --query | --psql | --raw] [--mask-layer=<layer> --mask-zoom=<z>]
+  generate-sqltomvt <tileset> [--fname <name>]
+                    [--function | --prepared | --query | --psql | --raw]
+                    [--layer=<layer>]...
+                    [--mask-layer=<layer> --mask-zoom=<z>]
   generate-sqltomvt --help
   generate-sqltomvt --version
 
@@ -16,6 +19,7 @@ Options:
   -q --query             Generate a query SQL with $1,$2,$3 meaning zoom,x,y
   -d --psql              Generate a query SQL with :zoom,:x,:y vars to simplify PSQL debugging with  \set zoom 5
   -r --raw               Generate raw query without any wrappers (good for debugging SQL)
+  -l --layer=<layer>     If set, limit tile generation to just this layer (could be multiple)
   --mask-layer=<layer>   If tile only has this layer covering for the whole tile (e.g. 'water'),
                          and requested zoom is more than --mask-zoom parameter, returns empty result
   --mask-zoom=<z>        If --mask-layer is set, tiles will be checked for empty after given zoom  [default: 8]
@@ -33,6 +37,7 @@ if __name__ == '__main__':
         tileset=args['<tileset>'],
         mask_layer=args['--mask-layer'],
         mask_zoom=int(args['--mask-zoom']),
+        layer_ids=args['--layer'],
     )
 
     if args['--prepared']:

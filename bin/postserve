@@ -3,9 +3,11 @@
 This is a simple vector tile server that returns a PBF tile for  /tiles/{z}/{x}/{y}.pbf  requests
 
 Usage:
-  postserve <tileset> [--mask-layer=<layer> --mask-zoom=<z>] [--serve=<host>] [--port=<port>] [--file=<sql-file>] [--verbose]
-                      [--pghost=<host>] [--pgport=<port>] [--dbname=<db>] [--user=<user>] [--password=<password>]
-                      [--layer=<layer>]...
+  postserve <tileset> [--serve=<host>] [--port=<port>]
+                      [--file=<sql-file>] [--layer=<layer>]... [--verbose]
+                      [--mask-layer=<layer> --mask-zoom=<z>]
+                      [--pghost=<host>] [--pgport=<port>] [--dbname=<db>]
+                      [--user=<user>] [--password=<password>]
   postserve --help
   postserve --version
 
