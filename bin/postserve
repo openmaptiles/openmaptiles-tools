@@ -5,7 +5,6 @@ This is a simple vector tile server that returns a PBF tile for  /tiles/{z}/{x}/
 Usage:
   postserve <tileset> [--serve=<host>] [--port=<port>]
                       [--file=<sql-file>] [--layer=<layer>]... [--verbose]
-                      [--mask-layer=<layer> --mask-zoom=<z>]
                       [--pghost=<host>] [--pgport=<port>] [--dbname=<db>]
                       [--user=<user>] [--password=<password>]
   postserve --help
@@ -15,9 +14,6 @@ Usage:
 
 Options:
   -l --layer=<layer>    If set, limit tile generation to just this layer (could be multiple)
-  --mask-layer=<layer>  If tile only has this layer covering for the whole tile (e.g. 'water'),
-                        and requested zoom is more than --mask-zoom parameter, returns empty result
-  --mask-zoom=<z>       If --mask-layer is set, tiles will be checked for empty after given zoom  [default: 8]
   -s --serve=<port>     Return this hostname as tileserver URL in metadata  [default: localhost]
   -p --port=<port>      Serve on this port  [default: 8090]
   -v --verbose          Print additional debugging information
@@ -63,12 +59,6 @@ if __name__ == '__main__':
         tilejson="2.0.0",
     )
 
-    mask_zoom = None
-    mask_layer = args['--mask-layer']
-    if mask_layer:
-        mask_zoom = int(args['--mask-zoom'])
-        metadata['maskLevel'] = mask_zoom
-
     Postserve(
         host=args['--serve'],
         port=int(args['--port']),
@@ -91,7 +81,5 @@ if __name__ == '__main__':
         layers=args['--layer'],
         tileset_path=args['<tileset>'],
         sql_file=args.get('--file'),
-        mask_layer=mask_layer,
-        mask_zoom=mask_zoom,
         verbose=args.get('--verbose'),
     ).serve()

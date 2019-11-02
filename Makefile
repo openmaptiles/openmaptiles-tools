@@ -34,8 +34,6 @@ build-tests: \
     build/mvttile_psql.sql \
     build/mvttile_prep.sql \
     build/mvttile_query.sql \
-    build/mvttile_query_zd.sql \
-    build/mvttile_query_zd2.sql \
     build/doc/doc.md \
     build/sqlquery.sql \
     build/devdoc
@@ -75,10 +73,6 @@ build/mvttile_prep.sql: prepare
 	$(RUN_CMD) generate-sqltomvt testdata/testlayers/testmaptiles.yaml --prepared                           > build/mvttile_prep.sql
 build/mvttile_query.sql: prepare
 	$(RUN_CMD) generate-sqltomvt testdata/testlayers/testmaptiles.yaml --query                              > build/mvttile_query.sql
-build/mvttile_query_zd.sql: prepare
-	$(RUN_CMD) generate-sqltomvt testdata/testlayers/testmaptiles.yaml --query --mask-layer=water           > build/mvttile_query_zd.sql
-build/mvttile_query_zd2.sql: prepare
-	$(RUN_CMD) generate-sqltomvt testdata/testlayers/testmaptiles.yaml --query --mask-layer=housenumber     > build/mvttile_query_zd2.sql
 build/doc/doc.md: prepare
 	$(RUN_CMD) generate-doc      testdata/testlayers/housenumber/housenumber.yaml                           > build/doc.md
 build/sqlquery.sql: prepare

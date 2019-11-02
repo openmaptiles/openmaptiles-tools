@@ -41,7 +41,8 @@ Layer:
     password: pgpswd
     port: 5432
     srid: 900913
-    table: ''
+    table: (SELECT geometry, enumfield FROM layer_enumfields(!bbox!, z(!scale_denominator!)))
+      AS t
     type: postgis
     user: pguser
   id: enumfield
