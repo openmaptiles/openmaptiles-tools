@@ -86,7 +86,7 @@ class Postserve:
     pool: Pool
 
     def __init__(self, host, port, pghost, pgport, dbname, user, password, metadata,
-                 layers, tileset_path, sql_file, mask_layer, mask_zoom, verbose):
+                 layers, tileset_path, sql_file, verbose):
         self.host = host
         self.port = port
         self.pghost = pghost
@@ -100,7 +100,7 @@ class Postserve:
         self.verbose = verbose
 
         self.tileset = Tileset.parse(self.tileset_path)
-        self.mvt = MvtGenerator(self.tileset, mask_layer, mask_zoom, layers)
+        self.mvt = MvtGenerator(self.tileset, layers)
 
     async def generate_metadata(self):
         self.metadata["tiles"] = [

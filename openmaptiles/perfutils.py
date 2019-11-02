@@ -3,7 +3,7 @@ from dataclasses import dataclass, field
 from datetime import timedelta
 from math import ceil
 from sys import stdout
-from typing import Union, List, Dict, Any, Tuple
+from typing import List, Dict, Any, Tuple
 
 # noinspection PyUnresolvedReferences
 from ascii_graph import Pyasciigraph
@@ -28,17 +28,19 @@ def set_color_mode(enable=True):
 set_color_mode(stdout.isatty)
 
 
-def change(old, new, more_is_better=False, color=False):
+def change(old, new, is_speed=False, color=False):
     growth = (new - old) / new if new != 0 else 0
-    if abs(growth) < 0.001:
+    if abs(growth) < 0.001 if is_speed else growth == 0:
+        # For speed, less than 0.1% is considered the same
+        # For size every byte should count
         clr = None
         value = f" ±0.0%"
     elif abs(growth) < 0.1:
-        # Small change, show the number but don't highlight
+        # For < 10% show the number but don't highlight
         clr = None
         value = f" {growth:+.1%}"
     else:
-        clr = GREEN if (growth > 0) == more_is_better else RED
+        clr = GREEN if (growth > 0) == is_speed else RED
         value = f" {clr}{growth:+.1%}{RESET}"
     if color:
         return value, clr
@@ -78,16 +80,16 @@ class PerfSummary:
         else:
             return f"No tiles were generated in {round_td(self.duration)}"
 
-    def graph_msg(self, speed, group, old: 'PerfSummary'):
+    def graph_msg(self, is_speed, group, old: 'PerfSummary'):
         info = f"{self.tiles} tiles in {round_td(self.duration)}"
-        value = self.gen_speed if speed else self.tile_avg_size
-        old = (old.gen_speed if speed else old.tile_avg_size) if old else None
+        value = self.gen_speed if is_speed else self.tile_avg_size
+        old = (old.gen_speed if is_speed else old.tile_avg_size) if old else None
         if old:
-            delta, color = change(old, value, color=True, more_is_better=speed)
+            delta, color = change(old, value, color=True, is_speed=is_speed)
         else:
             delta = ''
             color = None
-        msg = f"{'tiles/s' if speed else 'per tile'}{delta} {group}, {info}"
+        msg = f"{'tiles/s' if is_speed else 'per tile'}{delta} {group}, {info}"
         if color:
             return msg, value, color
         else:
