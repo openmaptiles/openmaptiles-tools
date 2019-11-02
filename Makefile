@@ -34,8 +34,6 @@ build-tests: \
     build/mvttile_psql.sql \
     build/mvttile_prep.sql \
     build/mvttile_query.sql \
-    build/mvttile_query_zd.sql \
-    build/mvttile_query_zd2.sql \
     build/doc/doc.md \
     build/sqlquery.sql \
     build/devdoc
