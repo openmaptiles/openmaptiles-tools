@@ -31,6 +31,7 @@ build-tests: \
     build/sql.sql \
     build/parallel_sql \
     build/mvttile_func.sql \
+    build/mvttile_func_key.sql \
     build/mvttile_psql.sql \
     build/mvttile_prep.sql \
     build/mvttile_query.sql \
@@ -67,6 +68,8 @@ build/parallel_sql: prepare
 	$(RUN_CMD) generate-sql      testdata/testlayers/testmaptiles.yaml --dir build/parallel_sql
 build/mvttile_func.sql: prepare
 	$(RUN_CMD) generate-sqltomvt testdata/testlayers/testmaptiles.yaml                                      > build/mvttile_func.sql
+build/mvttile_func_key.sql: prepare
+	$(RUN_CMD) generate-sqltomvt testdata/testlayers/testmaptiles.yaml --key                                > build/mvttile_func_key.sql
 build/mvttile_psql.sql: prepare
 	$(RUN_CMD) generate-sqltomvt testdata/testlayers/testmaptiles.yaml --psql                               > build/mvttile_psql.sql
 build/mvttile_prep.sql: prepare

@@ -7,7 +7,7 @@ Usage:
               [--per-layer] [--summary] [--test-all]
               ([--zoom=<zoom>]... | [--minzoom=<min>] [--maxzoom=<max>])
               [--record=<file>] [--compare=<file>] [--buckets=<count>]
-              [--no-color] [--verbose]
+              [--key] [--no-color] [--verbose]
   test-perf --help
   test-perf --version
 
@@ -25,6 +25,7 @@ Options:
   -r --record=<file>    Record results into a json file for later use with --compare.
   -c --compare=<file>   Compare performance run results with a previous run
   -b --buckets=<count>  Show up to this many buckets in a graph  [default: 10]
+  --key                 Generate md5 keys for all tiles (resulting key is ignored)
   --no-color            Disable ANSI colors
   -v --verbose          Print additional debugging information.
   --help                Show this screen.
@@ -82,6 +83,7 @@ def main(args):
         save_to=args['--record'],
         compare_with=args['--compare'],
         disable_colors=args.get('--no-color'),
+        key_column=args['--key'],
         verbose=args.get('--verbose'),
     )
     asyncio.run(perf.run())
