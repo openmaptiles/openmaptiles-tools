@@ -6,7 +6,7 @@ from docopt import DocoptExit
 
 from openmaptiles.consts import PIXEL_SCALE
 from openmaptiles.language import language_codes_to_names, languages_to_sql
-from openmaptiles.tileset import Tileset
+from openmaptiles.tileset import Tileset, Layer
 
 
 class MvtGenerator:
@@ -54,9 +54,9 @@ PREPARE {fname}(integer, integer, integer) AS
         return self.generate_query("TileBBox(:zoom, :x, :y)", ":zoom")
 
     def generate_sqltomvt_raw(self):
-        return self.generate_query(None, None)
+        return self.generate_query()
 
-    def generate_query(self, bbox, zoom):
+    def generate_query(self, bbox: str = None, zoom: str = None):
         queries = []
         found_layers = set()
         for layer_id, layer in self.get_layers():
@@ -84,14 +84,14 @@ PREPARE {fname}(integer, integer, integer) AS
 
         return query + '\n'
 
-    def generate_layer(self, layer_def, zoom, bbox):
+    def generate_layer(self, layer_def: Layer, zoom: str, bbox: str):
         """
         Convert layer definition into a SQL statement.
         """
         layer = layer_def["layer"]
         ext = self.extent
         query = layer['datasource']['query']
-        layer_fields, geom_fld = layer_def.get_fields()
+        layer_fields, geom_fld, key_fld = layer_def.get_fields()
         has_languages = '{name_languages}' in query
         if has_languages:
             languages = self.tileset.definition.get('languages', [])
@@ -107,7 +107,9 @@ PREPARE {fname}(integer, integer, integer) AS
         # only if the MVT geometry is not NULL
         # Skip the whole layer if there is nothing in it
         query = f"""\
-SELECT COALESCE(ST_AsMVT(t, '{layer['id']}', {ext}, 'mvtgeometry'), '') as mvtl \
+SELECT \
+COALESCE(ST_AsMVT(t, '{layer['id']}', {ext}, 'mvtgeometry', {key_fld or 'NULL'}), '') \
+as mvtl \
 FROM {repl_query}"""
 
         if bbox:
@@ -128,14 +130,14 @@ FROM {repl_query}"""
         return query
 
     async def validate_layer_fields(
-        self, connection, layer_id, layer_def
+        self, connection: Connection, layer_id: str, layer_def: Layer
     ) -> Dict[str, str]:
         """Validate that fields in the layer definition match the ones
         returned by the dummy (0-length) SQL query.
         Returns field names => SQL types (oid)."""
         query_field_map, languages = await self.get_sql_fields(connection, layer_def)
         query_fields = set(query_field_map.keys())
-        layer_fields, geom_fld = layer_def.get_fields()
+        layer_fields, geom_fld, key_fld = layer_def.get_fields()
         if languages:
             layer_fields += language_codes_to_names(languages)
         layer_fields = set(layer_fields)
@@ -160,7 +162,7 @@ FROM {repl_query}"""
         return query_field_map
 
     async def get_sql_fields(
-        self, connection: Connection, layer_def
+        self, connection: Connection, layer_def: Layer
     ) -> Tuple[Dict[str, str], Iterable[str]]:
         """Get field names => SQL types (oid) by executing a dummy query"""
         query = layer_def["layer"]['datasource']['query']
