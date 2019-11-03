@@ -10,7 +10,7 @@ from openmaptiles.tileset import Tileset, Layer
 
 
 class MvtGenerator:
-    def __init__(self, tileset, layer_ids=None, key_column=False):
+    def __init__(self, tileset, layer_ids=None, key_column=False, use_feature_id=True):
         if isinstance(tileset, str):
             self.tileset = Tileset.parse(tileset)
         else:
@@ -20,6 +20,7 @@ class MvtGenerator:
         self.pixel_height = PIXEL_SCALE
         self.layers_ids = set(layer_ids or [])
         self.key_column = key_column
+        self.use_feature_id = use_feature_id
 
     def generate_sqltomvt_func(self, fname):
         """
@@ -91,12 +92,18 @@ PREPARE {fname}(integer, integer, integer) AS
         layer = layer_def["layer"]
         ext = self.extent
         query = layer['datasource']['query']
-        layer_fields, geom_fld, key_fld = layer_def.get_fields()
+        layer_fields, key_fld = layer_def.get_fields()
+        if key_fld and not self.use_feature_id:
+            # PostGIS < v3 did not support feature_ids
+            # TODO: remove key field (osm_id) from query result to prevent
+            # it being used as a regular attribute
+            key_fld = None
         has_languages = '{name_languages}' in query
         if has_languages:
             languages = self.tileset.definition.get('languages', [])
             tags_field = languages_to_sql(languages)
             query = query.format(name_languages=tags_field)
+        geom_fld = layer_def.geometry_field
         repl_geom_fld = f"ST_AsMVTGeom({geom_fld}, !bbox!, {ext}, " \
                         f"{layer['buffer_size']}, true) AS mvtgeometry"
         repl_query = query.replace(geom_fld, repl_geom_fld)
@@ -138,10 +145,11 @@ FROM {repl_query}"""
         Returns field names => SQL types (oid)."""
         query_field_map, languages = await self.get_sql_fields(connection, layer_def)
         query_fields = set(query_field_map.keys())
-        layer_fields, geom_fld, key_fld = layer_def.get_fields()
+        layer_fields, key_fld = layer_def.get_fields()
         if languages:
             layer_fields += language_codes_to_names(languages)
         layer_fields = set(layer_fields)
+        geom_fld = layer_def.geometry_field
         if geom_fld not in query_fields:
             raise ValueError(
                 f"Layer '{layer_id}' query does not generate expected '{geom_fld}'"
@@ -173,12 +181,11 @@ FROM {repl_query}"""
         else:
             languages = False
         query = self.substitute_sql(query, "TileBBox(0, 0, 0)", "0")
-        st = await connection.prepare(
-            f"SELECT * FROM {query} WHERE false LIMIT 0")
+        st = await connection.prepare(f"SELECT * FROM {query} WHERE false LIMIT 0")
         query_field_map = {fld.name: fld.type.oid for fld in st.get_attributes()}
         return query_field_map, languages
 
-    def get_layers(self):
+    def get_layers(self) -> Iterable[Tuple[str, Layer]]:
         for layer in self.tileset.layers:
             layer_id = layer["layer"]['id']
             if not self.layers_ids or layer_id in self.layers_ids:

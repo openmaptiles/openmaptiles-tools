@@ -35,6 +35,7 @@ build-tests: \
     build/mvttile_psql.sql \
     build/mvttile_prep.sql \
     build/mvttile_query.sql \
+    build/mvttile_query_no_feat_ids.sql \
     build/doc/doc.md \
     build/sqlquery.sql \
     build/devdoc
@@ -76,6 +77,8 @@ build/mvttile_prep.sql: prepare
 	$(RUN_CMD) generate-sqltomvt testdata/testlayers/testmaptiles.yaml --prepared                           > build/mvttile_prep.sql
 build/mvttile_query.sql: prepare
 	$(RUN_CMD) generate-sqltomvt testdata/testlayers/testmaptiles.yaml --query                              > build/mvttile_query.sql
+build/mvttile_query_no_feat_ids.sql: prepare
+	$(RUN_CMD) generate-sqltomvt testdata/testlayers/testmaptiles.yaml --query --no-feature-ids             > build/mvttile_query_no_feat_ids.sql
 build/doc/doc.md: prepare
 	$(RUN_CMD) generate-doc      testdata/testlayers/housenumber/housenumber.yaml                           > build/doc.md
 build/sqlquery.sql: prepare
