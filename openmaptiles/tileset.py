@@ -74,17 +74,22 @@ class Layer(object):
 
     def get_fields(self):
         layer = self['layer']
-        datasource = layer['datasource']
+        source = layer['datasource']
         layer_fields = list(layer['fields'].keys())
-        geo_fld = datasource['geometry'] if 'geometry' in datasource else 'geometry'
-        osm_fld = datasource['key_field'] if 'key_field' in datasource else False
+        geo_fld = source['geometry'] if 'geometry' in source else 'geometry'
+        key_field = source['key_field'] if 'key_field' in source else False
         if geo_fld in layer_fields:
             raise ValueError(
                 f"Layer '{layer['id']}' must not have the implicit 'geometry' field "
                 f"declared in the 'fields' section of the yaml file")
-        if osm_fld:
-            layer_fields.append(osm_fld)
-        return layer_fields, geo_fld
+        if key_field:
+            layer_fields.append(key_field)
+            if source.get('key_field_as_attribute') and \
+                source['key_field_as_attribute'] != 'no':
+                # If 'yes', we will need to generate a wrapper query that includes
+                # osm_id column twice - once for feature_id, and once as an attribute
+                raise ValueError('key_field_as_attribute=yes is not yet implemented')
+        return layer_fields, geo_fld, key_field
 
 
 class Tileset(object):
