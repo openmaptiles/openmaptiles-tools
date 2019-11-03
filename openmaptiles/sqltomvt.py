@@ -10,7 +10,7 @@ from openmaptiles.tileset import Tileset
 
 
 class MvtGenerator:
-    def __init__(self, tileset, layer_ids=None):
+    def __init__(self, tileset, layer_ids=None, key_column=False):
         if isinstance(tileset, str):
             self.tileset = Tileset.parse(tileset)
         else:
@@ -19,6 +19,7 @@ class MvtGenerator:
         self.pixel_width = PIXEL_SCALE
         self.pixel_height = PIXEL_SCALE
         self.layers_ids = set(layer_ids or [])
+        self.key_column = key_column
 
     def generate_sqltomvt_func(self, fname):
         """
@@ -26,7 +27,7 @@ class MvtGenerator:
         """
         return f"""\
 CREATE OR REPLACE FUNCTION {fname}(zoom integer, x integer, y integer)
-RETURNS bytea AS $$
+RETURNS {'TABLE(mvt bytea, key text)' if self.key_column else 'bytea'} AS $$
 {self.generate_query("TileBBox(zoom, x, y)", "zoom")};
 $$ LANGUAGE SQL STABLE RETURNS NULL ON NULL INPUT;"""
 
@@ -74,9 +75,14 @@ PREPARE {fname}(integer, integer, integer) AS
         if not queries:
             raise DocoptExit('Could not find any layer definitions')
 
-        return "SELECT STRING_AGG(mvtl, '') AS mvt FROM (\n  " + \
-               "\n    UNION ALL\n  ".join(queries) + \
-               "\n) AS all_layers\n"
+        query = "SELECT STRING_AGG(mvtl, '') AS mvt FROM (\n  " + \
+                "\n    UNION ALL\n  ".join(queries) + \
+                "\n) AS all_layers"
+
+        if self.key_column:
+            query = f"SELECT mvt, md5(mvt) AS key FROM ({query}) AS mvt_data"
+
+        return query + '\n'
 
     def generate_layer(self, layer_def, zoom, bbox):
         """

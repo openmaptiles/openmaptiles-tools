@@ -30,9 +30,10 @@ class GetTile(RequestHandledWithCors):
     connection: Union[Connection, None]
     cancelled: bool
 
-    def initialize(self, pool, query, verbose):
+    def initialize(self, pool, query, key_column, verbose):
         self.pool = pool
         self.query = query
+        self.key_column = key_column
         self.verbose = verbose
         self.connection = None
         self.cancelled = False
@@ -49,9 +50,17 @@ class GetTile(RequestHandledWithCors):
                 if self.verbose:
                     # Make it easier to track queries in pg_stat_activity table
                     query = f"/* {zoom}/{x}/{y} */ " + query
-                tile = await connection.fetchval(query, zoom, x, y)
+                if self.key_column:
+                    row = await connection.fetchrow(query, zoom, x, y)
+                    tile = row['mvt']
+                    key = row['key']
+                else:
+                    tile = await connection.fetchval(query, zoom, x, y)
+                    key = None
                 if tile:
                     self.write(tile)
+                    if self.key_column:
+                        print(f"Tile {zoom}/{x}/{y} key={key} is {len(tile):,} bytes")
                 else:
                     self.set_status(204)
                     if self.verbose:
@@ -86,7 +95,7 @@ class Postserve:
     pool: Pool
 
     def __init__(self, host, port, pghost, pgport, dbname, user, password, metadata,
-                 layers, tileset_path, sql_file, verbose):
+                 layers, tileset_path, sql_file, key_column, verbose):
         self.host = host
         self.port = port
         self.pghost = pghost
@@ -97,10 +106,11 @@ class Postserve:
         self.metadata = metadata
         self.tileset_path = tileset_path
         self.sql_file = sql_file
+        self.key_column = key_column
         self.verbose = verbose
 
         self.tileset = Tileset.parse(self.tileset_path)
-        self.mvt = MvtGenerator(self.tileset, layers)
+        self.mvt = MvtGenerator(self.tileset, layer_ids=layers, key_column=key_column)
 
     async def generate_metadata(self):
         self.metadata["tiles"] = [
@@ -159,7 +169,8 @@ class Postserve:
             (
                 r"/tiles/([0-9]+)/([0-9]+)/([0-9]+).pbf",
                 GetTile,
-                dict(pool=self.pool, query=query, verbose=self.verbose)
+                dict(pool=self.pool, query=query, key_column=self.key_column,
+                     verbose=self.verbose)
             ),
         ])
 

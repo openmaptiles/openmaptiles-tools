@@ -6,20 +6,21 @@ to generate a vector tile (MVT) for the given zoom and bounding box.
 Usage:
   generate-sqltomvt <tileset> [--fname <name>]
                     [--function | --prepared | --query | --psql | --raw]
-                    [--layer=<layer>]...
+                    [--layer=<layer>]... [--key]
   generate-sqltomvt --help
   generate-sqltomvt --version
 
   <tileset>        Tileset definition yaml file
 
 Options:
+  --fname=<name>         Name of the generated function  [default: gettile]
   -f --function          Generate function generation SQL [default]
   -p --prepared          Generate prepared statement SQL
   -q --query             Generate a query SQL with $1,$2,$3 meaning zoom,x,y
   -d --psql              Generate a query SQL with :zoom,:x,:y vars to simplify PSQL debugging with  \set zoom 5
   -r --raw               Generate raw query without any wrappers (good for debugging SQL)
   -l --layer=<layer>     If set, limit tile generation to just this layer (could be multiple)
-  --fname=<name>         Name of the generated function  [default: gettile]
+  --key                  If set, the result will also have a `key` column (md5 of the mvt data)
   --help                 Show this screen.
   --version              Show version.
 """
@@ -32,6 +33,7 @@ if __name__ == '__main__':
     mvt = MvtGenerator(
         tileset=args['<tileset>'],
         layer_ids=args['--layer'],
+        key_column=args['--key'],
     )
 
     if args['--prepared']:
