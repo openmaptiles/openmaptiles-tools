@@ -5,12 +5,13 @@ from pathlib import Path
 from typing import Dict, List, Callable, Any, Union
 
 import asyncpg
-from asyncpg import Connection, UndefinedFunctionError, UndefinedObjectError
+from asyncpg import Connection
 # noinspection PyProtectedMember
 from docopt import DocoptExit
 
 from openmaptiles.perfutils import change, PerfSummary, PerfBucket, \
-    PerfRoot, TestCase, print_graph, set_color_mode, RED, RESET, GREEN
+    PerfRoot, TestCase, print_graph, set_color_mode
+from openmaptiles.pgutils import show_settings
 from openmaptiles.sqltomvt import MvtGenerator
 from openmaptiles.tileset import Tileset
 from openmaptiles.utils import round_td
@@ -44,7 +45,8 @@ class PerfTester:
                  zooms: List[int], dbname: str, pghost, pgport: str, user: str,
                  password: str, summary: bool, per_layer: bool, buckets: int,
                  save_to: Union[None, str, Path], compare_with: Union[None, str, Path],
-                 disable_colors: Union[None, bool], key_column: bool, verbose: bool):
+                 key_column: bool, disable_colors: bool = None,
+                 disable_feature_ids: bool = None, verbose: bool = None):
         if disable_colors is not None:
             set_color_mode(not disable_colors)
         self.tileset = Tileset.parse(tileset)
@@ -56,6 +58,7 @@ class PerfTester:
         self.summary = summary
         self.buckets = buckets
         self.key_column = key_column
+        self.disable_feature_ids = disable_feature_ids
         self.verbose = verbose
         self.per_layer = per_layer
         self.save_to = Path(save_to) if save_to else None
@@ -111,7 +114,15 @@ class PerfTester:
                 self.save_results()
 
     async def _run(self, conn: Connection):
-        await self.test_connection(conn)
+        self.results.pg_settings, use_feature_id = await show_settings(conn)
+        print("\nValidating SQL fields in all layers of the tileset")
+        feature_id = use_feature_id and not self.disable_feature_ids
+        self.results.settings['use_feature_ids'] = feature_id
+        mvt = MvtGenerator(self.tileset, use_feature_id=feature_id)
+        self.results.layer_fields = {}
+        for layer_id, layer_def in mvt.get_layers():
+            fields = await mvt.validate_layer_fields(conn, layer_id, layer_def)
+            self.results.layer_fields[layer_id] = list(fields.keys())
         for testcase in self.tests:
             await self.run_test(conn, testcase)
         print(f"\n\n================ SUMMARY ================")
@@ -128,14 +139,6 @@ class PerfTester:
             bytes=sum(v.result.bytes for v in self.tests),
         )
         print(self.results.summary.perf_format(self.old_run and self.old_run.summary))
-
-    async def test_connection(self, conn):
-        await self.show_settings(conn)
-        print("\nValidating SQL fields in all layers of the tileset")
-        mvt = MvtGenerator(self.tileset)
-        for layer_id, layer_def in mvt.get_layers():
-            fields = await mvt.validate_layer_fields(conn, layer_id, layer_def)
-            self.results.layers[layer_id] = dict(fields=list(fields.keys()))
 
     def create_testcase(self, test, zoom, layers):
         layers = [layers] if isinstance(layers, str) else layers
@@ -247,36 +250,6 @@ generate_series(CAST($4 as int), CAST($5 as int)) AS yval(y);
         print_graph(f"{long_msg} generation speed (longer is better)", speed_data)
         print_graph(f"{long_msg} average tile sizes (shorter is better)",
                     size_data, is_bytes=True)
-
-    async def show_settings(self, conn: Connection):
-        for setting, validator in {
-            'version()': None,
-            'postgis_full_version()': None,
-            'jit': lambda
-                v: 'disable JIT in PG 11-12 for complex queries' if v != 'off' else '',
-            'shared_buffers': None,
-            'work_mem': None,
-            'maintenance_work_mem': None,
-            'max_connections': None,
-            'max_worker_processes': None,
-            'max_parallel_workers': None,
-            'max_parallel_workers_per_gather': None,
-        }.items():
-            q = f"{'SELECT' if '(' in setting else 'SHOW'} {setting};"
-            prefix = ''
-            suffix = ''
-            try:
-                res = await conn.fetchval(q)
-                if validator:
-                    msg = validator(res)
-                    if msg:
-                        prefix, suffix = RED, f" {msg}{RESET}"
-            except (UndefinedFunctionError, UndefinedObjectError) as ex:
-                res = ex.message
-                prefix, suffix = RED, RESET
-
-            print(f"* {prefix}{setting:32} = {res}{suffix}")
-            self.results.settings[setting] = res
 
     def save_results(self):
         if self.save_to:

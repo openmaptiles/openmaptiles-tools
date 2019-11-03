@@ -140,8 +140,9 @@ class PerfTestSummary(PerfSummary):
 class PerfRoot:
     created: str = None
     tileset: str = None
-    settings: Dict[str, str] = field(default_factory=dict)
-    layers: Dict[str, Dict[str, Any]] = field(default_factory=dict)
+    pg_settings: Dict[str, str] = field(default_factory=dict)
+    settings: Dict[str, Any] = field(default_factory=dict)
+    layer_fields: Dict[str, List[str]] = field(default_factory=dict)
     tests: List[PerfTestSummary] = None
     summary: PerfSummary = None
     test_summary: Dict[str, PerfSummary] = field(default_factory=dict)

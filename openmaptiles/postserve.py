@@ -8,6 +8,7 @@ import tornado.web
 from asyncpg import Connection, ConnectionDoesNotExistError
 from asyncpg.pool import Pool
 
+from openmaptiles.pgutils import show_settings
 from .sqltomvt import MvtGenerator
 from .tileset import Tileset
 
@@ -26,6 +27,7 @@ class RequestHandledWithCors(tornado.web.RequestHandler):
 class GetTile(RequestHandledWithCors):
     pool: Pool
     query: str
+    key_column: str
     verbose: bool
     connection: Union[Connection, None]
     cancelled: bool
@@ -93,9 +95,11 @@ class GetMetadata(RequestHandledWithCors):
 
 class Postserve:
     pool: Pool
+    mvt: MvtGenerator
 
     def __init__(self, host, port, pghost, pgport, dbname, user, password, metadata,
-                 layers, tileset_path, sql_file, key_column, verbose):
+                 layers, tileset_path, sql_file, key_column, disable_feature_ids,
+                 verbose):
         self.host = host
         self.port = port
         self.pghost = pghost
@@ -106,25 +110,32 @@ class Postserve:
         self.metadata = metadata
         self.tileset_path = tileset_path
         self.sql_file = sql_file
+        self.layer_ids = layers
         self.key_column = key_column
+        self.disable_feature_ids = disable_feature_ids
         self.verbose = verbose
 
         self.tileset = Tileset.parse(self.tileset_path)
-        self.mvt = MvtGenerator(self.tileset, layer_ids=layers, key_column=key_column)
 
-    async def generate_metadata(self):
+    async def init_connection(self):
         self.metadata["tiles"] = [
             f"http://{self.host}:{self.port}" + "/tiles/{z}/{x}/{y}.pbf",
         ]
         self.metadata["vector_layers"] = []
 
         async with self.pool.acquire() as conn:
+            settings, use_feature_id = await show_settings(conn)
+            if self.disable_feature_ids:
+                use_feature_id = False
+            self.mvt = MvtGenerator(self.tileset, layer_ids=self.layer_ids,
+                                    key_column=self.key_column,
+                                    use_feature_id=use_feature_id)
             pg_types = await get_sql_types(conn)
             for layer_id, layer_def in self.mvt.get_layers():
                 fields = await self.mvt.validate_layer_fields(conn, layer_id, layer_def)
                 unknown = {
                     name: oid for name, oid in fields.items()
-                    if oid not in pg_types and name != 'geometry'
+                    if oid not in pg_types and name != layer_def.geometry_field
                 }
                 if unknown:
                     print(f"Ignoring fields with unknown SQL types (OIDs): "
@@ -141,6 +152,17 @@ class Postserve:
                 ))
 
     def serve(self):
+        tornado.log.access_log.setLevel(logging.INFO if self.verbose else logging.ERROR)
+
+        print(f'Connecting to PostgreSQL at {self.pghost}:{self.pgport}, '
+              f'db={self.dbname}, user={self.user}...')
+        io_loop = tornado.ioloop.IOLoop.current()
+        self.pool = io_loop.run_sync(partial(
+            asyncpg.create_pool,
+            dsn=f"postgresql://{self.user}:{self.password}@" \
+                f"{self.pghost}:{self.pgport}/{self.dbname}"))
+        io_loop.run_sync(partial(self.init_connection))
+
         if self.sql_file:
             with open(self.sql_file) as stream:
                 query = stream.read()
@@ -150,15 +172,6 @@ class Postserve:
 
         if self.verbose:
             print(f'Using SQL query:\n\n-------\n\n{query}\n\n-------\n\n')
-
-        tornado.log.access_log.setLevel(logging.INFO if self.verbose else logging.ERROR)
-
-        dsn = f"postgresql://{self.user}:{self.password}@" \
-              f"{self.pghost}:{self.pgport}/{self.dbname}"
-
-        io_loop = tornado.ioloop.IOLoop.current()
-        self.pool = io_loop.run_sync(partial(asyncpg.create_pool, dsn=dsn))
-        io_loop.run_sync(partial(self.generate_metadata))
 
         application = tornado.web.Application([
             (

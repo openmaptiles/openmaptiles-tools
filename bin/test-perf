@@ -7,7 +7,7 @@ Usage:
               [--per-layer] [--summary] [--test-all]
               ([--zoom=<zoom>]... | [--minzoom=<min>] [--maxzoom=<max>])
               [--record=<file>] [--compare=<file>] [--buckets=<count>]
-              [--key] [--no-color] [--verbose]
+              [--key] [--no-color] [--no-feature-ids] [--verbose]
   test-perf --help
   test-perf --version
 
@@ -27,6 +27,8 @@ Options:
   -b --buckets=<count>  Show up to this many buckets in a graph  [default: 10]
   --key                 Generate md5 keys for all tiles (resulting key is ignored)
   --no-color            Disable ANSI colors
+  --no-feature-ids      Disable feature ID generation, e.g. from osm_id.
+                        Feature IDS are automatically disabled with PostGIS before v3.
   -v --verbose          Print additional debugging information.
   --help                Show this screen.
   --version             Show version.
@@ -83,6 +85,7 @@ def main(args):
         save_to=args['--record'],
         compare_with=args['--compare'],
         disable_colors=args.get('--no-color'),
+        disable_feature_ids=args.get('--no-feature-ids'),
         key_column=args['--key'],
         verbose=args.get('--verbose'),
     )

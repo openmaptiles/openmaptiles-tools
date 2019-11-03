@@ -1,4 +1,6 @@
 import sys
+from typing import Tuple, List
+
 import yaml
 import os.path
 import codecs
@@ -72,13 +74,12 @@ class Layer(object):
         else:
             raise KeyError
 
-    def get_fields(self):
+    def get_fields(self) -> Tuple[List[str], str]:
         layer = self['layer']
         source = layer['datasource']
         layer_fields = list(layer['fields'].keys())
-        geo_fld = source['geometry'] if 'geometry' in source else 'geometry'
         key_field = source['key_field'] if 'key_field' in source else False
-        if geo_fld in layer_fields:
+        if self.geometry_field in layer_fields:
             raise ValueError(
                 f"Layer '{layer['id']}' must not have the implicit 'geometry' field "
                 f"declared in the 'fields' section of the yaml file")
@@ -89,7 +90,12 @@ class Layer(object):
                 # If 'yes', we will need to generate a wrapper query that includes
                 # osm_id column twice - once for feature_id, and once as an attribute
                 raise ValueError('key_field_as_attribute=yes is not yet implemented')
-        return layer_fields, geo_fld, key_field
+        return layer_fields, key_field
+
+    @property
+    def geometry_field(self):
+        source = self['layer']['datasource']
+        return source['geometry'] if 'geometry' in source else 'geometry'
 
 
 class Tileset(object):
