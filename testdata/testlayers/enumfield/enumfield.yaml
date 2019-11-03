@@ -19,8 +19,10 @@ layer:
         other2: false
   datasource:
     geometry_field: geometry
+    key_field: osm_id
+    key_field_as_attribute: no
     srid: 900913
-    query: (SELECT geometry, enumfield FROM layer_enumfields(!bbox!, z(!scale_denominator!))) AS t
+    query: (SELECT osm_id, geometry, enumfield FROM layer_enumfields(!bbox!, z(!scale_denominator!))) AS t
 schema:
   - ./enumfield.sql
 datasources: []

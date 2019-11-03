@@ -108,7 +108,8 @@ PREPARE {fname}(integer, integer, integer) AS
         # Skip the whole layer if there is nothing in it
         query = f"""\
 SELECT \
-COALESCE(ST_AsMVT(t, '{layer['id']}', {ext}, 'mvtgeometry', {key_fld or 'NULL'}), '') \
+COALESCE(ST_AsMVT(t, '{layer['id']}', {ext}, 'mvtgeometry'\
+{f", '{key_fld}'" if key_fld else ""}), '') \
 as mvtl \
 FROM {repl_query}"""
 

@@ -35,13 +35,13 @@ Layer:
     - 20037508.34
     geometry_field: geometry
     host: pghost
-    key_field: ''
-    key_field_as_attribute: ''
+    key_field: osm_id
+    key_field_as_attribute: false
     max_size: 512
     password: pgpswd
     port: 5432
     srid: 900913
-    table: (SELECT geometry, enumfield FROM layer_enumfields(!bbox!, z(!scale_denominator!)))
+    table: (SELECT osm_id, geometry, enumfield FROM layer_enumfields(!bbox!, z(!scale_denominator!)))
       AS t
     type: postgis
     user: pguser
