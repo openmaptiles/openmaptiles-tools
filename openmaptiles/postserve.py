@@ -28,14 +28,16 @@ class GetTile(RequestHandledWithCors):
     pool: Pool
     query: str
     key_column: str
+    gzip: bool
     verbose: bool
     connection: Union[Connection, None]
     cancelled: bool
 
-    def initialize(self, pool, query, key_column, verbose):
+    def initialize(self, pool, query, key_column, gzip, verbose):
         self.pool = pool
         self.query = query
         self.key_column = key_column
+        self.gzip = gzip
         self.verbose = verbose
         self.connection = None
         self.cancelled = False
@@ -60,9 +62,18 @@ class GetTile(RequestHandledWithCors):
                     tile = await connection.fetchval(query, zoom, x, y)
                     key = None
                 if tile:
+                    if self.gzip:
+                        self.set_header("content-encoding", "gzip")
+                    if key:
+                        # Report strong validation, see
+                        # https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/ETag
+                        self.set_header("ETag", f'"{key}"')
                     self.write(tile)
-                    if self.key_column:
-                        print(f"Tile {zoom}/{x}/{y} key={key} is {len(tile):,} bytes")
+
+                    if self.verbose:
+                        print(f"Tile {zoom}/{x}/{y}"
+                              f"{f' key={key}' if self.key_column else ''} "
+                              f"is {len(tile):,} bytes")
                 else:
                     self.set_status(204)
                     if self.verbose:
@@ -184,7 +195,7 @@ class Postserve:
                 r"/tiles/([0-9]+)/([0-9]+)/([0-9]+).pbf",
                 GetTile,
                 dict(pool=self.pool, query=query, key_column=self.key_column,
-                     verbose=self.verbose)
+                     gzip=self.gzip, verbose=self.verbose)
             ),
         ])
 
