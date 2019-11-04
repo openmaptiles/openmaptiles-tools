@@ -99,7 +99,7 @@ class Postserve:
 
     def __init__(self, host, port, pghost, pgport, dbname, user, password, metadata,
                  layers, tileset_path, sql_file, key_column, disable_feature_ids,
-                 verbose):
+                 gzip, verbose):
         self.host = host
         self.port = port
         self.pghost = pghost
@@ -112,6 +112,7 @@ class Postserve:
         self.sql_file = sql_file
         self.layer_ids = layers
         self.key_column = key_column
+        self.gzip = gzip
         self.disable_feature_ids = disable_feature_ids
         self.verbose = verbose
 
@@ -128,7 +129,7 @@ class Postserve:
             if self.disable_feature_ids:
                 use_feature_id = False
             self.mvt = MvtGenerator(self.tileset, layer_ids=self.layer_ids,
-                                    key_column=self.key_column,
+                                    key_column=self.key_column, gzip=self.gzip,
                                     use_feature_id=use_feature_id)
             pg_types = await get_sql_types(conn)
             for layer_id, layer_def in self.mvt.get_layers():
