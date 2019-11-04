@@ -7,7 +7,7 @@ Usage:
               [--per-layer] [--summary] [--test-all]
               ([--zoom=<zoom>]... | [--minzoom=<min>] [--maxzoom=<max>])
               [--record=<file>] [--compare=<file>] [--buckets=<count>]
-              [--key] [--no-color] [--no-feature-ids] [--verbose]
+              [--key] [--gzip] [--no-color] [--no-feature-ids] [--verbose]
   test-perf --help
   test-perf --version
 
@@ -26,6 +26,7 @@ Options:
   -c --compare=<file>   Compare performance run results with a previous run
   -b --buckets=<count>  Show up to this many buckets in a graph  [default: 10]
   --key                 Generate md5 keys for all tiles (resulting key is ignored)
+  --gzip                If set, MVT will be compressed using `gzip()` function.
   --no-color            Disable ANSI colors
   --no-feature-ids      Disable feature ID generation, e.g. from osm_id.
                         Feature IDS are automatically disabled with PostGIS before v3.
@@ -87,6 +88,7 @@ def main(args):
         disable_colors=args.get('--no-color'),
         disable_feature_ids=args.get('--no-feature-ids'),
         key_column=args['--key'],
+        gzip=args['--gzip'],
         verbose=args.get('--verbose'),
     )
     asyncio.run(perf.run())

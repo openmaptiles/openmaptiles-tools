@@ -41,11 +41,13 @@ TEST_CASES: Dict[str, TestCase] = {v.id: v for v in [
 
 
 class PerfTester:
+    mvt: MvtGenerator
+
     def __init__(self, tileset: str, tests: List[str], test_all, layers: List[str],
                  zooms: List[int], dbname: str, pghost, pgport: str, user: str,
                  password: str, summary: bool, per_layer: bool, buckets: int,
                  save_to: Union[None, str, Path], compare_with: Union[None, str, Path],
-                 key_column: bool, disable_colors: bool = None,
+                 key_column: bool, gzip: bool, disable_colors: bool = None,
                  disable_feature_ids: bool = None, verbose: bool = None):
         if disable_colors is not None:
             set_color_mode(not disable_colors)
@@ -58,6 +60,7 @@ class PerfTester:
         self.summary = summary
         self.buckets = buckets
         self.key_column = key_column
+        self.gzip = gzip
         self.disable_feature_ids = disable_feature_ids
         self.verbose = verbose
         self.per_layer = per_layer
@@ -118,10 +121,11 @@ class PerfTester:
         print("\nValidating SQL fields in all layers of the tileset")
         feature_id = use_feature_id and not self.disable_feature_ids
         self.results.settings['use_feature_ids'] = feature_id
-        mvt = MvtGenerator(self.tileset, use_feature_id=feature_id)
+        self.mvt = MvtGenerator(self.tileset, use_feature_id=feature_id,
+                                gzip=self.gzip, key_column=self.key_column)
         self.results.layer_fields = {}
-        for layer_id, layer_def in mvt.get_layers():
-            fields = await mvt.validate_layer_fields(conn, layer_id, layer_def)
+        for layer_id, layer_def in self.mvt.get_layers():
+            fields = await self.mvt.validate_layer_fields(conn, layer_id, layer_def)
             self.results.layer_fields[layer_id] = list(fields.keys())
         for testcase in self.tests:
             await self.run_test(conn, testcase)
@@ -142,8 +146,8 @@ class PerfTester:
 
     def create_testcase(self, test, zoom, layers):
         layers = [layers] if isinstance(layers, str) else layers
-        mvt = MvtGenerator(self.tileset, layer_ids=layers, key_column=self.key_column)
-        query = mvt.generate_query('TileBBox($1, xval.x, yval.y)', '$1')
+        self.mvt.set_layer_ids(layers)
+        query = self.mvt.generate_query('TileBBox($1, xval.x, yval.y)', '$1')
         if self.key_column:
             query = f"SELECT mvt FROM ({query}) AS perfdata"
         prefix = 'CAST($1 as int) as z, xval.x as x, yval.y as y,' \

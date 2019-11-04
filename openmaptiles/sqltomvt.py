@@ -1,4 +1,4 @@
-from typing import Iterable, Tuple, Dict
+from typing import Iterable, Tuple, Dict, Set, Union
 
 from asyncpg import Connection
 # noinspection PyProtectedMember
@@ -10,7 +10,10 @@ from openmaptiles.tileset import Tileset, Layer
 
 
 class MvtGenerator:
-    def __init__(self, tileset, layer_ids=None, key_column=False, use_feature_id=True):
+    layer_ids: Set[str]
+
+    def __init__(self, tileset: Union[str, Tileset], layer_ids: Iterable[str] = None,
+                 key_column=False, gzip=False, use_feature_id=True):
         if isinstance(tileset, str):
             self.tileset = Tileset.parse(tileset)
         else:
@@ -18,9 +21,13 @@ class MvtGenerator:
         self.extent = 4096
         self.pixel_width = PIXEL_SCALE
         self.pixel_height = PIXEL_SCALE
-        self.layers_ids = set(layer_ids or [])
         self.key_column = key_column
+        self.gzip = gzip
         self.use_feature_id = use_feature_id
+        self.set_layer_ids(layer_ids)
+
+    def set_layer_ids(self, layer_ids: Iterable[str]):
+        self.layer_ids = set(layer_ids or [])
 
     def generate_sqltomvt_func(self, fname):
         """
@@ -64,8 +71,8 @@ PREPARE {fname}(integer, integer, integer) AS
             found_layers.add(layer_id)
             query = self.generate_layer(layer, zoom, bbox)
             queries.append(query)
-        if self.layers_ids and self.layers_ids != found_layers:
-            unknown = sorted(self.layers_ids - found_layers)
+        if self.layer_ids and self.layer_ids != found_layers:
+            unknown = sorted(self.layer_ids - found_layers)
             raise DocoptExit(
                 f"Unable to find layer [{', '.join(unknown)}]. Available layers:\n" +
                 '\n'.join(f"* {v['layer']['id']}" + (
@@ -76,9 +83,15 @@ PREPARE {fname}(integer, integer, integer) AS
         if not queries:
             raise DocoptExit('Could not find any layer definitions')
 
-        query = "SELECT STRING_AGG(mvtl, '') AS mvt FROM (\n  " + \
-                "\n    UNION ALL\n  ".join(queries) + \
-                "\n) AS all_layers"
+        concatenate_layers = "STRING_AGG(mvtl, '')"
+        if self.gzip:
+            # GZIP function is available from https://github.com/pramsey/pgsql-gzip
+            concatenate_layers = f"GZIP({concatenate_layers})"
+        union_layers = "\n    UNION ALL\n  ".join(queries)
+        query = f"""\
+SELECT {concatenate_layers} AS mvt FROM (
+  {union_layers}
+) AS all_layers"""
 
         if self.key_column:
             query = f"SELECT mvt, md5(mvt) AS key FROM ({query}) AS mvt_data"
@@ -188,5 +201,5 @@ FROM {repl_query}"""
     def get_layers(self) -> Iterable[Tuple[str, Layer]]:
         for layer in self.tileset.layers:
             layer_id = layer["layer"]['id']
-            if not self.layers_ids or layer_id in self.layers_ids:
+            if not self.layer_ids or layer_id in self.layer_ids:
                 yield layer_id, layer
