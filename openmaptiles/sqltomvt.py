@@ -13,7 +13,7 @@ class MvtGenerator:
     layer_ids: Set[str]
 
     def __init__(self, tileset: Union[str, Tileset], layer_ids: Iterable[str] = None,
-                 key_column=False, gzip=False, use_feature_id=True):
+                 key_column=False, gzip: Union[int, bool] = False, use_feature_id=True):
         if isinstance(tileset, str):
             self.tileset = Tileset.parse(tileset)
         else:
@@ -84,9 +84,16 @@ PREPARE {fname}(integer, integer, integer) AS
             raise DocoptExit('Could not find any layer definitions')
 
         concatenate_layers = "STRING_AGG(mvtl, '')"
-        if self.gzip:
+        # Handle when gzip is True or a number
+        # Note that any bool is an int, but not reverse: isinstance(False, int) == True
+        if not isinstance(self.gzip, bool) or self.gzip:
             # GZIP function is available from https://github.com/pramsey/pgsql-gzip
-            concatenate_layers = f"GZIP({concatenate_layers})"
+            if isinstance(self.gzip, bool):
+                concatenate_layers = f"GZIP({concatenate_layers})"
+            else:
+                self.gzip = int(self.gzip)
+                assert 0 <= self.gzip <= 9
+                concatenate_layers = f"GZIP({concatenate_layers}, {self.gzip})"
         union_layers = "\n    UNION ALL\n  ".join(queries)
         query = f"""\
 SELECT {concatenate_layers} AS mvt FROM (

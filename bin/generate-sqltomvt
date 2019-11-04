@@ -6,7 +6,7 @@ to generate a vector tile (MVT) for the given zoom and bounding box.
 Usage:
   generate-sqltomvt <tileset> [--fname <name>]
                     [--function | --prepared | --query | --psql | --raw]
-                    [--layer=<layer>]... [--key] [--gzip] [--no-feature-ids]
+                    [--layer=<layer>]... [--key] [--gzip [<gzlevel>]] [--no-feature-ids]
   generate-sqltomvt --help
   generate-sqltomvt --version
 
@@ -21,7 +21,7 @@ Options:
   -r --raw               Generate raw query without any wrappers (good for debugging SQL)
   -l --layer=<layer>     If set, limit tile generation to just this layer (could be multiple)
   --key                  If set, the result will also have a `key` column (md5 of the mvt data)
-  --gzip                 If set, MVT will be compressed using `gzip()` function.
+  --gzip                 If set, compress MVT with gzip, with optional level=0..9.
                          `gzip()` is available from https://github.com/pramsey/pgsql-gzip
   --no-feature-ids       Disable feature ID generation, e.g. from osm_id.
                          You must use this flag when generating SQL for PostGIS before v3.
@@ -38,7 +38,7 @@ if __name__ == '__main__':
         tileset=args['<tileset>'],
         layer_ids=args['--layer'],
         key_column=args['--key'],
-        gzip=args['--gzip'],
+        gzip=args['--gzip'] and (args['<gzlevel>'] or True),
         use_feature_id=not args['--no-feature-ids'],
     )
 
