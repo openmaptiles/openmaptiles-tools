@@ -16,8 +16,9 @@ RUN curl https://www.postgresql.org/media/keys/ACCC4CF8.asc | apt-key add - \
     && /bin/bash -c 'source /etc/os-release && echo "deb http://apt.postgresql.org/pub/repos/apt/ ${VERSION_CODENAME}-pgdg main $PG_MAJOR" > /etc/apt/sources.list.d/pgdg.list' \
     && apt-get update \
     && apt-get install  -y --no-install-recommends \
-        graphviz \
+        graphviz  `# used by layer mapping graphs` \
         sqlite3 \
+        gdal-bin  `# installs ogr2ogr` \
         postgresql-client-${PG_MAJOR} \
     && rm -rf /var/lib/apt/lists/
 
