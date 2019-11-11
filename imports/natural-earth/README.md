@@ -10,14 +10,20 @@ into the container to make distribution and execution easier.
 Provide the database credentials and run `import-natural-earth`.
 
 ```bash
-docker run --rm \
-    -e POSTGRES_USER="osm" \
-    -e POSTGRES_PASSWORD="osm" \
-    -e POSTGRES_HOST="127.0.0.1" \
-    -e POSTGRES_DB="osm" \
-    -e POSTGRES_PORT="5432" \
+docker run --rm -it --net=host \
+    -e PGHOST="127.0.0.1" \
+    -e PGDATABASE="openmaptiles" \
+    -e PGUSER="openmaptiles" \
+    -e PGPASSWORD="openmaptiles" \
     openmaptiles/import-natural-earth
 ```
+
+Optional environment variables:
+* `PGPORT` (defaults to `5432`)
+* `PGCONN` - Postgres connection string to override all previous env vars
+
+Legacy env variables are still supported, but they are not recommended:
+`POSTGRES_HOST`,`POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_PORT`
 
 ## Natural Earth
 Using version [4.1](https://github.com/nvkelso/natural-earth-vector/releases/tag/v4.1.0).
