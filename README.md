@@ -187,7 +187,7 @@ Use `postserve <tileset>` to start serving. Use `--help` to get the list of Post
  If you have a full planet database, you may want to use `MIN_ZOOM=6 postserve ...` to avoid accidental slow low-zoom
  tile generation.
 
-## Postserve quickstart with docker
+#### Postserve quickstart with docker
 * clone [openmaptiles repo](https://github.com/openmaptiles/openmaptiles) (`openmaptiles-tools` repo is not needed with docker)
 * get a PostgreSQL server running with the openmaptiles-imported OSM data, e.g. by following quickstart guide.
 * run `docker pull openmaptiles/openmaptiles-tools` to download the latest tools version
@@ -202,7 +202,10 @@ docker run -it --rm -u $(id -u ${USER}):$(id -g ${USER}) \
     postserve openmaptiles.yaml 
 ```
 
-* Open [Maputnik editor](https://maputnik.github.io/editor) online and change the data source to `http://localhost:8090`
+#### Viewing dynamic tiles
+You can view tiles with any MVT-supporting viewer, such as:
+* [Maputnik editor](https://maputnik.github.io/editor) (online) -- change the data source to `http://localhost:8090`
+* [QGIS desktop](https://www.qgis.org/en/site/) -- add `Vector Tiles Reader` plugin, and add a vector tile server connection with TileJSON URL set to `http://localhost:8090`.
 
 
 ## Scripts
