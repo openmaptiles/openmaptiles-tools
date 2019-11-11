@@ -3,7 +3,7 @@
 Refresh all PostgreSQL materialized views in parallel, taking into account cross-dependencies.
 
 Usage:
-  test-perf <tileset> [--test=<set>]... [--layer=<layer>]...
+  test-perf <tileset> [--test=<set>]... [--layer=<layer>]... [--exclude-layers]
               [--per-layer] [--summary] [--test-all]
               ([--zoom=<zoom>]... | [--minzoom=<min>] [--maxzoom=<max>])
               [--record=<file>] [--compare=<file>] [--buckets=<count>]
@@ -19,6 +19,7 @@ Options:
   -p --per-layer        Test each layer individually, also show per-layer summary graph.
   -s --summary          Run summary tests, without per-tile break-down.
   -l --layer=<layers>   Limit testing to a specific layer (could be more than one)
+  -x --exclude-layers   If set, uses all layers except the ones listed with -l (-l is required)
   -z --zoom=<zoom>      Limit testing to a specific zoom. If set, ignores min/max.
   -m --minzoom=<min>    Test tiles in zooms more or equal to this value  [default: 14]
   -n --maxzoom=<max>    Test tiles in zooms less or equal to this value  [default: 14]
@@ -66,6 +67,7 @@ def main(args):
         summary=args['--summary'],
         per_layer=args['--per-layer'],
         layers=args['--layer'],
+        exclude_layers=args['--exclude-layers'],
         buckets=int(args['--buckets']),
         zooms=zooms,
         pghost=coalesce(

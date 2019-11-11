@@ -48,7 +48,8 @@ class PerfTester:
                  password: str, summary: bool, per_layer: bool, buckets: int,
                  save_to: Union[None, str, Path], compare_with: Union[None, str, Path],
                  key_column: bool, gzip: bool, disable_colors: bool = None,
-                 disable_feature_ids: bool = None, verbose: bool = None):
+                 disable_feature_ids: bool = None, verbose: bool = None,
+                 exclude_layers: bool = False):
         if disable_colors is not None:
             set_color_mode(not disable_colors)
         self.tileset = Tileset.parse(tileset)
@@ -84,8 +85,12 @@ class PerfTester:
         if test_all:
             # Do this after validating individual tests, they are ignored but validated
             tests = [v for v in TEST_CASES.keys() if v != 'null']
-        if per_layer and not layers:
-            layers = [l["layer"]['id'] for l in self.tileset.layers]
+        all_layers = [l["layer"]['id'] for l in self.tileset.layers]
+        if layers and exclude_layers:
+            # inverse layers list
+            layers = [l for l in all_layers if l not in layers]
+        elif not layers and per_layer:
+            layers = all_layers
         # Keep the order, but ensure no duplicates
         layers = list(dict.fromkeys(layers))
         tests = list(dict.fromkeys(tests))

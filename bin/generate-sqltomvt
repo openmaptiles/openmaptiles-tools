@@ -6,27 +6,29 @@ to generate a vector tile (MVT) for the given zoom and bounding box.
 Usage:
   generate-sqltomvt <tileset> [--fname <name>]
                     [--function | --prepared | --query | --psql | --raw]
-                    [--layer=<layer>]... [--key] [--gzip [<gzlevel>]] [--no-feature-ids]
+                    [--layer=<layer>]... [--exclude-layers] [--key]
+                    [--gzip [<gzlevel>]] [--no-feature-ids]
   generate-sqltomvt --help
   generate-sqltomvt --version
 
   <tileset>        Tileset definition yaml file
 
 Options:
-  --fname=<name>         Name of the generated function  [default: gettile]
-  -f --function          Generate function generation SQL [default]
-  -p --prepared          Generate prepared statement SQL
-  -q --query             Generate a query SQL with $1,$2,$3 meaning zoom,x,y
-  -d --psql              Generate a query SQL with :zoom,:x,:y vars to simplify PSQL debugging with  \set zoom 5
-  -r --raw               Generate raw query without any wrappers (good for debugging SQL)
-  -l --layer=<layer>     If set, limit tile generation to just this layer (could be multiple)
-  --key                  If set, the result will also have a `key` column (md5 of the mvt data)
-  --gzip                 If set, compress MVT with gzip, with optional level=0..9.
-                         `gzip()` is available from https://github.com/pramsey/pgsql-gzip
-  --no-feature-ids       Disable feature ID generation, e.g. from osm_id.
-                         You must use this flag when generating SQL for PostGIS before v3.
-  --help                 Show this screen.
-  --version              Show version.
+  --fname=<name>        Name of the generated function  [default: gettile]
+  -f --function         Generate function generation SQL [default]
+  -p --prepared         Generate prepared statement SQL
+  -q --query            Generate a query SQL with $1,$2,$3 meaning zoom,x,y
+  -d --psql             Generate a query SQL with :zoom,:x,:y vars to simplify PSQL debugging with  \set zoom 5
+  -r --raw              Generate raw query without any wrappers (good for debugging SQL)
+  -l --layer=<layer>    If set, limit tile generation to just this layer (could be multiple)
+  -x --exclude-layers   If set, uses all layers except the ones listed with -l (-l is required)
+  --key                 If set, the result will also have a `key` column (md5 of the mvt data)
+  --gzip                If set, compress MVT with gzip, with optional level=0..9.
+                        `gzip()` is available from https://github.com/pramsey/pgsql-gzip
+  --no-feature-ids      Disable feature ID generation, e.g. from osm_id.
+                        You must use this flag when generating SQL for PostGIS before v3.
+  --help                Show this screen.
+  --version             Show version.
 """
 from docopt import docopt
 import openmaptiles
@@ -37,6 +39,7 @@ if __name__ == '__main__':
     mvt = MvtGenerator(
         tileset=args['<tileset>'],
         layer_ids=args['--layer'],
+        exclude_layers=args['--exclude-layers'],
         key_column=args['--key'],
         gzip=args['--gzip'] and (args['<gzlevel>'] or True),
         use_feature_id=not args['--no-feature-ids'],

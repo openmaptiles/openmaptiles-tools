@@ -2,7 +2,7 @@ import asyncio
 import re
 from asyncio.futures import Future
 from datetime import timedelta
-from typing import List, Callable, Any, Dict, Awaitable
+from typing import List, Callable, Any, Dict, Awaitable, Iterable
 
 from .consts import *
 
@@ -94,12 +94,11 @@ def _validate_actions(
     Make sure there is no infinite loop, and all IDs exist and not duplicated
     :return dictionary of action IDs and corresponding action objects
     """
-    lookup = {v.action_id: v for v in actions}
-    if len(lookup) < len(actions):
-        ids = [v.action_id for v in actions]
-        duplicates = "', '".join(set([v for v in ids if ids.count(v) > 1]))
-        raise ValueError(f"Found duplicate action IDs: '{duplicates}'")
+    duplicates = find_duplicates([v.action_id for v in actions])
+    if duplicates:
+        raise ValueError(f"Found duplicate action IDs: {', '.join(duplicates)}")
 
+    lookup = {v.action_id: v for v in actions}
     pending = set(lookup.keys())
     last_pending_count = 0
     while len(pending) != last_pending_count:
@@ -122,8 +121,13 @@ def _validate_actions(
                 pending.remove(action_id)
     if pending:
         raise ValueError(f"Found circular dependencies between {', '.join(pending)}")
-
     return lookup
+
+
+def find_duplicates(ids: List[str]) -> Iterable[str]:
+    if len(set(ids)) == len(ids):
+        return []
+    return set([v for v in ids if ids.count(v) > 1])
 
 
 def round_td(delta: timedelta):
