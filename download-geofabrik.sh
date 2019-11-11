@@ -18,7 +18,7 @@ rm -f *.mbtiles
 rm -f *.txt
 rm -f *.yml
 
-download-geofabrik update
+download-geofabrik generate
 download-geofabrik -v download $AREA
  
 ls *.osm.pbf  -la
