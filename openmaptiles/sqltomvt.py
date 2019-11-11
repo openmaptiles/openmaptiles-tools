@@ -1,4 +1,4 @@
-from typing import Iterable, Tuple, Dict, Set, Union
+from typing import Iterable, Tuple, Dict, Set, Union, List
 
 from asyncpg import Connection
 # noinspection PyProtectedMember
@@ -7,13 +7,16 @@ from docopt import DocoptExit
 from openmaptiles.consts import PIXEL_SCALE
 from openmaptiles.language import language_codes_to_names, languages_to_sql
 from openmaptiles.tileset import Tileset, Layer
+from openmaptiles.utils import find_duplicates
 
 
 class MvtGenerator:
     layer_ids: Set[str]
+    exclude_layers: bool  # if True, inverses layer_ids to use all except them
 
-    def __init__(self, tileset: Union[str, Tileset], layer_ids: Iterable[str] = None,
-                 key_column=False, gzip: Union[int, bool] = False, use_feature_id=True):
+    def __init__(self, tileset: Union[str, Tileset], layer_ids: List[str] = None,
+                 exclude_layers=False, key_column=False, gzip: Union[int, bool] = False,
+                 use_feature_id=True):
         if isinstance(tileset, str):
             self.tileset = Tileset.parse(tileset)
         else:
@@ -24,10 +27,16 @@ class MvtGenerator:
         self.key_column = key_column
         self.gzip = gzip
         self.use_feature_id = use_feature_id
-        self.set_layer_ids(layer_ids)
+        self.set_layer_ids(layer_ids, exclude_layers)
 
-    def set_layer_ids(self, layer_ids: Iterable[str]):
+    def set_layer_ids(self, layer_ids: List[str], exclude_layers=False):
+        if exclude_layers and not layer_ids:
+            raise ValueError("Cannot invert layer selection if no layer ids are given")
+        dups = find_duplicates(layer_ids)
+        if dups:
+            raise ValueError(f"Duplicate layer IDs: {', '.join(dups)}")
         self.layer_ids = set(layer_ids or [])
+        self.exclude_layers = exclude_layers
 
     def generate_sqltomvt_func(self, fname):
         """
@@ -66,22 +75,8 @@ PREPARE {fname}(integer, integer, integer) AS
 
     def generate_query(self, bbox: str = None, zoom: str = None):
         queries = []
-        found_layers = set()
         for layer_id, layer in self.get_layers():
-            found_layers.add(layer_id)
-            query = self.generate_layer(layer, zoom, bbox)
-            queries.append(query)
-        if self.layer_ids and self.layer_ids != found_layers:
-            unknown = sorted(self.layer_ids - found_layers)
-            raise DocoptExit(
-                f"Unable to find layer [{', '.join(unknown)}]. Available layers:\n" +
-                '\n'.join(f"* {v['layer']['id']}" + (
-                    f"\n{v['layer']['description']}" if v['layer'].get('description')
-                    else ''
-                ) for v in self.tileset.layers)
-            )
-        if not queries:
-            raise DocoptExit('Could not find any layer definitions')
+            queries.append(self.generate_layer(layer, zoom, bbox))
 
         concatenate_layers = "STRING_AGG(mvtl, '')"
         # Handle when gzip is True or a number
@@ -206,7 +201,30 @@ FROM {repl_query}"""
         return query_field_map, languages
 
     def get_layers(self) -> Iterable[Tuple[str, Layer]]:
-        for layer in self.tileset.layers:
-            layer_id = layer["layer"]['id']
-            if not self.layer_ids or layer_id in self.layer_ids:
+        all_layers = [(l["layer"]['id'], l) for l in self.tileset.layers]
+        if not all_layers:
+            raise DocoptExit('Could not find any layer definitions')
+        duplicates = find_duplicates([k for k, v in all_layers])
+        if duplicates:
+            raise DocoptExit(f'Duplicate layer IDs found: {", ".join(duplicates)}')
+        if not self.layer_ids:
+            yield from all_layers
+            return
+        found_layers = set()
+        skipped_layers = set()
+        for layer_id, layer in all_layers:
+            if (layer_id in self.layer_ids) != self.exclude_layers:
+                found_layers.add(layer_id)
                 yield layer_id, layer
+            else:
+                skipped_layers.add(layer_id)
+        expected_result = skipped_layers if self.exclude_layers else found_layers
+        if self.layer_ids != expected_result:
+            unknown = sorted(self.layer_ids - expected_result)
+            raise DocoptExit(
+                f"Unable to find layer [{', '.join(unknown)}]. Available layers:\n" +
+                '\n'.join(f"* {k}" + (
+                    f"\n{v['layer']['description']}" if v['layer'].get('description')
+                    else ''
+                ) for k, v in all_layers)
+            )
