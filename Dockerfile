@@ -22,7 +22,7 @@ RUN apt-key adv --keyserver ha.pool.sks-keyservers.net --recv-keys B97B0AFCAA1A4
  # add  github.com/julien-noblet/download-geofabrik
 RUN go get github.com/julien-noblet/download-geofabrik \
  && go install  github.com/julien-noblet/download-geofabrik \
- && download-geofabrik update \
+ && download-geofabrik generate \
  # add  github.com/lukasmartinelli/pgclimb
  && go get github.com/lukasmartinelli/pgclimb \
  && go install github.com/lukasmartinelli/pgclimb \
