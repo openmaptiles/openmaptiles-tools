@@ -7,10 +7,17 @@ Provide the database credentials and run `import-lakelines`.
 
 ```bash
 docker run --rm \
-    -e POSTGRES_USER="osm" \
-    -e POSTGRES_PASSWORD="osm" \
-    -e POSTGRES_HOST="127.0.0.1" \
-    -e POSTGRES_DB="osm" \
-    -e POSTGRES_PORT="5432" \
+    -e PGHOST="127.0.0.1" \
+    -e PGDATABASE="openmaptiles" \
+    -e PGUSER="openmaptiles" \
+    -e PGPASSWORD="openmaptiles" \
     openmaptiles/import-lakelines
 ```
+
+Optional environment variables:
+* `PGPORT` (defaults to `5432`)
+* `LAKE_CENTERLINE_TABLE` (defaults to `lake_centerline`)
+* `PGCONN` - Postgres connection string to override all previous env vars
+
+Legacy env variables are still supported, but they are not recommended:
+`POSTGRES_HOST`,`POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_PORT`
