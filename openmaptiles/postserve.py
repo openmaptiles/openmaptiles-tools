@@ -23,6 +23,12 @@ class RequestHandledWithCors(tornado.web.RequestHandler):
         self.set_status(204)
         self.finish()
 
+    def head(self):
+        # TODO: Technically here we should do a full tile/metadata retrieval,
+        # but without sending the actual content back.
+        # We must implement it to support QGIS
+        self.finish()
+
 
 class GetTile(RequestHandledWithCors):
     pool: Pool
