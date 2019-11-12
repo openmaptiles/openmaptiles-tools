@@ -116,7 +116,7 @@ class Postserve:
 
     def __init__(self, host, port, pghost, pgport, dbname, user, password, metadata,
                  layers, tileset_path, sql_file, key_column, disable_feature_ids,
-                 gzip, verbose, exclude_layers):
+                 disable_tile_envelope, gzip, verbose, exclude_layers):
         self.host = host
         self.port = port
         self.pghost = pghost
@@ -132,6 +132,7 @@ class Postserve:
         self.key_column = key_column
         self.gzip = gzip
         self.disable_feature_ids = disable_feature_ids
+        self.disable_tile_envelope = disable_tile_envelope
         self.verbose = verbose
 
         self.tileset = Tileset.parse(self.tileset_path)
@@ -143,13 +144,15 @@ class Postserve:
         self.metadata["vector_layers"] = []
 
         async with self.pool.acquire() as conn:
-            settings, use_feature_id = await show_settings(conn)
-            if self.disable_feature_ids:
-                use_feature_id = False
-            self.mvt = MvtGenerator(self.tileset, layer_ids=self.layer_ids,
-                                    key_column=self.key_column, gzip=self.gzip,
-                                    use_feature_id=use_feature_id,
-                                    exclude_layers=self.exclude_layers)
+            settings, postgis_v3 = await show_settings(conn)
+            self.mvt = MvtGenerator(
+                self.tileset,
+                layer_ids=self.layer_ids,
+                key_column=self.key_column,
+                gzip=self.gzip,
+                use_feature_id=postgis_v3 and not self.disable_feature_ids,
+                use_tile_envelope=postgis_v3 and not self.disable_tile_envelope,
+                exclude_layers=self.exclude_layers)
             pg_types = await get_sql_types(conn)
             for layer_id, layer_def in self.mvt.get_layers():
                 fields = await self.mvt.validate_layer_fields(conn, layer_id, layer_def)
