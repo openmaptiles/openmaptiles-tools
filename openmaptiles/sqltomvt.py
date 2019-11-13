@@ -16,7 +16,8 @@ class MvtGenerator:
 
     def __init__(self, tileset: Union[str, Tileset], layer_ids: List[str] = None,
                  exclude_layers=False, key_column=False, gzip: Union[int, bool] = False,
-                 use_feature_id=True, use_tile_envelope=False):
+                 use_feature_id=True, use_tile_envelope=False,
+                 test_geometry=False):
         if isinstance(tileset, str):
             self.tileset = Tileset.parse(tileset)
         else:
@@ -28,6 +29,7 @@ class MvtGenerator:
         self.gzip = gzip
         self.use_feature_id = use_feature_id
         self.tile_envelope = 'ST_TileEnvelope' if use_tile_envelope else 'TileBBox'
+        self.test_geometry = test_geometry
         self.set_layer_ids(layer_ids, exclude_layers)
 
     def set_layer_ids(self, layer_ids: List[str], exclude_layers=False):
@@ -79,6 +81,10 @@ PREPARE {fname}(integer, integer, integer) AS
         for layer_id, layer in self.get_layers():
             queries.append(self.generate_layer(layer, zoom, bbox))
 
+        extras = ''
+        if self.test_geometry:
+            extras += f', SUM(COALESCE(bad_geos, 0)) as bad_geos'
+
         concatenate_layers = "STRING_AGG(mvtl, '')"
         # Handle when gzip is True or a number
         # Note that any bool is an int, but not reverse: isinstance(False, int) == True
@@ -92,12 +98,14 @@ PREPARE {fname}(integer, integer, integer) AS
                 concatenate_layers = f"GZIP({concatenate_layers}, {self.gzip})"
         union_layers = "\n    UNION ALL\n  ".join(queries)
         query = f"""\
-SELECT {concatenate_layers} AS mvt FROM (
+SELECT {concatenate_layers} AS mvt{extras} FROM (
   {union_layers}
 ) AS all_layers"""
 
         if self.key_column:
-            query = f"SELECT mvt, md5(mvt) AS key FROM ({query}) AS mvt_data"
+            query = f"SELECT mvt, md5(mvt) AS key" \
+                    f"{', bad_geos' if self.test_geometry else ''} " \
+                    f"FROM ({query}) AS mvt_data"
 
         return query + '\n'
 
@@ -120,21 +128,28 @@ SELECT {concatenate_layers} AS mvt FROM (
             tags_field = languages_to_sql(languages)
             query = query.format(name_languages=tags_field)
         geom_fld = layer_def.geometry_field
-        repl_geom_fld = f"ST_AsMVTGeom({geom_fld}, !bbox!, {ext}, " \
-                        f"{layer['buffer_size']}, true) AS mvtgeometry"
-        repl_query = query.replace(geom_fld, repl_geom_fld)
-        if len(repl_query) - len(repl_geom_fld) + len(geom_fld) != len(query):
+        mvtgeometry_fld = f"ST_AsMVTGeom({geom_fld}, !bbox!, {ext}, " \
+                          f"{layer['buffer_size']}, true) AS mvtgeometry"
+        if self.test_geometry:
+            mvtgeometry_fld += f", (1-ST_IsValid({geom_fld})::int) as bad_geos"
+        repl_query = query.replace(geom_fld, mvtgeometry_fld)
+        if len(repl_query) - len(mvtgeometry_fld) + len(geom_fld) != len(query):
             raise ValueError(f"Unable to replace '{geom_fld}' in '{layer['id']}' layer")
 
         # Combine all layer's features into a single MVT blob representing one layer
-        # only if the MVT geometry is not NULL
-        # Skip the whole layer if there is nothing in it
+        extras = ''
+        if self.test_geometry:
+            # Count the number of invalid regular & mvt geometries (should always be 0)
+            extras += f', SUM((1' \
+                      f'-COALESCE(ST_IsValid(mvtgeometry)::int, 1))' \
+                      f'+COALESCE(bad_geos, 0)' \
+                      f') as bad_geos'
+
         query = f"""\
 SELECT \
 COALESCE(ST_AsMVT(t, '{layer['id']}', {ext}, 'mvtgeometry'\
 {f", '{key_fld}'" if key_fld else ""}), '') \
-as mvtl \
-FROM {repl_query}"""
+as mvtl{extras} FROM {repl_query}"""
 
         if bbox:
             query = self.substitute_sql(query, bbox, zoom)
