@@ -34,7 +34,6 @@ Options:
                         Feature IDS are automatically disabled with PostGIS before v3.
   --no-tile-envelope    Disable PostGIS 3.0+ ST_TileEnvelope() function.
                         ST_TileEnvelope() is auto-disabled with PostGIS before v3.
-  -g --test-geometry    Validate all geometries produced by ST_AsMvtGeom(), and warn.
   -v --verbose          Print additional debugging information.
   --help                Show this screen.
   --version             Show version.
@@ -94,7 +93,6 @@ def main(args):
         disable_colors=args['--no-color'],
         disable_feature_ids=args['--no-feature-ids'],
         disable_tile_envelope=args['--no-tile-envelope'],
-        test_geometry=args['--test-geometry'],
         key_column=args['--key'],
         gzip=args['--gzip'] and (args['<gzlevel>'] or True),
         verbose=args.get('--verbose'),
