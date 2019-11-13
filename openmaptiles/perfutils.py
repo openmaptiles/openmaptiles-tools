@@ -177,7 +177,7 @@ class TestCase:
         else:
             self.layers_id = '_all_'
 
-    def make_test(self, zoom, layers, query):
+    def make_test(self, zoom, layers, query) -> 'TestCase':
         diff = zoom - self.zoom
         mult = pow(2, diff) if diff > 0 else 1 / pow(2, -diff)
         tc = TestCase(

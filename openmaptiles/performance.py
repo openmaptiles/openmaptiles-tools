@@ -42,6 +42,7 @@ TEST_CASES: Dict[str, TestCase] = {v.id: v for v in [
 
 class PerfTester:
     mvt: MvtGenerator
+    test_cases: List[TestCase]
 
     def __init__(self, tileset: str, tests: List[str], test_all, layers: List[str],
                  zooms: List[int], dbname: str, pghost, pgport: str, user: str,
@@ -95,20 +96,9 @@ class PerfTester:
         elif not layers and per_layer:
             layers = all_layers
         # Keep the order, but ensure no duplicates
-        layers = list(dict.fromkeys(layers))
-        tests = list(dict.fromkeys(tests))
-        zooms = list(dict.fromkeys(zooms))
-        self.tests = []
-        old_tests = self.old_run.tests if self.old_run else None
-        for layer in (layers if per_layer else [None]):
-            for test in tests:
-                for z in zooms:
-                    tc = self.create_testcase(test, z, layer or layers)
-                    if old_tests:
-                        tc.old_result = next(
-                            (v for v in old_tests if v.id == tc.id and
-                             v.layers == tc.layers_id and v.zoom == tc.zoom), None)
-                    self.tests.append(tc)
+        self.layers = list(dict.fromkeys(layers))
+        self.tests = list(dict.fromkeys(tests))
+        self.zooms = list(dict.fromkeys(zooms))
 
     async def run(self):
         print(f'Connecting to PostgreSQL at {self.pghost}:{self.pgport}, '
@@ -121,7 +111,7 @@ class PerfTester:
                 self.results.created = dt.utcnow().isoformat()
                 self.results.tileset = str(Path(self.tileset.filename).resolve())
                 await self._run(conn)
-                self.results.tests = [v.result for v in self.tests]
+                self.results.tests = [v.result for v in self.test_cases]
                 self.save_results()
 
     async def _run(self, conn: Connection):
@@ -142,7 +132,18 @@ class PerfTester:
         for layer_id, layer_def in self.mvt.get_layers():
             fields = await self.mvt.validate_layer_fields(conn, layer_id, layer_def)
             self.results.layer_fields[layer_id] = list(fields.keys())
-        for testcase in self.tests:
+        self.test_cases = []
+        old_tests = self.old_run.tests if self.old_run else None
+        for layer in (self.layers if self.per_layer else [None]):
+            for test in self.tests:
+                for z in self.zooms:
+                    tc = self.create_testcase(test, z, layer or self.layers)
+                    if old_tests:
+                        tc.old_result = next(
+                            (v for v in old_tests if v.id == tc.id and
+                             v.layers == tc.layers_id and v.zoom == tc.zoom), None)
+                    self.test_cases.append(tc)
+        for testcase in self.test_cases:
             await self.run_test(conn, testcase)
         print(f"\n\n================ SUMMARY ================")
         self.print_summary_graphs('test_summary', lambda t: t.id,
@@ -153,13 +154,13 @@ class PerfTester:
             self.print_summary_graphs('layer_summary', lambda t: t.layers_id,
                                       lambda t: f"at {t.fmt_layers()}", 'Per-layer')
         self.results.summary = PerfSummary(
-            duration=sum((v.result.duration for v in self.tests), timedelta()),
-            tiles=sum(v.size() for v in self.tests),
-            bytes=sum(v.result.bytes for v in self.tests),
+            duration=sum((v.result.duration for v in self.test_cases), timedelta()),
+            tiles=sum(v.size() for v in self.test_cases),
+            bytes=sum(v.result.bytes for v in self.test_cases),
         )
         print(self.results.summary.perf_format(self.old_run and self.old_run.summary))
 
-    def create_testcase(self, test, zoom, layers):
+    def create_testcase(self, test, zoom, layers) -> TestCase:
         layers = [layers] if isinstance(layers, str) else layers
         self.mvt.set_layer_ids(layers)
         query = self.mvt.generate_query(
@@ -245,13 +246,13 @@ generate_series(CAST($4 as int), CAST($5 as int)) AS yval(y);
 
     def print_summary_graphs(self, kind, key: Callable[[TestCase], Any],
                              key_fmt: Callable[[TestCase], Any], long_msg):
-        groups = {key(v): key_fmt(v) for v in self.tests}
+        groups = {key(v): key_fmt(v) for v in self.test_cases}
         if len(groups) <= 1:
             return  # do not print one-liner graphs
         durations = defaultdict(timedelta)
         tile_sizes = defaultdict(int)
         tile_counts = defaultdict(int)
-        for res in self.tests:
+        for res in self.test_cases:
             durations[key(res)] += res.result.duration
             tile_sizes[key(res)] += res.result.bytes
             tile_counts[key(res)] += res.size()

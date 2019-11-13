@@ -44,5 +44,4 @@ async def show_settings(conn: Connection) -> Tuple[Dict[str, str], bool]:
         print(f"* {prefix}{setting:32} = {res}{suffix}")
         results[setting] = res
 
-    print('vv', is_postgis_v3)
     return results, is_postgis_v3
