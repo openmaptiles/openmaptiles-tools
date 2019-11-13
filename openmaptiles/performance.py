@@ -49,7 +49,8 @@ class PerfTester:
                  save_to: Union[None, str, Path], compare_with: Union[None, str, Path],
                  key_column: bool, gzip: bool, disable_colors: bool = None,
                  disable_feature_ids: bool = None, disable_tile_envelope: bool = None,
-                 verbose: bool = None, exclude_layers: bool = False):
+                 verbose: bool = None, exclude_layers: bool = False,
+                 test_geometry: bool = None):
         if disable_colors is not None:
             set_color_mode(not disable_colors)
         self.tileset = Tileset.parse(tileset)
@@ -64,6 +65,7 @@ class PerfTester:
         self.gzip = gzip
         self.disable_feature_ids = disable_feature_ids
         self.disable_tile_envelope = disable_tile_envelope
+        self.test_geometry = test_geometry
         self.verbose = verbose
         self.per_layer = per_layer
         self.save_to = Path(save_to) if save_to else None
@@ -133,6 +135,7 @@ class PerfTester:
             self.tileset,
             use_feature_id=use_feature_id,
             use_tile_envelope=use_tile_envelope,
+            test_geometry=self.test_geometry,
             gzip=self.gzip,
             key_column=self.key_column)
         self.results.layer_fields = {}

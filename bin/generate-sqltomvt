@@ -8,6 +8,7 @@ Usage:
                     [--function | --prepared | --query | --psql | --raw]
                     [--layer=<layer>]... [--exclude-layers] [--key]
                     [--gzip [<gzlevel>]] [--no-feature-ids] [--no-tile-envelope]
+                    [--test-geometry]
   generate-sqltomvt --help
   generate-sqltomvt --version
 
@@ -29,6 +30,7 @@ Options:
                         You must use this flag when generating SQL for PostGIS before v3
   --no-tile-envelope    Disable PostGIS 3.0+ ST_TileEnvelope() function.
                         You must use this flag when generating SQL for PostGIS before v3
+  -g --test-geometry    Validate all geometries produced by ST_AsMvtGeom(), and warn.
   --help                Show this screen.
   --version             Show version.
 """
@@ -46,6 +48,7 @@ if __name__ == '__main__':
         gzip=args['--gzip'] and (args['<gzlevel>'] or True),
         use_feature_id=not args['--no-feature-ids'],
         use_tile_envelope=not args['--no-tile-envelope'],
+        test_geometry=args['--test-geometry'],
     )
 
     if args['--prepared']:
