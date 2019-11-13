@@ -33,9 +33,10 @@ class MvtGenerator:
     def set_layer_ids(self, layer_ids: List[str], exclude_layers=False):
         if exclude_layers and not layer_ids:
             raise ValueError("Cannot invert layer selection if no layer ids are given")
-        dups = find_duplicates(layer_ids)
-        if dups:
-            raise ValueError(f"Duplicate layer IDs: {', '.join(dups)}")
+        if layer_ids:
+            dups = find_duplicates(layer_ids)
+            if dups:
+                raise ValueError(f"Duplicate layer IDs: {', '.join(dups)}")
         self.layer_ids = set(layer_ids or [])
         self.exclude_layers = exclude_layers
 
