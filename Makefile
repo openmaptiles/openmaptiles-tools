@@ -38,6 +38,7 @@ build-tests: \
     build/mvttile_query_gzip.sql \
     build/mvttile_query_gzip9.sql \
     build/mvttile_query_no_feat_ids.sql \
+    build/mvttile_query_no_tile_env.sql \
     build/doc/doc.md \
     build/sqlquery.sql \
     build/devdoc
@@ -85,6 +86,8 @@ build/mvttile_query_gzip9.sql: prepare
 	$(RUN_CMD) generate-sqltomvt testdata/testlayers/testmaptiles.yaml --query --gzip 9                     > build/mvttile_query_gzip9.sql
 build/mvttile_query_no_feat_ids.sql: prepare
 	$(RUN_CMD) generate-sqltomvt testdata/testlayers/testmaptiles.yaml --query --no-feature-ids             > build/mvttile_query_no_feat_ids.sql
+build/mvttile_query_no_tile_env.sql: prepare
+	$(RUN_CMD) generate-sqltomvt testdata/testlayers/testmaptiles.yaml --query --no-tile-envelope           > build/mvttile_query_no_tile_env.sql
 build/doc/doc.md: prepare
 	$(RUN_CMD) generate-doc      testdata/testlayers/housenumber/housenumber.yaml                           > build/doc.md
 build/sqlquery.sql: prepare

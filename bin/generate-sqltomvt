@@ -7,7 +7,7 @@ Usage:
   generate-sqltomvt <tileset> [--fname <name>]
                     [--function | --prepared | --query | --psql | --raw]
                     [--layer=<layer>]... [--exclude-layers] [--key]
-                    [--gzip [<gzlevel>]] [--no-feature-ids]
+                    [--gzip [<gzlevel>]] [--no-feature-ids] [--no-tile-envelope]
   generate-sqltomvt --help
   generate-sqltomvt --version
 
@@ -26,7 +26,9 @@ Options:
   --gzip                If set, compress MVT with gzip, with optional level=0..9.
                         `gzip()` is available from https://github.com/pramsey/pgsql-gzip
   --no-feature-ids      Disable feature ID generation, e.g. from osm_id.
-                        You must use this flag when generating SQL for PostGIS before v3.
+                        You must use this flag when generating SQL for PostGIS before v3
+  --no-tile-envelope    Disable PostGIS 3.0+ ST_TileEnvelope() function.
+                        You must use this flag when generating SQL for PostGIS before v3
   --help                Show this screen.
   --version             Show version.
 """
@@ -43,6 +45,7 @@ if __name__ == '__main__':
         key_column=args['--key'],
         gzip=args['--gzip'] and (args['<gzlevel>'] or True),
         use_feature_id=not args['--no-feature-ids'],
+        use_tile_envelope=not args['--no-tile-envelope'],
     )
 
     if args['--prepared']:

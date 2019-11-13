@@ -48,8 +48,8 @@ class PerfTester:
                  password: str, summary: bool, per_layer: bool, buckets: int,
                  save_to: Union[None, str, Path], compare_with: Union[None, str, Path],
                  key_column: bool, gzip: bool, disable_colors: bool = None,
-                 disable_feature_ids: bool = None, verbose: bool = None,
-                 exclude_layers: bool = False):
+                 disable_feature_ids: bool = None, disable_tile_envelope: bool = None,
+                 verbose: bool = None, exclude_layers: bool = False):
         if disable_colors is not None:
             set_color_mode(not disable_colors)
         self.tileset = Tileset.parse(tileset)
@@ -63,6 +63,7 @@ class PerfTester:
         self.key_column = key_column
         self.gzip = gzip
         self.disable_feature_ids = disable_feature_ids
+        self.disable_tile_envelope = disable_tile_envelope
         self.verbose = verbose
         self.per_layer = per_layer
         self.save_to = Path(save_to) if save_to else None
@@ -122,12 +123,18 @@ class PerfTester:
                 self.save_results()
 
     async def _run(self, conn: Connection):
-        self.results.pg_settings, use_feature_id = await show_settings(conn)
+        self.results.pg_settings, postgis_v3 = await show_settings(conn)
         print("\nValidating SQL fields in all layers of the tileset")
-        feature_id = use_feature_id and not self.disable_feature_ids
-        self.results.settings['use_feature_ids'] = feature_id
-        self.mvt = MvtGenerator(self.tileset, use_feature_id=feature_id,
-                                gzip=self.gzip, key_column=self.key_column)
+        use_feature_id = postgis_v3 and not self.disable_feature_ids
+        use_tile_envelope = postgis_v3 and not self.disable_tile_envelope
+        self.results.settings['use_feature_ids'] = use_feature_id
+        self.results.settings['use_tile_envelope'] = use_tile_envelope
+        self.mvt = MvtGenerator(
+            self.tileset,
+            use_feature_id=use_feature_id,
+            use_tile_envelope=use_tile_envelope,
+            gzip=self.gzip,
+            key_column=self.key_column)
         self.results.layer_fields = {}
         for layer_id, layer_def in self.mvt.get_layers():
             fields = await self.mvt.validate_layer_fields(conn, layer_id, layer_def)
@@ -152,7 +159,8 @@ class PerfTester:
     def create_testcase(self, test, zoom, layers):
         layers = [layers] if isinstance(layers, str) else layers
         self.mvt.set_layer_ids(layers)
-        query = self.mvt.generate_query('TileBBox($1, xval.x, yval.y)', '$1')
+        query = self.mvt.generate_query(
+            f'{self.mvt.tile_envelope}($1, xval.x, yval.y)', '$1')
         if self.key_column:
             query = f"SELECT mvt FROM ({query}) AS perfdata"
         prefix = 'CAST($1 as int) as z, xval.x as x, yval.y as y,' \

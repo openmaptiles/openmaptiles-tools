@@ -7,13 +7,13 @@ from openmaptiles.perfutils import RED, RESET
 
 
 async def show_settings(conn: Connection) -> Tuple[Dict[str, str], bool]:
-    feature_id_support = False
+    is_postgis_v3 = False
     results = {}
 
     def parse_postgis_ver(value) -> None:
-        global feature_id_support
+        nonlocal is_postgis_v3
         m = re.match(r'POSTGIS="(\d+)\.', value)
-        feature_id_support = int(m.group(1)) >= 3 if m else False
+        is_postgis_v3 = int(m.group(1)) >= 3 if m else False
 
     for setting, validator in {
         'version()': None,
@@ -44,4 +44,5 @@ async def show_settings(conn: Connection) -> Tuple[Dict[str, str], bool]:
         print(f"* {prefix}{setting:32} = {res}{suffix}")
         results[setting] = res
 
-    return results, feature_id_support
+    print('vv', is_postgis_v3)
+    return results, is_postgis_v3

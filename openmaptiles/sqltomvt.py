@@ -16,7 +16,7 @@ class MvtGenerator:
 
     def __init__(self, tileset: Union[str, Tileset], layer_ids: List[str] = None,
                  exclude_layers=False, key_column=False, gzip: Union[int, bool] = False,
-                 use_feature_id=True):
+                 use_feature_id=True, use_tile_envelope=False):
         if isinstance(tileset, str):
             self.tileset = Tileset.parse(tileset)
         else:
@@ -27,6 +27,7 @@ class MvtGenerator:
         self.key_column = key_column
         self.gzip = gzip
         self.use_feature_id = use_feature_id
+        self.tile_envelope = 'ST_TileEnvelope' if use_tile_envelope else 'TileBBox'
         self.set_layer_ids(layer_ids, exclude_layers)
 
     def set_layer_ids(self, layer_ids: List[str], exclude_layers=False):
@@ -45,7 +46,7 @@ class MvtGenerator:
         return f"""\
 CREATE OR REPLACE FUNCTION {fname}(zoom integer, x integer, y integer)
 RETURNS {'TABLE(mvt bytea, key text)' if self.key_column else 'bytea'} AS $$
-{self.generate_query("TileBBox(zoom, x, y)", "zoom")};
+{self.generate_query(f"{self.tile_envelope}(zoom, x, y)", "zoom")};
 $$ LANGUAGE SQL STABLE RETURNS NULL ON NULL INPUT;"""
 
     def generate_sqltomvt_preparer(self, fname):
@@ -65,10 +66,10 @@ PREPARE {fname}(integer, integer, integer) AS
 {self.generate_sqltomvt_query()};"""
 
     def generate_sqltomvt_query(self):
-        return self.generate_query("TileBBox($1, $2, $3)", "$1")
+        return self.generate_query(f"{self.tile_envelope}($1, $2, $3)", "$1")
 
     def generate_sqltomvt_psql(self):
-        return self.generate_query("TileBBox(:zoom, :x, :y)", ":zoom")
+        return self.generate_query(f"{self.tile_envelope}(:zoom, :x, :y)", ":zoom")
 
     def generate_sqltomvt_raw(self):
         return self.generate_query()
@@ -195,7 +196,7 @@ FROM {repl_query}"""
             query = query.format(name_languages=languages_to_sql(languages))
         else:
             languages = False
-        query = self.substitute_sql(query, "TileBBox(0, 0, 0)", "0")
+        query = self.substitute_sql(query, f"{self.tile_envelope}(0, 0, 0)", "0")
         st = await connection.prepare(f"SELECT * FROM {query} WHERE false LIMIT 0")
         query_field_map = {fld.name: fld.type.oid for fld in st.get_attributes()}
         return query_field_map, languages
