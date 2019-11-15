@@ -1,0 +1,4 @@
+{
+    "replication_url": "http://planet.openstreetmap.org/replication/day/",
+    "replication_interval": "24h"
+}
