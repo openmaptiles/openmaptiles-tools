@@ -5,16 +5,16 @@ set -o nounset
 # For backward compatibility, allow both PG* and POSTGRES_* forms,
 # with the non-standard POSTGRES_* form taking precedence.
 # An error will be raised if neither form is given, except for the PGPORT
-readonly PGHOST="${POSTGRES_HOST:-${PGHOST?}}"
-readonly PGDATABASE="${POSTGRES_DB:-${PGDATABASE?}}"
-readonly PGUSER="${POSTGRES_USER:-${PGUSER?}}"
-readonly PGPASSWORD="${POSTGRES_PASSWORD:-${PGPASSWORD?}}"
-readonly PGPORT="${POSTGRES_PORT:-${PGPORT:-5432}}"
+PGHOST="${POSTGRES_HOST:-${PGHOST?}}"
+PGDATABASE="${POSTGRES_DB:-${PGDATABASE?}}"
+PGUSER="${POSTGRES_USER:-${PGUSER?}}"
+PGPASSWORD="${POSTGRES_PASSWORD:-${PGPASSWORD?}}"
+PGPORT="${POSTGRES_PORT:-${PGPORT:-5432}}"
 
-readonly PGCONN="${PGCONN:-dbname=$PGDATABASE user=$PGUSER host=$PGHOST password=$PGPASSWORD port=$PGPORT}"
+PGCONN="${PGCONN:-dbname=$PGDATABASE user=$PGUSER host=$PGHOST password=$PGPASSWORD port=$PGPORT}"
 
-echo "Importing Natural Earth to PostGIS"
-PGCLIENTENCODING=LATIN1 ogr2ogr \
+echo "Importing Natural Earth into PostgreSQL"
+PGCLIENTENCODING=UTF8 ogr2ogr \
   -progress \
   -f Postgresql \
   -s_srs EPSG:4326 \
