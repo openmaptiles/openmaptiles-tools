@@ -1,6 +1,5 @@
 #!/bin/sh
 set -o errexit
-set -o pipefail
 set -o nounset
 
 LAKE_CENTERLINE_TABLE="${LAKE_CENTERLINE_TABLE:-lake_centerline}"
@@ -16,10 +15,14 @@ PGPORT="${POSTGRES_PORT:-${PGPORT:-5432}}"
 
 PGCONN="${PGCONN:-dbname=$PGDATABASE user=$PGUSER host=$PGHOST password=$PGPASSWORD port=$PGPORT}"
 
+echo "Importing lake lines into PostgreSQL"
 PGCLIENTENCODING=UTF8 ogr2ogr \
-    -f Postgresql \
-    -s_srs EPSG:4326 \
-    -t_srs EPSG:3857 \
-    PG:"$PGCONN" \
-    "$IMPORT_DIR/lake_centerline.geojson" \
-    -nln "$LAKE_CENTERLINE_TABLE"
+  -progress \
+  -f Postgresql \
+  -s_srs EPSG:4326 \
+  -t_srs EPSG:3857 \
+  PG:"${PGCONN?}" \
+  -lco OVERWRITE=YES \
+  -overwrite \
+  -nln "${LAKE_CENTERLINE_TABLE?}" \
+  "$IMPORT_DIR/lake_centerline.geojson"

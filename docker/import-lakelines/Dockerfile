@@ -1,9 +1,10 @@
 # Use a separate docker for downloading to minimize final docker image
-FROM appropriate/curl as downloader
-RUN cd / && \
-    curl --compressed -OL https://github.com/lukasmartinelli/osm-lakelines/releases/download/v0.9/lake_centerline.geojson
+FROM openmaptiles/openmaptiles-tools:0.12.0 as downloader
+WORKDIR /
+RUN wget --quiet -L https://github.com/lukasmartinelli/osm-lakelines/releases/download/v0.9/lake_centerline.geojson
 
-FROM osgeo/gdal:alpine-small-3.0.2
+
+FROM osgeo/gdal:alpine-normal-3.0.2
 ENV IMPORT_DIR=/import \
     LAKELINES_GEOJSON=/data/import/lake_centerline.geojson
 
