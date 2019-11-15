@@ -8,3 +8,7 @@ Each subdir here creates a docker image with some pre-computed dataset. For exam
 #### Importer [![Docker Automated build](https://img.shields.io/docker/automated/openmaptiles/import-osmborder.svg?maxAge=2592000)](https://hub.docker.com/repository/docker/openmaptiles/import-osmborder) [![](https://images.microbadger.com/badges/image/openmaptiles/import-osmborder.svg)](https://microbadger.com/images/openmaptiles/import-osmborder)
 ## water [![Docker Automated build](https://img.shields.io/docker/automated/openmaptiles/import-water.svg?maxAge=2592000)](https://hub.docker.com/repository/docker/openmaptiles/import-water) [![](https://images.microbadger.com/badges/image/openmaptiles/import-water.svg)](https://microbadger.com/images/openmaptiles/import-water)
 ## wikidata [![Docker Automated build](https://img.shields.io/docker/automated/openmaptiles/import-wikidata.svg?maxAge=2592000)](https://hub.docker.com/repository/docker/openmaptiles/import-wikidata) [![](https://images.microbadger.com/badges/image/openmaptiles/import-wikidata.svg)](https://microbadger.com/images/openmaptiles/import-wikidata)
+
+----
+
+## generate-vectortiles [![Docker Automated build](https://img.shields.io/docker/automated/openmaptiles/generate-vectortiles.svg?maxAge=2592000)](https://hub.docker.com/repository/docker/openmaptiles/generate-vectortiles) [![](https://images.microbadger.com/badges/image/openmaptiles/generate-vectortiles.svg)](https://microbadger.com/images/openmaptiles/generate-vectortiles)
