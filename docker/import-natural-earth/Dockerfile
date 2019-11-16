@@ -1,5 +1,7 @@
 # Use a separate docker for downloading to minimize final docker image
-FROM openmaptiles/openmaptiles-tools:0.12.0 as downloader
+# DOCKER_TAG will be injected by the dockerhub auto-build environment
+ARG DOCKER_TAG=latest
+FROM openmaptiles/openmaptiles-tools:${DOCKER_TAG} as downloader
 WORKDIR /usr/src/app-ne
 COPY clean-natural-earth.sh .
 RUN wget --quiet http://naciscdn.org/naturalearth/packages/natural_earth_vector.sqlite.zip && \
