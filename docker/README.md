@@ -3,7 +3,7 @@ Each subdir here creates a docker image with some pre-computed dataset. For exam
 
 ## [import-lakelines](import-lakelines)
 [![](https://img.shields.io/docker/cloud/build/openmaptiles/import-lakelines?&logo=OpenStreetMap&label=build)](https://hub.docker.com/repository/docker/openmaptiles/import-lakelines)
-[![](https://img.shields.io/docker/automated/openmaptiles/import-lakelines?label=build)](https://hub.docker.com/repository/docker/openmaptiles/import-lakelines)
+[![](https://img.shields.io/docker/automated/openmaptiles/import-lakelines?label=build)](https://hub.docker.com/repository/docker/openmaptiles/import-lakelines/builds)
 [![](https://img.shields.io/microbadger/layers/openmaptiles/import-lakelines)](https://hub.docker.com/repository/docker/openmaptiles/import-lakelines)
 [![](https://img.shields.io/microbadger/image-size/openmaptiles/import-lakelines?label=size)](https://hub.docker.com/repository/docker/openmaptiles/import-lakelines)
 [![](https://img.shields.io/docker/pulls/openmaptiles/import-lakelines?label=downloads)](https://hub.docker.com/repository/docker/openmaptiles/import-lakelines)
@@ -12,7 +12,7 @@ Each subdir here creates a docker image with some pre-computed dataset. For exam
 
 ## [import-natural-earth](import-natural-earth)
 [![](https://img.shields.io/docker/cloud/build/openmaptiles/import-natural-earth?&logo=OpenStreetMap&label=build)](https://hub.docker.com/repository/docker/openmaptiles/import-natural-earth)
-[![](https://img.shields.io/docker/automated/openmaptiles/import-natural-earth?label=build)](https://hub.docker.com/repository/docker/openmaptiles/import-natural-earth)
+[![](https://img.shields.io/docker/automated/openmaptiles/import-natural-earth?label=build)](https://hub.docker.com/repository/docker/openmaptiles/import-natural-earth/builds)
 [![](https://img.shields.io/microbadger/layers/openmaptiles/import-natural-earth)](https://hub.docker.com/repository/docker/openmaptiles/import-natural-earth)
 [![](https://img.shields.io/microbadger/image-size/openmaptiles/import-natural-earth?label=size)](https://hub.docker.com/repository/docker/openmaptiles/import-natural-earth)
 [![](https://img.shields.io/docker/pulls/openmaptiles/import-natural-earth?label=downloads)](https://hub.docker.com/repository/docker/openmaptiles/import-natural-earth)
@@ -21,7 +21,7 @@ Each subdir here creates a docker image with some pre-computed dataset. For exam
 
 ## [import-osm](import-osm)
 [![](https://img.shields.io/docker/cloud/build/openmaptiles/import-osm?&logo=OpenStreetMap&label=build)](https://hub.docker.com/repository/docker/openmaptiles/import-osm)
-[![](https://img.shields.io/docker/automated/openmaptiles/import-osm?label=build)](https://hub.docker.com/repository/docker/openmaptiles/import-osm)
+[![](https://img.shields.io/docker/automated/openmaptiles/import-osm?label=build)](https://hub.docker.com/repository/docker/openmaptiles/import-osm/builds)
 [![](https://img.shields.io/microbadger/layers/openmaptiles/import-osm)](https://hub.docker.com/repository/docker/openmaptiles/import-osm)
 [![](https://img.shields.io/microbadger/image-size/openmaptiles/import-osm?label=size)](https://hub.docker.com/repository/docker/openmaptiles/import-osm)
 [![](https://img.shields.io/docker/pulls/openmaptiles/import-osm?label=downloads)](https://hub.docker.com/repository/docker/openmaptiles/import-osm)
@@ -30,7 +30,7 @@ Each subdir here creates a docker image with some pre-computed dataset. For exam
 
 ## [generate-osmborder](import-osmborder)
 [![](https://img.shields.io/docker/cloud/build/openmaptiles/generate-osmborder?&logo=OpenStreetMap&label=build)](https://hub.docker.com/repository/docker/openmaptiles/import-osmborder)
-[![](https://img.shields.io/docker/automated/openmaptiles/generate-osmborder?label=build)](https://hub.docker.com/repository/docker/openmaptiles/import-osmborder)
+[![](https://img.shields.io/docker/automated/openmaptiles/generate-osmborder?label=build)](https://hub.docker.com/repository/docker/openmaptiles/import-osmborder/builds)
 [![](https://img.shields.io/microbadger/layers/openmaptiles/generate-osmborder)](https://hub.docker.com/repository/docker/openmaptiles/import-osmborder)
 [![](https://img.shields.io/microbadger/image-size/openmaptiles/generate-osmborder?label=size)](https://hub.docker.com/repository/docker/openmaptiles/import-osmborder)
 [![](https://img.shields.io/docker/pulls/openmaptiles/generate-osmborder?label=downloads)](https://hub.docker.com/repository/docker/openmaptiles/import-osmborder)
@@ -39,7 +39,7 @@ Each subdir here creates a docker image with some pre-computed dataset. For exam
 
 ## [import-osmborder](import-osmborder)
 [![](https://img.shields.io/docker/cloud/build/openmaptiles/import-osmborder?&logo=OpenStreetMap&label=build)](https://hub.docker.com/repository/docker/openmaptiles/import-osmborder)
-[![](https://img.shields.io/docker/automated/openmaptiles/import-osmborder?label=build)](https://hub.docker.com/repository/docker/openmaptiles/import-osmborder)
+[![](https://img.shields.io/docker/automated/openmaptiles/import-osmborder?label=build)](https://hub.docker.com/repository/docker/openmaptiles/import-osmborder/builds)
 [![](https://img.shields.io/microbadger/layers/openmaptiles/import-osmborder)](https://hub.docker.com/repository/docker/openmaptiles/import-osmborder)
 [![](https://img.shields.io/microbadger/image-size/openmaptiles/import-osmborder?label=size)](https://hub.docker.com/repository/docker/openmaptiles/import-osmborder)
 [![](https://img.shields.io/docker/pulls/openmaptiles/import-osmborder?label=downloads)](https://hub.docker.com/repository/docker/openmaptiles/import-osmborder)
@@ -48,7 +48,7 @@ Each subdir here creates a docker image with some pre-computed dataset. For exam
 
 ## [import-sql](import-sql)
 [![](https://img.shields.io/docker/cloud/build/openmaptiles/import-sql?&logo=OpenStreetMap&label=build)](https://hub.docker.com/repository/docker/openmaptiles/import-sql)
-[![](https://img.shields.io/docker/automated/openmaptiles/import-sql?label=build)](https://hub.docker.com/repository/docker/openmaptiles/import-sql)
+[![](https://img.shields.io/docker/automated/openmaptiles/import-sql?label=build)](https://hub.docker.com/repository/docker/openmaptiles/import-sql/builds)
 [![](https://img.shields.io/microbadger/layers/openmaptiles/import-sql)](https://hub.docker.com/repository/docker/openmaptiles/import-sql)
 [![](https://img.shields.io/microbadger/image-size/openmaptiles/import-sql?label=size)](https://hub.docker.com/repository/docker/openmaptiles/import-sql)
 [![](https://img.shields.io/docker/pulls/openmaptiles/import-sql?label=downloads)](https://hub.docker.com/repository/docker/openmaptiles/import-sql)
@@ -59,7 +59,7 @@ This image is obsolete, and should not be used. Use `openmaptiles-tools` image i
 
 ## [import-water](import-water)
 [![](https://img.shields.io/docker/cloud/build/openmaptiles/import-water?&logo=OpenStreetMap&label=build)](https://hub.docker.com/repository/docker/openmaptiles/import-water)
-[![](https://img.shields.io/docker/automated/openmaptiles/import-water?label=build)](https://hub.docker.com/repository/docker/openmaptiles/import-water)
+[![](https://img.shields.io/docker/automated/openmaptiles/import-water?label=build)](https://hub.docker.com/repository/docker/openmaptiles/import-water/builds)
 [![](https://img.shields.io/microbadger/layers/openmaptiles/import-water)](https://hub.docker.com/repository/docker/openmaptiles/import-water)
 [![](https://img.shields.io/microbadger/image-size/openmaptiles/import-water?label=size)](https://hub.docker.com/repository/docker/openmaptiles/import-water)
 [![](https://img.shields.io/docker/pulls/openmaptiles/import-water?label=downloads)](https://hub.docker.com/repository/docker/openmaptiles/import-water)
@@ -68,7 +68,7 @@ This image is obsolete, and should not be used. Use `openmaptiles-tools` image i
 
 ## [import-wikidata](import-wikidata)
 [![](https://img.shields.io/docker/cloud/build/openmaptiles/import-wikidata?&logo=OpenStreetMap&label=build)](https://hub.docker.com/repository/docker/openmaptiles/import-wikidata)
-[![](https://img.shields.io/docker/automated/openmaptiles/import-wikidata?label=build)](https://hub.docker.com/repository/docker/openmaptiles/import-wikidata)
+[![](https://img.shields.io/docker/automated/openmaptiles/import-wikidata?label=build)](https://hub.docker.com/repository/docker/openmaptiles/import-wikidata/builds)
 [![](https://img.shields.io/microbadger/layers/openmaptiles/import-wikidata)](https://hub.docker.com/repository/docker/openmaptiles/import-wikidata)
 [![](https://img.shields.io/microbadger/image-size/openmaptiles/import-wikidata?label=size)](https://hub.docker.com/repository/docker/openmaptiles/import-wikidata)
 [![](https://img.shields.io/docker/pulls/openmaptiles/import-wikidata?label=downloads)](https://hub.docker.com/repository/docker/openmaptiles/import-wikidata)
