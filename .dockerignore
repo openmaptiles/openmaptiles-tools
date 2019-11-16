@@ -6,7 +6,7 @@ build/
 docker-run.sh
 Dockerfile
 docs/
-imports/
+docker/
 Makefile
 setup.py
 testdata/
