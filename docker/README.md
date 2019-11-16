@@ -35,7 +35,7 @@ Each subdir here creates a docker image with some pre-computed dataset. For exam
 ![](https://img.shields.io/microbadger/image-size/openmaptiles/generate-osmborder.svg?label=size)
 ![](https://img.shields.io/docker/pulls/openmaptiles/generate-osmborder.svg?label=downloads)
 ![](https://img.shields.io/docker/stars/openmaptiles/generate-osmborder.svg?label=stars)
-<small>Migrated from [import-osmborder](https://github.com/openmaptiles/import-osmborder) repo (archived)</small>
+<br><small>Migrated from [import-osmborder](https://github.com/openmaptiles/import-osmborder) repo (archived)</small>
 
 ## [import-osmborder](import-osmborder)
 ![](https://img.shields.io/docker/cloud/build/openmaptiles/import-osmborder.svg?label=build)
@@ -44,7 +44,7 @@ Each subdir here creates a docker image with some pre-computed dataset. For exam
 ![](https://img.shields.io/microbadger/image-size/openmaptiles/import-osmborder.svg?label=size)
 ![](https://img.shields.io/docker/pulls/openmaptiles/import-osmborder.svg?label=downloads)
 ![](https://img.shields.io/docker/stars/openmaptiles/import-osmborder.svg?label=stars)
-<small>Migrated from [import-osmborder](https://github.com/openmaptiles/import-osmborder) repo (archived)</small>
+<br><small>Migrated from [import-osmborder](https://github.com/openmaptiles/import-osmborder) repo (archived)</small>
 
 ## [import-sql](import-sql)
 ![](https://img.shields.io/docker/cloud/build/openmaptiles/import-sql.svg?label=build)
