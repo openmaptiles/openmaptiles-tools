@@ -28,7 +28,7 @@ Each subdir here creates a docker image with some pre-computed dataset. For exam
 ![](https://img.shields.io/docker/stars/openmaptiles/import-osm.svg?label=stars)
 <br><small>Migrated from [import-osm](https://github.com/openmaptiles/import-osm) repo (archived)</small>
 
-## [generate-osmborder](generate-osmborder)
+## [generate-osmborder](import-osmborder)
 ![](https://img.shields.io/docker/cloud/build/openmaptiles/generate-osmborder.svg?label=build)
 ![](https://img.shields.io/docker/automated/openmaptiles/generate-osmborder.svg?label=build)
 ![](https://img.shields.io/microbadger/layers/openmaptiles/generate-osmborder.svg)
