@@ -1,5 +1,8 @@
 # Use a separate docker for downloading to minimize final docker image
-FROM openmaptiles/openmaptiles-tools:0.12.0 as downloader
+# DOCKER_TAG will be injected by the dockerhub auto-build environment
+ARG DOCKER_TAG=latest
+FROM openmaptiles/openmaptiles-tools:${DOCKER_TAG} as downloader
+
 WORKDIR /
 RUN wget --quiet -L https://github.com/lukasmartinelli/osm-lakelines/releases/download/v0.9/lake_centerline.geojson
 
