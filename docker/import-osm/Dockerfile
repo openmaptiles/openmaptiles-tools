@@ -1,13 +1,10 @@
-FROM golang:1.8
+FROM golang:1.13-buster
 MAINTAINER "Lukas Martinelli <me@lukasmartinelli.ch>"
 
 ENV PG_MAJOR 11
-RUN apt-key adv --keyserver ha.pool.sks-keyservers.net --recv-keys B97B0AFCAA1A47F044F244A07FCC7D46ACCC4CF8 \
- && echo 'deb http://apt.postgresql.org/pub/repos/apt/ jessie-pgdg main' $PG_MAJOR > /etc/apt/sources.list.d/pgdg.list \
- && echo 'deb http://httpredir.debian.org/debian jessie-backports main contrib' > /etc/apt/sources.list.d/backports.list \
- && DEBIAN_FRONTEND=noninteractive apt-get update \
+RUN DEBIAN_FRONTEND=noninteractive apt-get update \
  # install newer packages from backports
- && DEBIAN_FRONTEND=noninteractive apt-get  -t jessie-backports install -y --no-install-recommends \
+ && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
       libgeos-dev \
       libleveldb-dev \
       libprotobuf-dev \
@@ -19,21 +16,22 @@ RUN apt-key adv --keyserver ha.pool.sks-keyservers.net --recv-keys B97B0AFCAA1A4
  && ln -s /usr/lib/libgeos_c.so /usr/lib/libgeos.so \
  && rm -rf /var/lib/apt/lists/*
 
+ENV IMPOSM_VERSION 0.8.1
+
  # add  github.com/julien-noblet/download-geofabrik
 RUN go get github.com/julien-noblet/download-geofabrik \
  && go install  github.com/julien-noblet/download-geofabrik \
  && download-geofabrik generate \
- # add  github.com/osm2vectortiles/imposm3
+ # add  github.com/omniscale/imposm3
  && mkdir -p $GOPATH/src/github.com/omniscale/imposm3 \
  && cd  $GOPATH/src/github.com/omniscale/imposm3 \
- && go get github.com/tools/godep \
  # && git clone --quiet --depth 1 https://github.com/omniscale/imposm3 \
  #
  # update to current omniscale/imposm3
- && git clone --quiet --depth 1 https://github.com/openmaptiles/imposm3.git -b v2017-10-18 \
+ && git clone --quiet --depth 1 https://github.com/omniscale/imposm3.git -b v$IMPOSM_VERSION \
         $GOPATH/src/github.com/omniscale/imposm3 \
  && make build \
- && mv imposm3 /usr/bin/imposm3 \
+ && mv imposm /usr/bin/imposm \
  # clean
  && rm -rf $GOPATH/bin/godep \
  && rm -rf $GOPATH/src/ \

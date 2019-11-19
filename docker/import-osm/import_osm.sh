@@ -17,7 +17,7 @@ function import_pbf() {
         echo "Importing in normal mode"
     fi
 
-    imposm3 import \
+    imposm import \
         -connection "$PG_CONNECT" \
         -mapping "$MAPPING_YAML" \
         -overwritecache \
