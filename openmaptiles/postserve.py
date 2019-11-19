@@ -168,14 +168,16 @@ class Postserve:
         self.metadata["vector_layers"] = []
 
         async with self.pool.acquire() as conn:
-            settings, postgis_v3 = await show_settings(conn)
+            settings, postgis_ver = await show_settings(conn)
+            if postgis_ver < 2.5:
+                raise ValueError('Requires PostGIS version 2.5 or later')
             self.mvt = MvtGenerator(
                 self.tileset,
                 layer_ids=self.layer_ids,
                 key_column=self.key_column,
                 gzip=self.gzip,
-                use_feature_id=postgis_v3 and not self.disable_feature_ids,
-                use_tile_envelope=postgis_v3 and not self.disable_tile_envelope,
+                use_feature_id=postgis_ver >= 3 and not self.disable_feature_ids,
+                use_tile_envelope=postgis_ver >= 3 and not self.disable_tile_envelope,
                 test_geometry=self.test_geometry, exclude_layers=self.exclude_layers)
             pg_types = await get_sql_types(conn)
             for layer_id, layer_def in self.mvt.get_layers():

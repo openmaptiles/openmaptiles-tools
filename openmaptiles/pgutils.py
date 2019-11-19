@@ -3,19 +3,19 @@ from typing import Tuple, Dict
 
 from asyncpg import UndefinedFunctionError, UndefinedObjectError, Connection
 
-from openmaptiles.perfutils import RED, RESET
+from openmaptiles.perfutils import COLOR
 
 
 async def show_settings(conn: Connection) -> Tuple[Dict[str, str], bool]:
-    is_postgis_v3 = False
+    postgis_version = False
     results = {}
 
     def parse_postgis_ver(value) -> None:
-        nonlocal is_postgis_v3
-        m = re.match(r'POSTGIS="(\d+)\.', value)
-        is_postgis_v3 = int(m.group(1)) >= 3 if m else False
+        nonlocal postgis_version
+        m = re.match(r'POSTGIS="(\d+\.\d+)', value)
+        postgis_version = float(m.group(1))
 
-    for setting, validator in {
+    settings = {
         'version()': None,
         'postgis_full_version()': parse_postgis_ver,
         'jit': lambda
@@ -27,7 +27,9 @@ async def show_settings(conn: Connection) -> Tuple[Dict[str, str], bool]:
         'max_worker_processes': None,
         'max_parallel_workers': None,
         'max_parallel_workers_per_gather': None,
-    }.items():
+    }
+    key_len = max((len(v) for v in settings))
+    for setting, validator in settings.items():
         q = f"{'SELECT' if '(' in setting else 'SHOW'} {setting};"
         prefix = ''
         suffix = ''
@@ -36,12 +38,12 @@ async def show_settings(conn: Connection) -> Tuple[Dict[str, str], bool]:
             if validator:
                 msg = validator(res)
                 if msg:
-                    prefix, suffix = RED, f" {msg}{RESET}"
+                    prefix, suffix = COLOR.RED, f" {msg}{COLOR.RESET}"
         except (UndefinedFunctionError, UndefinedObjectError) as ex:
             res = ex.message
-            prefix, suffix = RED, RESET
+            prefix, suffix = COLOR.RED, COLOR.RESET
 
-        print(f"* {prefix}{setting:32} = {res}{suffix}")
+        print(f"* {setting:{key_len}} = {prefix}{res}{suffix}")
         results[setting] = res
 
-    return results, is_postgis_v3
+    return results, postgis_version
