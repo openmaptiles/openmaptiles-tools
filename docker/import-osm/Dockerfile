@@ -23,9 +23,6 @@ RUN apt-key adv --keyserver ha.pool.sks-keyservers.net --recv-keys B97B0AFCAA1A4
 RUN go get github.com/julien-noblet/download-geofabrik \
  && go install  github.com/julien-noblet/download-geofabrik \
  && download-geofabrik generate \
- # add  github.com/lukasmartinelli/pgclimb
- && go get github.com/lukasmartinelli/pgclimb \
- && go install github.com/lukasmartinelli/pgclimb \
  # add  github.com/osm2vectortiles/imposm3
  && mkdir -p $GOPATH/src/github.com/omniscale/imposm3 \
  && cd  $GOPATH/src/github.com/omniscale/imposm3 \
