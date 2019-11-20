@@ -64,7 +64,7 @@ Each subdir here creates a docker image that either generates some data, or is b
 [![](https://img.shields.io/docker/stars/openmaptiles/import-sql?label=stars)](https://hub.docker.com/repository/docker/openmaptiles/import-sql)
 <br><small>Migrated from [import-sql](https://github.com/openmaptiles/import-sql) repo (archived)</small>
 
-This image is obsolete, and should not be used. Use `openmaptiles-tools` image instead. `import_sql.sh` was copied to `/bin`.
+**Note:** This image is obsolete, and should not be used. Use `openmaptiles-tools` image instead. `import_sql.sh` was copied to `/bin`.
 
 ## [import-water](import-water)
 [![](https://img.shields.io/docker/cloud/build/openmaptiles/import-water?&logo=OpenStreetMap&label=build)](https://hub.docker.com/repository/docker/openmaptiles/import-water)
@@ -83,3 +83,13 @@ This image is obsolete, and should not be used. Use `openmaptiles-tools` image i
 [![](https://img.shields.io/docker/pulls/openmaptiles/import-wikidata?label=downloads)](https://hub.docker.com/repository/docker/openmaptiles/import-wikidata)
 [![](https://img.shields.io/docker/stars/openmaptiles/import-wikidata?label=stars)](https://hub.docker.com/repository/docker/openmaptiles/import-wikidata)
 <br><small>Migrated from [import-wikidata](https://github.com/openmaptiles/import-wikidata) repo (archived)</small>
+
+# Tools
+## [postgis](postgis)
+[![](https://img.shields.io/docker/cloud/build/openmaptiles/postgis?&logo=OpenStreetMap&label=build)](https://hub.docker.com/repository/docker/openmaptiles/postgis)
+[![](https://img.shields.io/docker/automated/openmaptiles/postgis?label=build)](https://hub.docker.com/repository/docker/openmaptiles/postgis/builds)
+[![](https://img.shields.io/microbadger/layers/openmaptiles/postgis)](https://hub.docker.com/repository/docker/openmaptiles/postgis)
+[![](https://img.shields.io/microbadger/image-size/openmaptiles/postgis?label=size)](https://hub.docker.com/repository/docker/openmaptiles/postgis)
+[![](https://img.shields.io/docker/pulls/openmaptiles/postgis?label=downloads)](https://hub.docker.com/repository/docker/openmaptiles/postgis)
+[![](https://img.shields.io/docker/stars/openmaptiles/postgis?label=stars)](https://hub.docker.com/repository/docker/openmaptiles/postgis)
+<br><small>Migrated from [postgis](https://github.com/openmaptiles/postgis) repo (archived)</small>
