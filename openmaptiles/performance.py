@@ -131,7 +131,7 @@ class PerfTester:
         if postgis_ver < 2.5:
             if self.tests != ['null']:
                 raise ValueError('Requires PostGIS version 2.5 or later')
-            print(f'WARN: No PostGIS v2.5 or later was found, tests will not be run.')
+            print(f'WARN: No PostGIS v2.5+ found, performance tests will not be run.')
             return
         old_tests = self.old_run.tests if self.old_run else None
         for layer in (self.layers if self.per_layer else [None]):
