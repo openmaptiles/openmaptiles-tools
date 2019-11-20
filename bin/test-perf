@@ -7,8 +7,11 @@ Usage:
               [--per-layer] [--summary] [--test-all]
               ([--zoom=<zoom>]... | [--minzoom=<min>] [--maxzoom=<max>])
               [--record=<file>] [--compare=<file>] [--buckets=<count>]
-              [--key] [--gzip [<gzlevel>]] [--no-color]
-              [--no-feature-ids] [--no-tile-envelope] [--test-geometry] [--verbose]
+              [--key] [--gzip [<gzlevel>]] [--no-color] [--no-feature-ids]
+              [--no-tile-envelope] [--test-geometry] [--verbose]
+              [--pghost=<host>] [--pgport=<port>] [--dbname=<db>]
+              [--user=<user>] [--password=<password>]
+
   test-perf --help
   test-perf --version
 
@@ -16,6 +19,7 @@ Usage:
 
 Options:
   -t --test=<set>       Which predefined test to run.  [default: us-across]
+                        Use invalid value to see a list.  Use 'null' for PostGIS < v2.5
   -a --test-all         Run all available tests except 'null'
   -p --per-layer        Test each layer individually, also show per-layer summary graph.
   -s --summary          Run summary tests, without per-tile break-down.
@@ -56,10 +60,13 @@ from docopt import docopt
 
 import openmaptiles
 from openmaptiles.performance import PerfTester
+from openmaptiles.perfutils import COLOR
 from openmaptiles.utils import coalesce
 
 
 def main(args):
+    if args['--no-color']:
+        COLOR.enable(False)
     zooms = [int(v) for v in args['--zoom']]
     if not zooms:
         zooms = list(range(int(args['--minzoom']), int(args['--maxzoom']) + 1))
@@ -90,7 +97,6 @@ def main(args):
             os.getenv('PGPASSWORD'), 'openmaptiles'),
         save_to=args['--record'],
         compare_with=args['--compare'],
-        disable_colors=args['--no-color'],
         disable_feature_ids=args['--no-feature-ids'],
         disable_tile_envelope=args['--no-tile-envelope'],
         key_column=args['--key'],
