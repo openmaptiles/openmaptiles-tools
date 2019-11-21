@@ -10,11 +10,10 @@ Provide the database credentials and run `import-water`.
 
 ```bash
 docker run --rm \
-    -e POSTGRES_USER="osm" \
-    -e POSTGRES_PASSWORD="osm" \
-    -e POSTGRES_HOST="127.0.0.1" \
-    -e POSTGRES_DB="osm" \
-    -e POSTGRES_PORT="5432" \
+    -e PGHOST="127.0.0.1" \
+    -e PGDATABASE="openmaptiles" \
+    -e PGUSER="openmaptiles" \
+    -e PGPASSWORD="openmaptiles" \
     openmaptiles/import-water
 ```
 ## Version of OpenStreetMapData
