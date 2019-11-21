@@ -27,7 +27,7 @@ RUN apt-get -qq -y update \
         xsltproc \
         # PostGIS build dependencies
             libgdal-dev \
-            libjson0-dev \
+            libjson-c-dev \
             libproj-dev \
             libxml2-dev \
             postgresql-server-dev-$PG_MAJOR \
@@ -60,9 +60,9 @@ RUN apt-get -qq -y update \
  && rm -rf /opt/protobuf-c.1.2.1 \
 ## Postgis
  && cd /opt/ \
- && git clone -b svn-trunk https://github.com/postgis/postgis.git \  
+ && git clone https://github.com/postgis/postgis.git \
  && cd postgis \
- && git reset --hard ff0a844e606622f45841fc25221bbaa136ed1001 \ 
+ && git reset --hard ff0a844e606622f45841fc25221bbaa136ed1001 \
  && ./autogen.sh \
  && ./configure CFLAGS="-O0 -Wall" \
  && make \
@@ -86,6 +86,7 @@ RUN apt-get -qq -y update \
  && make install \
  && rm -rf /opt/mapnik-german-l10n \
 ## Cleanup
+ && cd / \
  && apt-get -qq -y --auto-remove purge \
         autoconf \
         automake \
