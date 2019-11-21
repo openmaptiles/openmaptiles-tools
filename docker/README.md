@@ -1,14 +1,6 @@
-# Docker Images
-Each subdir here creates a docker image that either generates some data, or is built with some pre-computed dataset. For example, the `import-natural-earth` image downloads and cleans up data from the [Natural Earth project](https://www.naturalearthdata.com/). When ran, the image injects the packaged data into PostgreSQL database, without additional downloading and preprocessing.
+# Docker Images / Importers
 
-## [generate-vectortiles](generate-vectortiles)
-[![](https://img.shields.io/docker/cloud/build/openmaptiles/generate-vectortiles?&logo=OpenStreetMap&label=build)](https://hub.docker.com/repository/docker/openmaptiles/generate-vectortiles)
-[![](https://img.shields.io/docker/automated/openmaptiles/generate-vectortiles?label=build)](https://hub.docker.com/repository/docker/openmaptiles/generate-vectortiles/builds)
-[![](https://img.shields.io/microbadger/layers/openmaptiles/generate-vectortiles)](https://hub.docker.com/repository/docker/openmaptiles/generate-vectortiles)
-[![](https://img.shields.io/microbadger/image-size/openmaptiles/generate-vectortiles?label=size)](https://hub.docker.com/repository/docker/openmaptiles/generate-vectortiles)
-[![](https://img.shields.io/docker/pulls/openmaptiles/generate-vectortiles?label=downloads)](https://hub.docker.com/repository/docker/openmaptiles/generate-vectortiles)
-[![](https://img.shields.io/docker/stars/openmaptiles/generate-vectortiles?label=stars)](https://hub.docker.com/repository/docker/openmaptiles/generate-vectortiles)
-<br><small>Migrated from [generate-vectortiles](https://github.com/openmaptiles/generate-vectortiles) repo (archived)</small>
+Each subdir here creates a docker image that either generates some data, or is built with some pre-computed dataset. For example, the `import-natural-earth` image downloads and cleans up data from the [Natural Earth project](https://www.naturalearthdata.com/). When ran, the image injects the packaged data into PostgreSQL database, without additional downloading and preprocessing.
 
 ## [import-lakelines](import-lakelines)
 [![](https://img.shields.io/docker/cloud/build/openmaptiles/import-lakelines?&logo=OpenStreetMap&label=build)](https://hub.docker.com/repository/docker/openmaptiles/import-lakelines)
@@ -37,15 +29,6 @@ Each subdir here creates a docker image that either generates some data, or is b
 [![](https://img.shields.io/docker/stars/openmaptiles/import-osm?label=stars)](https://hub.docker.com/repository/docker/openmaptiles/import-osm)
 <br><small>Migrated from [import-osm](https://github.com/openmaptiles/import-osm) repo (archived)</small>
 
-## [generate-osmborder](import-osmborder)
-[![](https://img.shields.io/docker/cloud/build/openmaptiles/generate-osmborder?&logo=OpenStreetMap&label=build)](https://hub.docker.com/repository/docker/openmaptiles/generate-osmborder)
-[![](https://img.shields.io/docker/automated/openmaptiles/generate-osmborder?label=build)](https://hub.docker.com/repository/docker/openmaptiles/generate-osmborder/builds)
-[![](https://img.shields.io/microbadger/layers/openmaptiles/generate-osmborder)](https://hub.docker.com/repository/docker/openmaptiles/generate-osmborder)
-[![](https://img.shields.io/microbadger/image-size/openmaptiles/generate-osmborder?label=size)](https://hub.docker.com/repository/docker/openmaptiles/generate-osmborder)
-[![](https://img.shields.io/docker/pulls/openmaptiles/generate-osmborder?label=downloads)](https://hub.docker.com/repository/docker/openmaptiles/generate-osmborder)
-[![](https://img.shields.io/docker/stars/openmaptiles/generate-osmborder?label=stars)](https://hub.docker.com/repository/docker/openmaptiles/generate-osmborder)
-<br><small>Migrated from [import-osmborder](https://github.com/openmaptiles/import-osmborder) repo (archived)</small>
-
 ## [import-osmborder](import-osmborder)
 [![](https://img.shields.io/docker/cloud/build/openmaptiles/import-osmborder?&logo=OpenStreetMap&label=build)](https://hub.docker.com/repository/docker/openmaptiles/import-osmborder)
 [![](https://img.shields.io/docker/automated/openmaptiles/import-osmborder?label=build)](https://hub.docker.com/repository/docker/openmaptiles/import-osmborder/builds)
@@ -53,7 +36,7 @@ Each subdir here creates a docker image that either generates some data, or is b
 [![](https://img.shields.io/microbadger/image-size/openmaptiles/import-osmborder?label=size)](https://hub.docker.com/repository/docker/openmaptiles/import-osmborder)
 [![](https://img.shields.io/docker/pulls/openmaptiles/import-osmborder?label=downloads)](https://hub.docker.com/repository/docker/openmaptiles/import-osmborder)
 [![](https://img.shields.io/docker/stars/openmaptiles/import-osmborder?label=stars)](https://hub.docker.com/repository/docker/openmaptiles/import-osmborder)
-<br><small>Migrated from [import-osmborder](https://github.com/openmaptiles/import-osmborder) repo (archived)</small>
+<br><small>Migrated from [import-osmborder](https://github.com/openmaptiles/import-osmborder) repo, `/import` dir (archived)</small>
 
 ## [import-sql](import-sql)
 [![](https://img.shields.io/docker/cloud/build/openmaptiles/import-sql?&logo=OpenStreetMap&label=build)](https://hub.docker.com/repository/docker/openmaptiles/import-sql)
@@ -85,6 +68,25 @@ Each subdir here creates a docker image that either generates some data, or is b
 <br><small>Migrated from [import-wikidata](https://github.com/openmaptiles/import-wikidata) repo (archived)</small>
 
 # Tools
+
+## [generate-osmborder](generate-osmborder)
+[![](https://img.shields.io/docker/cloud/build/openmaptiles/generate-osmborder?&logo=OpenStreetMap&label=build)](https://hub.docker.com/repository/docker/openmaptiles/generate-osmborder)
+[![](https://img.shields.io/docker/automated/openmaptiles/generate-osmborder?label=build)](https://hub.docker.com/repository/docker/openmaptiles/generate-osmborder/builds)
+[![](https://img.shields.io/microbadger/layers/openmaptiles/generate-osmborder)](https://hub.docker.com/repository/docker/openmaptiles/generate-osmborder)
+[![](https://img.shields.io/microbadger/image-size/openmaptiles/generate-osmborder?label=size)](https://hub.docker.com/repository/docker/openmaptiles/generate-osmborder)
+[![](https://img.shields.io/docker/pulls/openmaptiles/generate-osmborder?label=downloads)](https://hub.docker.com/repository/docker/openmaptiles/generate-osmborder)
+[![](https://img.shields.io/docker/stars/openmaptiles/generate-osmborder?label=stars)](https://hub.docker.com/repository/docker/openmaptiles/generate-osmborder)
+<br><small>Migrated from [import-osmborder](https://github.com/openmaptiles/import-osmborder) repo, `/generate` dir (archived)</small>
+
+## [generate-vectortiles](generate-vectortiles)
+[![](https://img.shields.io/docker/cloud/build/openmaptiles/generate-vectortiles?&logo=OpenStreetMap&label=build)](https://hub.docker.com/repository/docker/openmaptiles/generate-vectortiles)
+[![](https://img.shields.io/docker/automated/openmaptiles/generate-vectortiles?label=build)](https://hub.docker.com/repository/docker/openmaptiles/generate-vectortiles/builds)
+[![](https://img.shields.io/microbadger/layers/openmaptiles/generate-vectortiles)](https://hub.docker.com/repository/docker/openmaptiles/generate-vectortiles)
+[![](https://img.shields.io/microbadger/image-size/openmaptiles/generate-vectortiles?label=size)](https://hub.docker.com/repository/docker/openmaptiles/generate-vectortiles)
+[![](https://img.shields.io/docker/pulls/openmaptiles/generate-vectortiles?label=downloads)](https://hub.docker.com/repository/docker/openmaptiles/generate-vectortiles)
+[![](https://img.shields.io/docker/stars/openmaptiles/generate-vectortiles?label=stars)](https://hub.docker.com/repository/docker/openmaptiles/generate-vectortiles)
+<br><small>Migrated from [generate-vectortiles](https://github.com/openmaptiles/generate-vectortiles) repo (archived)</small>
+
 ## [postgis](postgis)
 [![](https://img.shields.io/docker/cloud/build/openmaptiles/postgis?&logo=OpenStreetMap&label=build)](https://hub.docker.com/repository/docker/openmaptiles/postgis)
 [![](https://img.shields.io/docker/automated/openmaptiles/postgis?label=build)](https://hub.docker.com/repository/docker/openmaptiles/postgis/builds)
