@@ -1,13 +1,10 @@
 #!/bin/bash
 
-#  Start psql command !
+# Wait for Postgres to start using pg_isready
 
 set -o errexit
 set -o pipefail
 set -o nounset
-
-# wait for Postgres. On error, this script will exit too
-source ./pgwait.sh
 
 # For backward compatibility, allow both PG* and POSTGRES_* forms,
 # with the non-standard POSTGRES_* form taking precedence.
@@ -15,7 +12,16 @@ source ./pgwait.sh
 export PGHOST="${POSTGRES_HOST:-${PGHOST?}}"
 export PGDATABASE="${POSTGRES_DB:-${PGDATABASE?}}"
 export PGUSER="${POSTGRES_USER:-${PGUSER?}}"
-export PGPASSWORD="${POSTGRES_PASSWORD:-${PGPASSWORD?}}"
 export PGPORT="${POSTGRES_PORT:-${PGPORT:-5432}}"
 
-psql "$@"
+: "${MAX_RETRIES:=40}"  # Maximum number of pg_isready calls
+tries=0
+while ! pg_isready -q
+do
+    tries=$((tries + 1))
+    if (( tries > MAX_RETRIES )); then
+        echo "... gave up waiting for Postgres:   PGHOST=${PGHOST} PGDATABASE=${PGDATABASE} PGUSER=${PGUSER} PGPORT=${PGPORT} pg_isready"
+        exit 1
+    fi
+    sleep 2
+done
