@@ -1,18 +1,30 @@
 ARG DOCKER_TAG=latest
 FROM openmaptiles/openmaptiles-tools:${DOCKER_TAG}
-
 LABEL maintainer="YuriAstrakhan@gmail.com"
 
-ENV IMPORT_DIR=/import \
-    OSM_BORDER_URL=https://github.com/openmaptiles/import-osmborder/releases/download/v0.4/osmborder_lines.csv.gz \
-    PGFUTTER_VERSION=1.2
+# reuse previously declared arg inside this build stage
+ARG DOCKER_TAG
 
-RUN wget --quiet -O /usr/local/bin/pgfutter \
-         "https://github.com/lukasmartinelli/pgfutter/releases/download/v$PGFUTTER_VERSION/pgfutter_linux_amd64" \
+# In case there is no osmborder_lines published on github under DOCKER_TAG version, use this one
+ENV FALLBACK_DUMP_VERSION="v3.0.0-beta" \
+    PGFUTTER_VERSION="v1.2" \
+    RELEASES_PREFIX="https://github.com/openmaptiles/openmaptiles-tools/releases/download/" \
+    OSM_BORDERS_FILE="osmborder_lines.csv.gz" \
+    WGET="wget --quiet --progress=bar:force:noscroll --show-progress" \
+    IMPORT_DIR=/import
+
+RUN $WGET -O /usr/local/bin/pgfutter \
+         "https://github.com/lukasmartinelli/pgfutter/releases/download/${PGFUTTER_VERSION}/pgfutter_linux_amd64" \
  && chmod +x /usr/local/bin/pgfutter \
- && mkdir -p "$IMPORT_DIR" \
- && wget --quiet -O "$IMPORT_DIR/osmborder_lines.csv.gz" "$OSM_BORDER_URL" \
- && gzip -d "$IMPORT_DIR/osmborder_lines.csv.gz"
+ && mkdir -p "${IMPORT_DIR}" \
+ && cd "${IMPORT_DIR}" \
+ # Try to download from the current release tag
+ && if $WGET -O "${OSM_BORDERS_FILE}" "${RELEASES_PREFIX}/${DOCKER_TAG}/${OSM_BORDERS_FILE}"; then \
+        echo "Used file from ${DOCKER_TAG} release"; \
+    elif $WGET -O "${OSM_BORDERS_FILE}" "${RELEASES_PREFIX}/${FALLBACK_DUMP_VERSION}/${OSM_BORDERS_FILE}"; then \
+        echo "Release ${DOCKER_TAG} not found, used file from the fallback ${FALLBACK_DUMP_VERSION} release"; \
+    fi \
+ && gzip -d "${OSM_BORDERS_FILE}"
 
 WORKDIR /usr/src/app/
 COPY . /usr/src/app/
