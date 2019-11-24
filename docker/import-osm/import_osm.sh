@@ -3,8 +3,17 @@ set -o errexit
 set -o pipefail
 set -o nounset
 
-readonly PG_CONNECT="postgis://$POSTGRES_USER:$POSTGRES_PASSWORD@$POSTGRES_HOST:$POSTGRES_PORT/$POSTGRES_DB"
-readonly DIFF_MODE=${DIFF_MODE:-true}
+# For backward compatibility, allow both PG* and POSTGRES_* forms,
+# with the non-standard POSTGRES_* form taking precedence.
+# An error will be raised if neither form is given, except for the PGPORT
+export PGHOST="${POSTGRES_HOST:-${PGHOST?}}"
+export PGDATABASE="${POSTGRES_DB:-${PGDATABASE?}}"
+export PGUSER="${POSTGRES_USER:-${PGUSER?}}"
+export PGPASSWORD="${POSTGRES_PASSWORD:-${PGPASSWORD?}}"
+export PGPORT="${POSTGRES_PORT:-${PGPORT:-5432}}"
+
+
+: "${DIFF_MODE:=true}"
 
 
 function import_pbf() {
@@ -18,27 +27,28 @@ function import_pbf() {
     fi
 
     imposm import \
-        -connection "$PG_CONNECT" \
+        -connection "postgis://$PGUSER:$PGPASSWORD@$PGHOST:$PGPORT/$PGDATABASE" \
         -mapping "$MAPPING_YAML" \
         -overwritecache \
         -diffdir "$DIFF_DIR" \
         -cachedir "$IMPOSM_CACHE_DIR" \
         -read "$pbf_file" \
         -deployproduction \
-        -write $diff_flag
+        -write $diff_flag \
+        -config "$CONFIG_JSON"
 }
 
 function import_osm_with_first_pbf() {
     if [ "$(ls -A $IMPORT_DIR/*.pbf 2> /dev/null)" ]; then
         local pbf_file
         for pbf_file in "$IMPORT_DIR"/*.pbf; do
-			import_pbf "$pbf_file"
+            import_pbf "$pbf_file"
             break
         done
     else
         echo "No PBF files for import found."
         echo "Please mount the $IMPORT_DIR volume to a folder containing OSM PBF files."
-        exit 404
+        exit 1
     fi
 }
 

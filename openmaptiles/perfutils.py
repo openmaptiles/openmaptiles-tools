@@ -12,20 +12,25 @@ from dataclasses_json import dataclass_json, config
 
 from openmaptiles.utils import round_td
 
-GREEN, RED, RESET = '', '', ''
+
+class Colors:
+    GREEN = ''
+    RED = ''
+    RESET = ''
+
+    def __init__(self) -> None:
+        self.enable(stdout.isatty())
+
+    def enable(self, enable=True):
+        if enable:
+            self.GREEN = "\x1b[32;107m"
+            self.RED = "\x1b[31;107m"
+            self.RESET = "\x1b[0m"
+        else:
+            self.GREEN, self.RED, self.RESET = '', '', ''
 
 
-def set_color_mode(enable=True):
-    global GREEN, RED, RESET
-    if enable:
-        GREEN = "\x1b[32;107m"
-        RED = "\x1b[31;107m"
-        RESET = "\x1b[0m"
-    else:
-        GREEN, RED, RESET = '', '', ''
-
-
-set_color_mode(stdout.isatty)
+COLOR = Colors()
 
 
 def change(old, new, is_speed=False, color=False):
@@ -40,8 +45,8 @@ def change(old, new, is_speed=False, color=False):
         clr = None
         value = f" {growth:+.1%}"
     else:
-        clr = GREEN if (growth > 0) == is_speed else RED
-        value = f" {clr}{growth:+.1%}{RESET}"
+        clr = COLOR.GREEN if (growth > 0) == is_speed else COLOR.RED
+        value = f" {clr}{growth:+.1%}{COLOR.RESET}"
     if color:
         return value, clr
     else:

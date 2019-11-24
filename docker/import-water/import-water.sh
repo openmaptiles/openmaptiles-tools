@@ -3,16 +3,21 @@ set -o errexit
 set -o pipefail
 set -o nounset
 
-readonly WATER_POLYGONS_FILE="$IMPORT_DATA_DIR/water_polygons.shp"
+# For backward compatibility, allow both PG* and POSTGRES_* forms,
+# with the non-standard POSTGRES_* form taking precedence.
+# An error will be raised if neither form is given, except for the PGPORT
+export PGHOST="${POSTGRES_HOST:-${PGHOST?}}"
+export PGDATABASE="${POSTGRES_DB:-${PGDATABASE?}}"
+export PGUSER="${POSTGRES_USER:-${PGUSER?}}"
+export PGPASSWORD="${POSTGRES_PASSWORD:-${PGPASSWORD?}}"
+export PGPORT="${POSTGRES_PORT:-${PGPORT:-5432}}"
 
-function exec_psql() {
-    PGPASSWORD=$POSTGRES_PASSWORD psql --host="$POSTGRES_HOST" --port="$POSTGRES_PORT" --dbname="$POSTGRES_DB" --username="$POSTGRES_USER"
-}
+readonly WATER_POLYGONS_FILE="$IMPORT_DATA_DIR/water_polygons.shp"
 
 function import_shp() {
     local shp_file=$1
     local table_name=$2
-    shp2pgsql -s 3857 -I -g geometry "$shp_file" "$table_name" | exec_psql | hide_inserts
+    shp2pgsql -s 3857 -I -g geometry "$shp_file" "$table_name" | psql | hide_inserts
 }
 
 function hide_inserts() {
@@ -22,7 +27,7 @@ function hide_inserts() {
 function drop_table() {
     local table=$1
     local drop_command="DROP TABLE IF EXISTS $table;"
-    echo "$drop_command" | exec_psql
+    echo "$drop_command" | psql
 }
 
 function generalize_water() {
@@ -30,9 +35,9 @@ function generalize_water() {
     local source_table_name="$2"
     local tolerance="$3"
     echo "Generalize $target_table_name with tolerance $tolerance from $source_table_name"
-    echo "CREATE TABLE $target_table_name AS SELECT ST_Simplify(geometry, $tolerance) AS geometry FROM $source_table_name" | exec_psql
-    echo "CREATE INDEX ON $target_table_name USING gist (geometry)" | exec_psql
-    echo "ANALYZE $target_table_name" | exec_psql
+    echo "CREATE TABLE $target_table_name AS SELECT ST_Simplify(geometry, $tolerance) AS geometry FROM $source_table_name" | psql
+    echo "CREATE INDEX ON $target_table_name USING gist (geometry)" | psql
+    echo "ANALYZE $target_table_name" | psql
 }
 
 function import_water() {

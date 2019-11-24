@@ -1,7 +1,17 @@
-#!/bin/bash
+#!/usr/bin/env bash
 set -o errexit
 set -o pipefail
 set -o nounset
+
+# For backward compatibility, allow both PG* and POSTGRES_* forms,
+# with the non-standard POSTGRES_* form taking precedence.
+# An error will be raised if neither form is given, except for the PGPORT
+export PGHOST="${POSTGRES_HOST:-${PGHOST?}}"
+export PGDATABASE="${POSTGRES_DB:-${PGDATABASE?}}"
+export PGUSER="${POSTGRES_USER:-${PGUSER?}}"
+export PGPASSWORD="${POSTGRES_PASSWORD:-${PGPASSWORD?}}"
+export PGPORT="${POSTGRES_PORT:-${PGPORT:-5432}}"
+
 
 function import_csv() {
     local csv_file="$1"
@@ -9,11 +19,11 @@ function import_csv() {
     echo "Import CSV file $csv_file"
     pgfutter \
         --schema "public" \
-        --host "$POSTGRES_HOST" \
-        --port "$POSTGRES_PORT" \
-        --dbname "$POSTGRES_DB" \
-        --username "$POSTGRES_USER" \
-        --pass "$POSTGRES_PASSWORD" \
+        --host "$PGHOST" \
+        --port "$PGPORT" \
+        --dbname "$PGDATABASE" \
+        --username "$PGUSER" \
+        --pass "$PGPASSWORD" \
         --table "$table_name" \
     csv \
         --fields "osm_id,admin_level,dividing_line,disputed,maritime,geometry" \
@@ -21,14 +31,10 @@ function import_csv() {
     "$csv_file"
 }
 
-function exec_psql() {
-    PGPASSWORD=$POSTGRES_PASSWORD psql --host="$POSTGRES_HOST" --port="$POSTGRES_PORT" --dbname="$POSTGRES_DB" --username="$POSTGRES_USER"
-}
-
 function drop_table() {
     local table=$1
     local drop_command="DROP TABLE IF EXISTS $table CASCADE;"
-    echo "$drop_command" | exec_psql
+    echo "$drop_command" | psql
 }
 
 function generalize_border() {
@@ -37,15 +43,15 @@ function generalize_border() {
     local tolerance="$3"
     local max_admin_level="$4"
     echo "Generalize $target_table_name with tolerance $tolerance from $source_table_name"
-    echo "CREATE TABLE $target_table_name AS SELECT ST_Simplify(geometry, $tolerance) AS geometry, osm_id, admin_level, dividing_line, disputed, maritime FROM $source_table_name WHERE admin_level <= '$max_admin_level';" | exec_psql
-    echo "CREATE INDEX ON $target_table_name USING gist (geometry);" | exec_psql
-    echo "ANALYZE $target_table_name;" | exec_psql
+    echo "CREATE TABLE $target_table_name AS SELECT ST_Simplify(geometry, $tolerance) AS geometry, osm_id, admin_level, dividing_line, disputed, maritime FROM $source_table_name WHERE admin_level <= '$max_admin_level';" | psql
+    echo "CREATE INDEX ON $target_table_name USING gist (geometry);" | psql
+    echo "ANALYZE $target_table_name;" | psql
 }
 
 function create_import_table() {
     local target_table_name="$1"
-    echo "CREATE TABLE $target_table_name (osm_id bigint, admin_level int, dividing_line bool, disputed bool, maritime bool, geometry Geometry(LineString, 3857));" | exec_psql
-    echo "CREATE INDEX ON $target_table_name USING gist (geometry);" | exec_psql
+    echo "CREATE TABLE $target_table_name (osm_id bigint, admin_level int, dividing_line bool, disputed bool, maritime bool, geometry Geometry(LineString, 3857));" | psql
+    echo "CREATE INDEX ON $target_table_name USING gist (geometry);" | psql
 }
 
 function import_borders() {

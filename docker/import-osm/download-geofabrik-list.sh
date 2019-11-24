@@ -6,4 +6,3 @@ set -o nounset
 
 download-geofabrik generate
 download-geofabrik list
-

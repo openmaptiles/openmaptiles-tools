@@ -24,11 +24,16 @@ Volumes:
 docker run --rm \
     -v $(pwd):/import \
     -v $(pwd):/mapping \
-    -e POSTGRES_USER="osm" \
-    -e POSTGRES_PASSWORD="osm" \
-    -e POSTGRES_HOST="127.0.0.1" \
-    -e POSTGRES_DB="osm" \
-    -e POSTGRES_PORT="5432" \
+    -e PGHOST="127.0.0.1" \
+    -e PGDATABASE="openmaptiles" \
+    -e PGUSER="openmaptiles" \
+    -e PGPASSWORD="openmaptiles" \
     openmaptiles/import-osm
 ```
+
+Use standard Postgres [environment variables](https://www.postgresql.org/docs/current/libpq-envars.html) to connect,
+such as `PGHOST`, `PGDATABASE`, `PGUSER`, `PGPASSWORD`, `PGPORT`.  All are required except for `PGPORT`.
+
+For backward compatibility the script also supports `POSTGRES_HOST`, `POSTGRES_DB`, `POSTGRES_USER`,
+`POSTGRES_PASSWORD`, and `POSTGRES_PORT`, but they are not recommended.
 
