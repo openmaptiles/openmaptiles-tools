@@ -1,6 +1,3 @@
-
-
-
 ID_SELECT = '''
 select distinct tags->'wikidata' AS id
 from {table}
@@ -13,6 +10,7 @@ from {table}
 where tags ? 'wikipedia' and not tags ? 'wikidata'
 '''
 
+
 def get_ids(tables, cur):
     parts = map(lambda t: ID_SELECT.format(table=t), tables)
     q = 'select t.*'
@@ -22,6 +20,7 @@ def get_ids(tables, cur):
     cur.execute(q)
     ids = list(map(lambda t: t[0], cur.fetchall()))
     return ids
+
 
 def get_pages(tables, cur):
     parts = map(lambda t: PAGE_SELECT.format(table=t), tables)

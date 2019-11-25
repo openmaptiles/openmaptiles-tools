@@ -16,8 +16,10 @@ CREATE TABLE IF NOT EXISTS {table} (
 TRUNCATE {table};
 """
 
+
 def empty_table(table, cur):
     cur.execute(EMPTY_TABLE.format(table=table))
+
 
 def get_json(line):
     if line != "[\n" and line != "]" and line != "]\n" and len(line) > 2:
@@ -32,13 +34,14 @@ def get_json(line):
             print(traceback.format_exc())
             print(line)
 
+
 def get_id(line):
     prefix = '{"type":"item","id":"'
     prefix_len = len(prefix)
-    part = line[prefix_len:(prefix_len+20)]
-    if(part and line.startswith(prefix)):
+    part = line[prefix_len:(prefix_len + 20)]
+    if part and line.startswith(prefix):
         m = re.search('^(Q[0-9]+)"', part)
-        if(m is not None):
+        if m is not None:
             return m.group(1)
 
 
@@ -46,25 +49,26 @@ def to_osm_names(wd_names):
     res = {}
     for lang in wd_names:
         name = wd_names[lang]
-        if (lang != name['language']):
+        if lang != name['language']:
             continue
-        res['name:'+lang] = name['value']
+        res['name:' + lang] = name['value']
     return res
 
 
 def remove_duplicate_ids_and_pages(ids, pages):
     orig_ids_len = len(ids)
     ids = list(set(ids))
-    if(len(ids) != orig_ids_len):
+    if len(ids) != orig_ids_len:
         print('ignoring {} duplicate ids'.format(orig_ids_len - len(ids)))
 
     orig_pages_len = len(pages)
     pages = list(set(pages))
-    if(len(pages) != orig_pages_len):
+    if len(pages) != orig_pages_len:
         print('ignoring {} duplicate pages'.format(orig_pages_len - len(
             pages)))
 
-    return (ids, pages)
+    return ids, pages
+
 
 def simple_parse(file, ids, pages, cur, conn, table_name, limit):
     ids, pages = remove_duplicate_ids_and_pages(ids, pages)
@@ -87,7 +91,7 @@ def simple_parse(file, ids, pages, cur, conn, table_name, limit):
                             "%s)".format(table=table_name), (id, osm_labels))
                 found_ids.append(id)
                 ids.remove(id)
-                if(len(ids) == 0):
+                if len(ids) == 0:
                     break
 
             if i % 100000 == 0:
@@ -109,12 +113,13 @@ def get_page(item, pages):
     if 'sitelinks' not in item:
         return None
     for lang in pages:
-        key = lang+'wiki'
+        key = lang + 'wiki'
         if key in item['sitelinks']:
             title = item['sitelinks'][key]['title']
             if title in pages[lang]:
-                return (lang, title)
+                return lang, title
     return None
+
 
 def multi_parse(file, ids, pages, cur, conn, table_name, limit):
     ids, pages = remove_duplicate_ids_and_pages(ids, pages)
@@ -128,7 +133,7 @@ def multi_parse(file, ids, pages, cur, conn, table_name, limit):
     pages_bucket = defaultdict(SortedList)
     for page in pages:
         page_parts = page.split(':')
-        if(len(page_parts)==2):
+        if len(page_parts) == 2:
             pages_bucket[page_parts[0]].add(page_parts[1])
             # pages_bucket[page_parts[0]].add(page_parts[1].decode('utf8'))
     pool = Pool()
@@ -140,7 +145,7 @@ def multi_parse(file, ids, pages, cur, conn, table_name, limit):
     def process_json(item):
         try:
             parsed_lines[0] += 1
-            if(item is not None):
+            if item is not None:
                 id = item['id']
                 if id in ids:
                     osm_labels = to_osm_names(item['labels'])
@@ -150,7 +155,7 @@ def multi_parse(file, ids, pages, cur, conn, table_name, limit):
                     ids.remove(id)
                 else:
                     page_tuple = get_page(item, pages_bucket)
-                    if(page_tuple is not None):
+                    if page_tuple is not None:
                         page = ':'.join(page_tuple)
                         osm_labels = to_osm_names(item['labels'])
                         cur.execute("INSERT INTO {table} (page, labels) VALUES ("
@@ -160,7 +165,7 @@ def multi_parse(file, ids, pages, cur, conn, table_name, limit):
                         lang = page_tuple[0]
                         title = page_tuple[1]
                         pages_bucket[lang].remove(title)
-                        if(len(pages_bucket[lang])==0):
+                        if len(pages_bucket[lang]) == 0:
                             print('Deleting lang', lang)
                             del pages_bucket[lang]
             if parsed_lines[0] % 10000 == 0:

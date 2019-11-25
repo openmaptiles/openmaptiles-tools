@@ -1,11 +1,11 @@
 import os
 
-POSTGRES_DB=os.environ['POSTGRES_DB']
-POSTGRES_USER=os.environ['POSTGRES_USER']
-POSTGRES_PASSWORD=os.environ['POSTGRES_PASSWORD']
-POSTGRES_HOST=os.environ['POSTGRES_HOST']
-POSTGRES_PORT=os.environ['POSTGRES_PORT']
-
+# Backward compatibility - for now, allow POSTGRES_* env if set, or use standard PG*
+POSTGRES_DB = os.getenv('POSTGRES_DB') or os.environ['PGDATABASE']
+POSTGRES_USER = os.getenv('POSTGRES_USER') or os.environ['PGUSER']
+POSTGRES_PASSWORD = os.getenv('POSTGRES_PASSWORD') or os.environ['PGPASSWORD']
+POSTGRES_HOST = os.getenv('POSTGRES_HOST') or os.environ['PGHOST']
+POSTGRES_PORT = os.getenv('POSTGRES_PORT') or os.getenv('PGPORT') or '5432'
 
 '''Path to Wikidata dump from /import folder'''
 DUMP = 'latest-all.json.gz'
@@ -33,4 +33,3 @@ OSM_TABLES = [
 
 '''Table with imported wikidata'''
 TABLE_NAME = 'wd_names'
-
