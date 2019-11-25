@@ -47,7 +47,7 @@ Each subdir here creates a docker image that either generates some data, or is b
 [![](https://img.shields.io/docker/stars/openmaptiles/import-sql?label=stars)](https://hub.docker.com/repository/docker/openmaptiles/import-sql)
 <br><small>Migrated from [import-sql](https://github.com/openmaptiles/import-sql) repo (archived)</small>
 
-**Note:** This image is obsolete, and should not be used. Use `openmaptiles-tools` image instead. `import_sql.sh` was copied to `/bin`.
+**Note:** This image is obsolete, and should not be used. Use `openmaptiles-tools` image instead. `import_sql.sh` was copied to `/bin` as `import-sql`.
 
 ## [import-water](import-water)
 [![](https://img.shields.io/docker/cloud/build/openmaptiles/import-water?&logo=OpenStreetMap&label=build)](https://hub.docker.com/repository/docker/openmaptiles/import-water)
