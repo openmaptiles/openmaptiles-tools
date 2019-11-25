@@ -12,10 +12,15 @@ You need to provide the database credentials and run `generate-vectortiles`.
 docker run --rm \
     -v $(pwd)/project.tm2source:/tm2source \
     -v $(pwd):/export \
-    -e POSTGRES_USER="osm" \
-    -e POSTGRES_PASSWORD="osm" \
-    -e POSTGRES_HOST="127.0.0.1" \
-    -e POSTGRES_DB="osm" \
-    -e POSTGRES_PORT="5432" \
+    -e PGHOST="127.0.0.1" \
+    -e PGDATABASE="openmaptiles" \
+    -e PGUSER="openmaptiles" \
+    -e PGPASSWORD="openmaptiles" \
     openmaptiles/generate-vectortiles
 ```
+
+Optional environment variables:
+* `PGPORT` (defaults to `5432`)
+
+Legacy env variables are still supported, but they are not recommended:
+`POSTGRES_HOST`,`POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_PORT`

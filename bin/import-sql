@@ -4,6 +4,16 @@ set -o pipefail
 set -o nounset
 shopt -s nullglob
 
+# For backward compatibility, allow both PG* and POSTGRES_* forms,
+# with the non-standard POSTGRES_* form taking precedence.
+# An error will be raised if neither form is given, except for the PGPORT
+export PGHOST="${POSTGRES_HOST:-${PGHOST?}}"
+export PGDATABASE="${POSTGRES_DB:-${PGDATABASE?}}"
+export PGUSER="${POSTGRES_USER:-${PGUSER?}}"
+export PGPASSWORD="${POSTGRES_PASSWORD:-${PGPASSWORD?}}"
+export PGPORT="${POSTGRES_PORT:-${PGPORT:-5432}}"
+
+
 function exec_psql_file() {
     local file_name="$1"
     # Allws additional parameters to be passed to psql
@@ -14,12 +24,8 @@ function exec_psql_file() {
     echo "Importing $file_name (md5 $(md5sum < "$file_name")  $(wc -l < "$file_name") lines) into Postgres..."
 
     # shellcheck disable=SC2154
-    PGPASSWORD="$POSTGRES_PASSWORD" psql \
+    psql \
         -v ON_ERROR_STOP="1" \
-        --host="$POSTGRES_HOST" \
-        ${POSTGRES_PORT:+ --port="$POSTGRES_PORT"} \
-        --dbname="$POSTGRES_DB" \
-        --username="$POSTGRES_USER" \
         -c '\timing on' \
         -f "$file_name" \
         "${psql_opts[@]}"
