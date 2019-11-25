@@ -1,6 +1,6 @@
 # !! OBSOLETE !!
 
-This image is obsolete, and should not be used. Use `openmaptiles-tools` image instead. `import_sql.sh` was copied to `/bin`.
+This image is obsolete, and should not be used. Use `openmaptiles-tools` image instead. `import_sql.sh` was copied to `/bin` and should be used as `import-sql` command.
 
 ## Import SQL files into PostgreSQL [![Docker Automated buil](https://img.shields.io/docker/automated/openmaptiles/import-sql.svg)](https://hub.docker.com/r/openmaptiles/import-sql/)
 
