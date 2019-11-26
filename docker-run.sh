@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 set -e
 
 : "${VERSION:=$(cat "$(dirname "$0")/VERSION")}"
