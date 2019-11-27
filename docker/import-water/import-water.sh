@@ -45,21 +45,25 @@ function import_water() {
     drop_table "$table_name"
     import_shp "$WATER_POLYGONS_FILE" "$table_name"
 
-    local gen1_table_name="osm_ocean_polygon_gen1"
-    drop_table "$gen1_table_name"
-    generalize_water "$gen1_table_name" "$table_name" 20
+    local gen_tables="
+        osm_ocean_polygon_gen1,20
+        osm_ocean_polygon_gen2,40
+        osm_ocean_polygon_gen3,80
+        osm_ocean_polygon_gen4,160
+    "
 
-    local gen2_table_name="osm_ocean_polygon_gen2"
-    drop_table "$gen2_table_name"
-    generalize_water "$gen2_table_name" "$table_name" 40
+    for params in $gen_tables; do
+        IFS=',' read gen_table_name tolerance <<< "${params}"
+        drop_table "$gen_table_name"
+        generalize_water "$gen_table_name" "$table_name" $tolerance &
 
-    local gen3_table_name="osm_ocean_polygon_gen3"
-    drop_table "$gen3_table_name"
-    generalize_water "$gen3_table_name" "$table_name" 80
+        if [ ! ${PARALLEL:-0} = 1 ]; then
+            wait
+        fi
+    done
 
-    local gen4_table_name="osm_ocean_polygon_gen4"
-    drop_table "$gen4_table_name"
-    generalize_water "$gen4_table_name" "$table_name" 160
+    wait
+    echo "Finished water generalization"
 }
 
 import_water

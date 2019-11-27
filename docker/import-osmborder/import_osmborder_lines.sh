@@ -62,45 +62,31 @@ function import_borders() {
     create_import_table "$table_name"
     import_csv "$csv_file" "$table_name"
 
-    local gen1_table_name="osm_border_linestring_gen1"
-    drop_table "$gen1_table_name"
-    generalize_border "$gen1_table_name" "$table_name" 10 10
+    local gen_tables="
+        osm_border_linestring_gen1,10,10
+        osm_border_linestring_gen2,20,10
+        osm_border_linestring_gen3,40,8
+        osm_border_linestring_gen4,80,6
+        osm_border_linestring_gen5,160,6
+        osm_border_linestring_gen6,300,4
+        osm_border_linestring_gen7,600,4
+        osm_border_linestring_gen8,1200,4
+        osm_border_linestring_gen9,2400,4
+        osm_border_linestring_gen10,4800,2
+    "
 
-    local gen2_table_name="osm_border_linestring_gen2"
-    drop_table "$gen2_table_name"
-    generalize_border "$gen2_table_name" "$table_name" 20 10
+    for params in $gen_tables; do
+        IFS=',' read gen_table_name tolerance max_admin_level <<< "${params}"
+        drop_table "$gen_table_name"
+        generalize_border "$gen_table_name" "$table_name" $tolerance $max_admin_level &
 
-    local gen3_table_name="osm_border_linestring_gen3"
-    drop_table "$gen3_table_name"
-    generalize_border "$gen3_table_name" "$table_name" 40 8
+        if [ ! ${PARALLEL:-0} = 1 ]; then
+            wait
+        fi
+    done
 
-    local gen4_table_name="osm_border_linestring_gen4"
-    drop_table "$gen4_table_name"
-    generalize_border "$gen4_table_name" "$table_name" 80 6
-
-    local gen5_table_name="osm_border_linestring_gen5"
-    drop_table "$gen5_table_name"
-    generalize_border "$gen5_table_name" "$table_name" 160 6
-
-    local gen6_table_name="osm_border_linestring_gen6"
-    drop_table "$gen6_table_name"
-    generalize_border "$gen6_table_name" "$table_name" 300 4
-
-    local gen7_table_name="osm_border_linestring_gen7"
-    drop_table "$gen7_table_name"
-    generalize_border "$gen7_table_name" "$table_name" 600 4
-
-    local gen8_table_name="osm_border_linestring_gen8"
-    drop_table "$gen8_table_name"
-    generalize_border "$gen8_table_name" "$table_name" 1200 4
-
-    local gen9_table_name="osm_border_linestring_gen9"
-    drop_table "$gen9_table_name"
-    generalize_border "$gen9_table_name" "$table_name" 2400 4
-
-    local gen10_table_name="osm_border_linestring_gen10"
-    drop_table "$gen10_table_name"
-    generalize_border "$gen10_table_name" "$table_name" 4800 2
+    wait
+    echo "Finished border generalization"
 }
 
 import_borders "$IMPORT_DIR/osmborder_lines.csv"

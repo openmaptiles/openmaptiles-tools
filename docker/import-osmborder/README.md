@@ -11,6 +11,7 @@ The **import-osmborder** will import the embedded CSV into the database.
 
 ```bash
 docker run --rm \
+    -e PARALLEL=1 \
     -e PGHOST="127.0.0.1" \
     -e PGDATABASE="openmaptiles" \
     -e PGUSER="openmaptiles" \
