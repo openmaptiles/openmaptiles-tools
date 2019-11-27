@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """
-Refresh all PostgreSQL materialized views in parallel, taking into account cross-dependencies.
+Evaluate tile generation performance against a PostgreSQL database.
 
 Usage:
   test-perf <tileset> [--test=<set>]... [--layer=<layer>]... [--exclude-layers]
