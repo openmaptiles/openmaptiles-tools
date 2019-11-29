@@ -84,11 +84,11 @@ function import_borders() {
 
     local gen6_table_name="osm_border_linestring_gen6"
     drop_table "$gen6_table_name"
-    generalize_border "$gen6_table_name" "$table_name" 300 4
+    generalize_border "$gen6_table_name" "$table_name" 300 6
 
     local gen7_table_name="osm_border_linestring_gen7"
     drop_table "$gen7_table_name"
-    generalize_border "$gen7_table_name" "$table_name" 600 4
+    generalize_border "$gen7_table_name" "$table_name" 600 6
 
     local gen8_table_name="osm_border_linestring_gen8"
     drop_table "$gen8_table_name"
