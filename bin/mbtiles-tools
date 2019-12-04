@@ -1,0 +1,92 @@
+#!/usr/bin/env python
+"""
+A toolbox to manage the mbtiles file.
+
+Usage:
+  mbtiles-tools find-dups <mbtilesfile> [--output=<file>] [--verbose]
+  mbtiles-tools impute <mbtilesfile> --zoom=<zoom>
+                [--key=<hash>... | --keyfile=<file>] [--output=<file>]
+                [--verbose]
+  mbtiles-tools meta-all <mbtilesfile>
+  mbtiles-tools meta-get <mbtilesfile> <metakey>
+  mbtiles-tools meta-set <mbtilesfile> <metakey> [<newvalue>]
+  mbtiles-tools --help
+  mbtiles-tools --version
+
+Actions:
+  find-dups Get a list of duplicate tile keys at a given zoom levels (optional),
+            limiting by the tile size (optional).
+  impute    Look at the zoom level one less than <zoom>, and find all tiles that match
+            the given keys (md5 hashes as strings or a file). For each found tile,
+            add tiles at the higher zooms with the same content as the found ones.
+            For example, given a key for an empty water tile, one could clone all such
+            water tiles from zoom 13 to zoom 14 by using --zoom=14 --key=<hash>
+  meta-all  validates and prints all values in the metadata table
+  meta-get  Gets a single value from metadata table
+  meta-set  Sets a single value in the metadata table, or deletes it if no value.
+
+Options:
+  -z --zoom=<zoom>      Process a single zoom. If set, ignores min/max.
+  -m --minzoom=<min>    Process all zooms beginning with this one (inclusive).
+  -n --maxzoom=<max>    Process all zooms ending at this one (inclusive).
+  -k --key=<hash>       Key of the tile (i.e. an MD5 hash). Could be multiple.
+  -f --keyfile=<file>   A file with tile Keys, one per line.
+  -o --output=<file>    Write a list of tiles to this file. Use '-' for stdout.
+  -v --verbose          Print additional debugging information.
+  --maxsize=<size>      Ensure tile size is no bigger than <size>.
+  --force               Force action, see action description.
+  --help                Show this screen.
+  --version             Show version.
+"""
+from pathlib import Path
+
+from docopt import docopt, DocoptExit
+import openmaptiles
+
+from openmaptiles.mbtile_tools import Imputer, KeyFinder, Metadata
+
+
+def main():
+    args = docopt(__doc__, version=openmaptiles.__version__)
+    if args['find-dups']:
+        find_dups(args)
+    elif args['impute']:
+        impute(args)
+    elif args['meta-all']:
+        Metadata(args['<mbtilesfile>']).print_all()
+    elif args['meta-get']:
+        Metadata(args['<mbtilesfile>']).get_value(args['<metakey>'])
+    elif args['meta-set']:
+        Metadata(args['<mbtilesfile>']).set_value(
+            args['<metakey>'], args['<newvalue>'])
+    else:
+        raise DocoptExit('Invalid command')
+
+
+def find_dups(args):
+    KeyFinder(
+        mbtiles=args['<mbtilesfile>'],
+        outfile=args['--output'] or '-',
+        verbose=args['--verbose'] or (args['--output'] and args['--output'] != '-'),
+    ).run()
+
+
+def impute(args):
+    file = args['<mbtilesfile>']
+    verbose = args['--verbose']
+    outfile = args['--output']
+    if args['--keyfile'] is not None:
+        content = Path(args['--keyfile']).read_text()
+        keys = [v.strip() for v in content.split('\n') if v.strip()]
+    elif args['--key']:
+        keys = args['--key']
+    else:
+        keys = KeyFinder(file).run()
+    zoom = int(args['--zoom'])
+    if zoom <= 0:
+        raise DocoptExit(f'Zooms must be more than 0, {zoom} was given.')
+    Imputer(file, keys, zoom, outfile, verbose).run()
+
+
+if __name__ == '__main__':
+    main()
