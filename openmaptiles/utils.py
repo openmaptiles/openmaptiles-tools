@@ -1,5 +1,6 @@
 import asyncio
 import re
+import sys
 from asyncio.futures import Future
 from datetime import timedelta
 from typing import List, Callable, Any, Dict, Awaitable, Iterable
@@ -137,3 +138,7 @@ def round_td(delta: timedelta):
     zero -= int(zero / 100000) * 100000
     s = str(delta - timedelta(microseconds=zero))
     return re.match(r'^([^.]+(\.\d)?)', s).group(1)
+
+
+def print_err(*args, **kwargs):
+    print(*args, **kwargs, file=sys.stderr)
