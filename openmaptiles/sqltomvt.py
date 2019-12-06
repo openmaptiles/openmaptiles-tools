@@ -47,7 +47,8 @@ class MvtGenerator:
         Creates a SQL function that returns a single bytea value or null
         """
         return f"""\
-CREATE OR REPLACE FUNCTION {fname}(zoom integer, x integer, y integer)
+DROP FUNCTION IF EXISTS {fname}(integer, integer, integer);
+CREATE FUNCTION {fname}(zoom integer, x integer, y integer)
 RETURNS {'TABLE(mvt bytea, key text)' if self.key_column else 'bytea'} AS $$
 {self.generate_query(f"{self.tile_envelope}(zoom, x, y)", "zoom")};
 $$ LANGUAGE SQL STABLE RETURNS NULL ON NULL INPUT;"""
