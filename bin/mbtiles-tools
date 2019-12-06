@@ -74,6 +74,9 @@ def find_dups(args):
 def impute(args):
     file = args['<mbtilesfile>']
     verbose = args['--verbose']
+    zoom = int(args['--zoom'])
+    if zoom <= 0:
+        raise DocoptExit(f'Zooms must be more than 0, {zoom} was given.')
     outfile = args['--output']
     if args['--keyfile'] is not None:
         content = Path(args['--keyfile']).read_text()
@@ -81,10 +84,7 @@ def impute(args):
     elif args['--key']:
         keys = args['--key']
     else:
-        keys = KeyFinder(file).run()
-    zoom = int(args['--zoom'])
-    if zoom <= 0:
-        raise DocoptExit(f'Zooms must be more than 0, {zoom} was given.')
+        keys = KeyFinder(file, show_size=False, zoom=zoom-1).run()
     Imputer(file, keys, zoom, outfile, verbose).run()
 
 
