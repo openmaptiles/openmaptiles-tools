@@ -14,10 +14,12 @@ class KeyFinder:
                  show_size=None,
                  show_examples=None,
                  outfile: str = None,
+                 zoom=None,
                  verbose=False) -> None:
         self.mbtiles = mbtiles
-        self.min_dup_count = 20
+        self.min_dup_count = 50 if zoom and zoom > 12 else 20
         self.use_stdout = outfile == '-'
+        self.zoom = zoom
         self.verbose = verbose
         if outfile:
             self.outfile = True if self.use_stdout else Path(outfile)
@@ -33,14 +35,23 @@ class KeyFinder:
         with sqlite3.connect(self.mbtiles) as conn:
             results = []
             if self.show_size:
-                sql = "select cnt, dups.tile_id, length(tile_data) from (" \
-                      "  select tile_id, count(*) as cnt from map " \
-                      "  group by tile_id having cnt > ?" \
-                      ") dups JOIN images ON images.tile_id = dups.tile_id;"
+                sql = "SELECT cnt, dups.tile_id, LENGTH(tile_data) FROM (" \
+                      "  SELECT tile_id, COUNT(*) as cnt FROM map " \
+                      "  GROUP BY tile_id HAVING cnt > ?" \
+                      ") dups JOIN images ON images.tile_id = dups.tile_id"
+                sql_opts = [self.min_dup_count]
+                if self.zoom:
+                    sql += f" WHERE zoom_level=?"
+                    sql_opts.append(self.zoom)
             else:
-                sql = "select count(*) cnt, tile_id from map " \
-                      "group by tile_id having cnt > ?;"
-            for vals in query(conn, sql, [self.min_dup_count]):
+                sql_opts = []
+                sql = "SELECT COUNT(*) cnt, tile_id FROM map"
+                if self.zoom:
+                    sql += f" WHERE zoom_level=?"
+                    sql_opts.append(self.zoom)
+                sql += " GROUP BY tile_id HAVING cnt > ?"
+                sql_opts.append(self.min_dup_count)
+            for vals in query(conn, sql, sql_opts):
                 results.append(vals)
             results.sort(reverse=True)
         size = None
