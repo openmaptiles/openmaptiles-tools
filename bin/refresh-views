@@ -26,7 +26,6 @@ Postgres
      POSTGRES_HOST, POSTGRES_PORT, POSTGRES_DB, POSTGRES_USER, POSTGRES_PASSWORD
 """
 import asyncio
-import os.path
 from collections import defaultdict
 from datetime import datetime
 from typing import List
@@ -35,29 +34,20 @@ import asyncpg
 from docopt import docopt
 
 import openmaptiles
+from openmaptiles.pgutils import parse_pg_args
 from openmaptiles.utils import Action, run_actions
-from openmaptiles.utils import coalesce
 
 
 def main(args):
+    pghost, pgport, dbname, user, password = parse_pg_args(args)
     asyncio.run(async_main(
         max_queries=int(args['--parallel']),
         schema=args['--schema'],
-        pghost=coalesce(
-            args.get("--pghost"), os.getenv('POSTGRES_HOST'), os.getenv('PGHOST'),
-            'localhost'),
-        pgport=coalesce(
-            args.get("--pgport"), os.getenv('POSTGRES_PORT'), os.getenv('PGPORT'),
-            '5432'),
-        dbname=coalesce(
-            args.get("--dbname"), os.getenv('POSTGRES_DB'), os.getenv('PGDATABASE'),
-            'openmaptiles'),
-        user=coalesce(
-            args.get("--user"), os.getenv('POSTGRES_USER'), os.getenv('PGUSER'),
-            'openmaptiles'),
-        password=coalesce(
-            args.get("--password"), os.getenv('POSTGRES_PASSWORD'),
-            os.getenv('PGPASSWORD'), 'openmaptiles'),
+        pghost=pghost,
+        pgport=pgport,
+        dbname=dbname,
+        user=user,
+        password=password,
         verbose=args.get('--verbose'),
     ))
 
