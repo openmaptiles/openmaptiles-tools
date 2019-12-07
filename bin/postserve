@@ -43,15 +43,18 @@ Additional ENV variables:
     METADATA_NAME, METADATA_ID, METADATA_VERSION,
     METADATA_ATTRIBUTION, METADATA_DESCRIPTION, METADATA_TYPE
 """
-from docopt import docopt
 import os.path
-import openmaptiles
-from openmaptiles.postserve import Postserve
-from openmaptiles.utils import Bbox, coalesce
-from openmaptiles.consts import *
 
-if __name__ == '__main__':
-    args = docopt(__doc__, version=openmaptiles.__version__)
+from docopt import docopt
+
+import openmaptiles
+from openmaptiles.consts import *
+from openmaptiles.pgutils import parse_pg_args
+from openmaptiles.postserve import Postserve
+from openmaptiles.utils import Bbox
+
+
+def main(args):
     bbox = Bbox(bbox=os.environ.get('BBOX'),
                 center_zoom=os.environ.get('CENTER_ZOOM', CENTER_ZOOM))
     metadata = dict(
@@ -68,25 +71,15 @@ if __name__ == '__main__':
         pixel_scale=PIXEL_SCALE,
         tilejson="2.0.0",
     )
-
+    pghost, pgport, dbname, user, password = parse_pg_args(args)
     Postserve(
         host=args['--serve'],
         port=int(args['--port']),
-        pghost=coalesce(
-            args.get("--pghost"), os.getenv('POSTGRES_HOST'), os.getenv('PGHOST'),
-            'localhost'),
-        pgport=coalesce(
-            args.get("--pgport"), os.getenv('POSTGRES_PORT'), os.getenv('PGPORT'),
-            '5432'),
-        dbname=coalesce(
-            args.get("--dbname"), os.getenv('POSTGRES_DB'), os.getenv('PGDATABASE'),
-            'openmaptiles'),
-        user=coalesce(
-            args.get("--user"), os.getenv('POSTGRES_USER'), os.getenv('PGUSER'),
-            'openmaptiles'),
-        password=coalesce(
-            args.get("--password"), os.getenv('POSTGRES_PASSWORD'),
-            os.getenv('PGPASSWORD'), 'openmaptiles'),
+        pghost=pghost,
+        pgport=pgport,
+        dbname=dbname,
+        user=user,
+        password=password,
         metadata=metadata,
         layers=args['--layer'],
         exclude_layers=args['--exclude-layers'],
@@ -99,3 +92,7 @@ if __name__ == '__main__':
         test_geometry=args['--test-geometry'],
         verbose=args.get('--verbose'),
     ).serve()
+
+
+if __name__ == '__main__':
+    main(docopt(__doc__, version=openmaptiles.__version__))

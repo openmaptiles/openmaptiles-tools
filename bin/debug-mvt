@@ -1,0 +1,107 @@
+#!/usr/bin/env python
+"""
+This is a simple vector tile server that returns a PBF tile for  /tiles/{z}/{x}/{y}.pbf  requests
+
+Usage:
+  debug-mvt <tileset> <tile_zxy> [--layer=<layer>]... [--exclude-layers]
+                      [--show-names] [--show-geometry]
+                      [--pghost=<host>] [--pgport=<port>] [--dbname=<db>]
+                      [--user=<user>] [--password=<password>]
+  debug-mvt --help
+  debug-mvt --version
+
+  <tileset>             Tileset definition yaml file
+  <tile_zxy>            Tile ID, e.g. "10/4/8" for zoom=10, x=4, y=8
+
+Options:
+  -l --layer=<layer>    If set, limit tile generation to just this layer (could be multiple)
+  -x --exclude-layers   If set, uses all layers except the ones listed with -l (-l is required)
+  -n --show-names       if set, includes all localized names
+  -g --show-geometry    If set, shows geometry as text instead of type+length
+  --help                Show this screen.
+  --version             Show version.
+
+POSTGRES options:
+  -h --pghost=<host>    Postgres hostname. By default uses POSTGRES_HOST env or "localhost" if not set.
+  -P --pgport=<port>    Postgres port. By default uses POSTGRES_PORT env or "5432" if not set.
+  -d --dbname=<db>      Postgres db name. By default uses POSTGRES_DB env or "openmaptiles" if not set.
+  -U --user=<user>      Postgres user. By default uses POSTGRES_USER env or "openmaptiles" if not set.
+  --password=<password> Postgres password. By default uses POSTGRES_PASSWORD env or "openmaptiles" if not set.
+"""
+import asyncio
+import re
+
+import asyncpg
+from docopt import docopt, DocoptExit
+from tabulate import tabulate
+
+import openmaptiles
+from openmaptiles.language import languages_to_sql
+from openmaptiles.pgutils import show_settings, parse_pg_args
+from openmaptiles.sqltomvt import MvtGenerator
+from openmaptiles.tileset import Tileset
+
+
+async def main(args):
+    pghost, pgport, dbname, user, password = parse_pg_args(args)
+    exclude_layers = args['--exclude-layers']
+    layers = args['--layer']
+    show_names = args['--show-names']
+    show_geometry = args['--show-geometry']
+    tileset_path = args['<tileset>']
+    zxy = args['<tile_zxy>']
+    if not re.match(r'\d+/\d+/\d+', zxy):
+        raise DocoptExit('Invalid <tile_zxy> - must be in the form "zoom/x/y"')
+    zoom, x, y = [int(v) for v in zxy.split('/')]
+
+    tileset = Tileset.parse(tileset_path)
+    conn = await asyncpg.connect(
+        database=dbname, host=pghost, port=pgport, user=user, password=password,
+    )
+    pg_settings, postgis_ver = await show_settings(conn, get_ver=True)
+    if postgis_ver < 2.5:
+        raise ValueError('Requires PostGIS version 2.5 or later')
+    mvt = MvtGenerator(
+        tileset,
+        layer_ids=layers,
+        use_feature_id=postgis_ver >= 3,
+        use_tile_envelope=postgis_ver >= 3,
+        exclude_layers=exclude_layers)
+
+    if show_names:
+        name_languages = languages_to_sql(tileset.definition.get('languages', []))
+    else:
+        name_languages = 'NULL as hiden_names'
+    for layer_id, layer_def in mvt.get_layers():
+        source = layer_def.definition['layer']['datasource']
+        query = source['query']
+        query = query.format(name_languages=name_languages)
+        query = mvt.substitute_sql(query,
+                                   f"{mvt.tile_envelope}({zoom},{x},{y})", str(zoom))
+        key_fld = source['key_field'] if 'key_field' in source else False
+        geom_fld = layer_def.geometry_field
+        if show_geometry:
+            geom_repl = f"ST_AsText({geom_fld}) AS {geom_fld}"
+        else:
+            geom_repl = f"GeometryType({geom_fld}) || '(' || ST_MemSize({geom_fld}) || ')' AS {geom_fld}"
+        query = query.replace(geom_fld, geom_repl)
+
+        def field_sorter(v):
+            """Move osm_id and geometry fields to the right"""
+            key = v[0]
+            return 'zzz0' if key == key_fld else 'zzz1' if key == geom_fld else key
+
+        result = []
+        for row in await conn.fetch(f"SELECT * FROM {query}"):
+            vals = {v[0]: v[1] for v in sorted(row.items(), key=field_sorter)}
+            result.append(vals)
+
+        if result:
+            print(f"======= Layer {layer_id} =======")
+            print(tabulate(result, headers="keys"))
+        else:
+            print(f"======= No data in layer {layer_id}")
+
+
+if __name__ == '__main__':
+    asyncio.run(main(docopt(__doc__, version=openmaptiles.__version__)))

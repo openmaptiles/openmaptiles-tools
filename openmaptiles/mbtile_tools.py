@@ -134,9 +134,9 @@ class Imputer:
             if self.verbose:
                 for k, c in key_stats.items():
                     print_err(f"{k} - added {c:,}")
-                print_err(f'Total changes made - {keyed_tiles}')
+                print_err(f'Total imputed tiles: {keyed_tiles:,}')
                 if nokey_tiles:
-                    print_err(f'Total tiles need to be generated - {nokey_tiles}')
+                    print_err(f'Total tiles need to be generated: {nokey_tiles:,}')
 
     def tile_batches(self, conn: sqlite3.Connection, limit_to_keys=False):
         """Generate batches of tiles to be processed for the new zoom,

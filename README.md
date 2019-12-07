@@ -207,6 +207,15 @@ You can view tiles with any MVT-supporting viewer, such as:
 * [Maputnik editor](https://maputnik.github.io/editor) (online) -- change the data source to `http://localhost:8090`
 * [QGIS desktop](https://www.qgis.org/en/site/) -- add `Vector Tiles Reader` plugin, and add a vector tile server connection with TileJSON URL set to `http://localhost:8090`.
 
+### Examining realtime tile content
+
+Use `debug-mvt` tool to examine tile content. The tool will query PostgreSQL server and show layers with each data row and geometry type/size.
+This tool can limit output to just a few layers, optionally show all localized names, and show geometries as text.
+
+```bash
+# Query tile 3/4/2 and show values in the "place" layer
+debug-mvt openmaptiles.yaml 3/4/2 -l place
+```
 
 ## Scripts
 

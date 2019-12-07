@@ -54,14 +54,13 @@ Postgres
      POSTGRES_HOST, POSTGRES_PORT, POSTGRES_DB, POSTGRES_USER, POSTGRES_PASSWORD
 """
 import asyncio
-import os.path
 
 from docopt import docopt
 
 import openmaptiles
 from openmaptiles.performance import PerfTester
 from openmaptiles.perfutils import COLOR
-from openmaptiles.utils import coalesce
+from openmaptiles.pgutils import parse_pg_args
 
 
 def main(args):
@@ -70,6 +69,7 @@ def main(args):
     zooms = [int(v) for v in args['--zoom']]
     if not zooms:
         zooms = list(range(int(args['--minzoom']), int(args['--maxzoom']) + 1))
+    pghost, pgport, dbname, user, password = parse_pg_args(args)
     perf = PerfTester(
         tileset=args['<tileset>'],
         tests=args['--test'],
@@ -80,21 +80,11 @@ def main(args):
         exclude_layers=args['--exclude-layers'],
         buckets=int(args['--buckets']),
         zooms=zooms,
-        pghost=coalesce(
-            args.get("--pghost"), os.getenv('POSTGRES_HOST'), os.getenv('PGHOST'),
-            'localhost'),
-        pgport=coalesce(
-            args.get("--pgport"), os.getenv('POSTGRES_PORT'), os.getenv('PGPORT'),
-            '5432'),
-        dbname=coalesce(
-            args.get("--dbname"), os.getenv('POSTGRES_DB'), os.getenv('PGDATABASE'),
-            'openmaptiles'),
-        user=coalesce(
-            args.get("--user"), os.getenv('POSTGRES_USER'), os.getenv('PGUSER'),
-            'openmaptiles'),
-        password=coalesce(
-            args.get("--password"), os.getenv('POSTGRES_PASSWORD'),
-            os.getenv('PGPASSWORD'), 'openmaptiles'),
+        pghost=pghost,
+        pgport=pgport,
+        dbname=dbname,
+        user=user,
+        password=password,
         save_to=args['--record'],
         compare_with=args['--compare'],
         disable_feature_ids=args['--no-feature-ids'],

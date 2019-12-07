@@ -1,12 +1,14 @@
 import re
+from os import getenv
 from typing import Tuple, Dict
 
 from asyncpg import UndefinedFunctionError, UndefinedObjectError, Connection
 
 from openmaptiles.perfutils import COLOR
+from openmaptiles.utils import coalesce
 
 
-async def show_settings(conn: Connection) -> Tuple[Dict[str, str], bool]:
+async def show_settings(conn: Connection, get_ver=False) -> Tuple[Dict[str, str], bool]:
     postgis_version = False
     results = {}
 
@@ -28,6 +30,8 @@ async def show_settings(conn: Connection) -> Tuple[Dict[str, str], bool]:
         'max_parallel_workers': None,
         'max_parallel_workers_per_gather': None,
     }
+    if get_ver:
+        settings = {k: v for k, v in settings.items() if k == 'postgis_full_version()'}
     key_len = max((len(v) for v in settings))
     for setting, validator in settings.items():
         q = f"{'SELECT' if '(' in setting else 'SHOW'} {setting};"
@@ -47,3 +51,22 @@ async def show_settings(conn: Connection) -> Tuple[Dict[str, str], bool]:
         results[setting] = res
 
     return results, postgis_version
+
+
+def parse_pg_args(args):
+    pghost = coalesce(
+        args.get("--pghost"), getenv('POSTGRES_HOST'), getenv('PGHOST'),
+        'localhost')
+    pgport = coalesce(
+        args.get("--pgport"), getenv('POSTGRES_PORT'), getenv('PGPORT'),
+        '5432')
+    dbname = coalesce(
+        args.get("--dbname"), getenv('POSTGRES_DB'), getenv('PGDATABASE'),
+        'openmaptiles')
+    user = coalesce(
+        args.get("--user"), getenv('POSTGRES_USER'), getenv('PGUSER'),
+        'openmaptiles')
+    password = coalesce(
+        args.get("--password"), getenv('POSTGRES_PASSWORD'),
+        getenv('PGPASSWORD'), 'openmaptiles')
+    return pghost, pgport, dbname, user, password
