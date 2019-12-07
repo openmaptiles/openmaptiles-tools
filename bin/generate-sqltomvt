@@ -40,8 +40,18 @@ from openmaptiles.sqltomvt import MvtGenerator
 
 if __name__ == '__main__':
     args = docopt(__doc__, version=openmaptiles.__version__)
+    if args['--prepared'] or args['--query']:
+        zoom, x, y = '$1', '$2', '$3'
+    elif args['--psql']:
+        zoom, x, y = ':zoom', ':x', ':y'
+    elif args['--raw']:
+        zoom, x, y = None, None, None
+    else:
+        zoom, x, y = 'zoom', 'x', 'y'
+
     mvt = MvtGenerator(
         tileset=args['<tileset>'],
+        zoom=zoom, x=x, y=y,
         layer_ids=args['--layer'],
         exclude_layers=args['--exclude-layers'],
         key_column=args['--key'],
@@ -53,12 +63,8 @@ if __name__ == '__main__':
 
     if args['--prepared']:
         sql = mvt.generate_sqltomvt_preparer(args['--fname'])
-    elif args['--query']:
-        sql = mvt.generate_sqltomvt_query()
-    elif args['--psql']:
-        sql = mvt.generate_sqltomvt_psql()
-    elif args['--raw']:
-        sql = mvt.generate_sqltomvt_raw()
+    elif args['--query'] or args['--psql'] or args['--raw']:
+        sql = mvt.generate_sql()
     else:
         # --function or default
         sql = mvt.generate_sqltomvt_func(args['--fname'])

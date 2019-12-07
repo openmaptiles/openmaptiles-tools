@@ -13,8 +13,8 @@ from tornado.web import Application, RequestHandler
 from tornado.log import access_log
 
 from openmaptiles.pgutils import show_settings
-from .sqltomvt import MvtGenerator
-from .tileset import Tileset
+from openmaptiles.sqltomvt import MvtGenerator
+from openmaptiles.tileset import Tileset
 
 
 class RequestHandledWithCors(RequestHandler):
@@ -173,12 +173,15 @@ class Postserve:
                 raise ValueError('Requires PostGIS version 2.5 or later')
             self.mvt = MvtGenerator(
                 self.tileset,
+                zoom='$1', x='$2', y='$3',
                 layer_ids=self.layer_ids,
                 key_column=self.key_column,
                 gzip=self.gzip,
                 use_feature_id=postgis_ver >= 3 and not self.disable_feature_ids,
                 use_tile_envelope=postgis_ver >= 3 and not self.disable_tile_envelope,
-                test_geometry=self.test_geometry, exclude_layers=self.exclude_layers)
+                test_geometry=self.test_geometry,
+                exclude_layers=self.exclude_layers,
+            )
             pg_types = await get_sql_types(conn)
             for layer_id, layer_def in self.mvt.get_layers():
                 fields = await self.mvt.validate_layer_fields(conn, layer_id, layer_def)
@@ -217,7 +220,7 @@ class Postserve:
                 query = stream.read()
             print(f'Loaded {self.sql_file}')
         else:
-            query = self.mvt.generate_sqltomvt_query()
+            query = self.mvt.generate_sql()
 
         if self.verbose:
             print(f'Using SQL query:\n\n-------\n\n{query}\n\n-------\n\n')

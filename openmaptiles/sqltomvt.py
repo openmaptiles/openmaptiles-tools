@@ -14,7 +14,9 @@ class MvtGenerator:
     layer_ids: Set[str]
     exclude_layers: bool  # if True, inverses layer_ids to use all except them
 
-    def __init__(self, tileset: Union[str, Tileset], layer_ids: List[str] = None,
+    def __init__(self, tileset: Union[str, Tileset],
+                 zoom: Union[str, int], x: Union[str, int], y: Union[str, int],
+                 layer_ids: List[str] = None,
                  exclude_layers=False, key_column=False, gzip: Union[int, bool] = False,
                  use_feature_id=True, use_tile_envelope=False,
                  test_geometry=False):
@@ -31,6 +33,9 @@ class MvtGenerator:
         self.tile_envelope = 'ST_TileEnvelope' if use_tile_envelope else 'TileBBox'
         self.test_geometry = test_geometry
         self.set_layer_ids(layer_ids, exclude_layers)
+        self.zoom = zoom
+        self.x = x
+        self.y = y
 
     def set_layer_ids(self, layer_ids: List[str], exclude_layers=False):
         if exclude_layers and not layer_ids:
@@ -50,7 +55,7 @@ class MvtGenerator:
 DROP FUNCTION IF EXISTS {fname}(integer, integer, integer);
 CREATE FUNCTION {fname}(zoom integer, x integer, y integer)
 RETURNS {'TABLE(mvt bytea, key text)' if self.key_column else 'bytea'} AS $$
-{self.generate_query(f"{self.tile_envelope}(zoom, x, y)", "zoom")};
+{self.generate_sql()};
 $$ LANGUAGE SQL STABLE RETURNS NULL ON NULL INPUT;"""
 
     def generate_sqltomvt_preparer(self, fname):
@@ -67,21 +72,12 @@ END $$;
 
 -- Run this statement with   EXECUTE {fname}(zoom, x, y)
 PREPARE {fname}(integer, integer, integer) AS
-{self.generate_sqltomvt_query()};"""
+{self.generate_sql()};"""
 
-    def generate_sqltomvt_query(self):
-        return self.generate_query(f"{self.tile_envelope}($1, $2, $3)", "$1")
-
-    def generate_sqltomvt_psql(self):
-        return self.generate_query(f"{self.tile_envelope}(:zoom, :x, :y)", ":zoom")
-
-    def generate_sqltomvt_raw(self):
-        return self.generate_query()
-
-    def generate_query(self, bbox: str = None, zoom: str = None):
+    def generate_sql(self):
         queries = []
         for layer_id, layer in self.get_layers():
-            queries.append(self.generate_layer(layer, zoom, bbox))
+            queries.append(self.generate_layer(layer))
 
         extras = ''
         if self.test_geometry:
@@ -111,7 +107,7 @@ SELECT {concatenate_layers} AS mvt{extras} FROM (
 
         return query + '\n'
 
-    def generate_layer(self, layer_def: Layer, zoom: str, bbox: str):
+    def generate_layer(self, layer_def: Layer):
         """
         Convert layer definition into a SQL statement.
         """
@@ -130,8 +126,10 @@ SELECT {concatenate_layers} AS mvt{extras} FROM (
             tags_field = languages_to_sql(languages)
             query = query.format(name_languages=tags_field)
         geom_fld = layer_def.geometry_field
+        # TODO: it might not make sense to use buffer_size > 4 (?) when bbox is a tile
+        buffer_size = layer['buffer_size']
         mvtgeometry_fld = f"ST_AsMVTGeom({geom_fld}, !bbox!, {ext}, " \
-                          f"{layer['buffer_size']}, true) AS mvtgeometry"
+                          f"{buffer_size}, true) AS mvtgeometry"
         if self.test_geometry:
             mvtgeometry_fld += f", (1-ST_IsValid({geom_fld})::int) as bad_geos"
         repl_query = query.replace(geom_fld, mvtgeometry_fld)
@@ -153,14 +151,15 @@ COALESCE(ST_AsMVT(t, '{layer['id']}', {ext}, 'mvtgeometry'\
 {f", '{key_fld}'" if key_fld else ""}), '') \
 as mvtl{extras} FROM {repl_query}"""
 
-        if bbox:
-            query = self.substitute_sql(query, bbox, zoom)
+        if self.zoom is not None:
+            query = self.substitute_sql(query, layer_def, self.zoom, self.x, self.y)
         return query
 
-    def substitute_sql(self, query, bbox, zoom):
+    def substitute_sql(self, query, layer_def: Layer, zoom, x, y):
+        bbox = f"{self.tile_envelope}({zoom}, {x}, {y})"
         query = (query
                  .replace("!bbox!", bbox)
-                 .replace("z(!scale_denominator!)", zoom)
+                 .replace("z(!scale_denominator!)", str(zoom))
                  .replace("!pixel_width!", str(self.pixel_width))
                  .replace("!pixel_height!", str(self.pixel_height)))
         if '!scale_denominator!' in query:
@@ -213,7 +212,7 @@ as mvtl{extras} FROM {repl_query}"""
             query = query.format(name_languages=languages_to_sql(languages))
         else:
             languages = False
-        query = self.substitute_sql(query, f"{self.tile_envelope}(0, 0, 0)", "0")
+        query = self.substitute_sql(query, layer_def, 0, 0, 0)
         st = await connection.prepare(f"SELECT * FROM {query} WHERE false LIMIT 0")
         query_field_map = {fld.name: fld.type.oid for fld in st.get_attributes()}
         return query_field_map, languages
