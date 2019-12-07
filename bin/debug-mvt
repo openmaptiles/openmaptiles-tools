@@ -63,10 +63,12 @@ async def main(args):
         raise ValueError('Requires PostGIS version 2.5 or later')
     mvt = MvtGenerator(
         tileset,
+        zoom=zoom, x=x, y=y,
         layer_ids=layers,
         use_feature_id=postgis_ver >= 3,
         use_tile_envelope=postgis_ver >= 3,
-        exclude_layers=exclude_layers)
+        exclude_layers=exclude_layers,
+    )
 
     if show_names:
         name_languages = languages_to_sql(tileset.definition.get('languages', []))
@@ -76,8 +78,7 @@ async def main(args):
         source = layer_def.definition['layer']['datasource']
         query = source['query']
         query = query.format(name_languages=name_languages)
-        query = mvt.substitute_sql(query,
-                                   f"{mvt.tile_envelope}({zoom},{x},{y})", str(zoom))
+        query = mvt.substitute_sql(query, layer_def, zoom, x, y)
         key_fld = source['key_field'] if 'key_field' in source else False
         geom_fld = layer_def.geometry_field
         if show_geometry:

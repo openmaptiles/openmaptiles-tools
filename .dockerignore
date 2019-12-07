@@ -2,7 +2,6 @@
 .git/
 .gitignore
 .travis.yml
-build/
 docker-run.sh
 Dockerfile
 docs/

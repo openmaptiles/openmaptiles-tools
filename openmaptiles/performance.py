@@ -119,10 +119,12 @@ class PerfTester:
         self.results.settings['use_tile_envelope'] = use_tile_envelope
         self.mvt = MvtGenerator(
             self.tileset,
+            zoom='$1', x='xval.x', y='yval.y',
             use_feature_id=use_feature_id,
             use_tile_envelope=use_tile_envelope,
             gzip=self.gzip,
-            key_column=self.key_column)
+            key_column=self.key_column,
+        )
         self.results.layer_fields = {}
         for layer_id, layer_def in self.mvt.get_layers():
             fields = await self.mvt.validate_layer_fields(conn, layer_id, layer_def)
@@ -163,8 +165,7 @@ class PerfTester:
     def create_testcase(self, test, zoom, layers) -> TestCase:
         layers = [layers] if isinstance(layers, str) else layers
         self.mvt.set_layer_ids(layers)
-        query = self.mvt.generate_query(
-            f'{self.mvt.tile_envelope}($1, xval.x, yval.y)', '$1')
+        query = self.mvt.generate_sql()
         if self.key_column:
             query = f"SELECT mvt FROM ({query}) AS perfdata"
         prefix = 'CAST($1 as int) as z, xval.x as x, yval.y as y,' \
