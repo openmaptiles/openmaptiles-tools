@@ -1,4 +1,5 @@
-from typing import Iterable, Tuple, Dict, Set, Union, List
+from distutils.log import debug
+from typing import Iterable, Tuple, Dict, Set, Union, List, Callable
 
 from asyncpg import Connection
 # noinspection PyProtectedMember
@@ -111,32 +112,11 @@ SELECT {concatenate_layers} AS mvt{extras} FROM (
         """
         Convert layer definition into a SQL statement.
         """
-        layer = layer_def["layer"]
-        ext = self.extent
-        query = layer['datasource']['query']
-        layer_fields, key_fld = layer_def.get_fields()
-        if key_fld and not self.use_feature_id:
-            # PostGIS < v3 did not support feature_ids
-            # TODO: remove key field (osm_id) from query result to prevent
-            # it being used as a regular attribute
-            key_fld = None
-        has_languages = '{name_languages}' in query
-        if has_languages:
-            languages = self.tileset.definition.get('languages', [])
-            tags_field = languages_to_sql(languages)
-            query = query.format(name_languages=tags_field)
-        geom_fld = layer_def.geometry_field
-        # TODO: it might not make sense to use buffer_size > 4 (?) when bbox is a tile
-        buffer_size = layer['buffer_size']
-        mvtgeometry_fld = f"ST_AsMVTGeom({geom_fld}, !bbox!, {ext}, " \
-                          f"{buffer_size}, true) AS mvtgeometry"
+        columns = None
         if self.test_geometry:
-            mvtgeometry_fld += f", (1-ST_IsValid({geom_fld})::int) as bad_geos"
-        repl_query = query.replace(geom_fld, mvtgeometry_fld)
-        if len(repl_query) - len(mvtgeometry_fld) + len(geom_fld) != len(query):
-            raise ValueError(f"Unable to replace '{geom_fld}' in '{layer['id']}' layer")
+            columns = f"(1-ST_IsValid({layer_def.geometry_field})::int) as bad_geos"
+        query = self.layer_to_query(layer_def, extra_columns=columns)
 
-        # Combine all layer's features into a single MVT blob representing one layer
         extras = ''
         if self.test_geometry:
             # Count the number of invalid regular & mvt geometries (should always be 0)
@@ -145,18 +125,78 @@ SELECT {concatenate_layers} AS mvt{extras} FROM (
                       f'+COALESCE(bad_geos, 0)' \
                       f') as bad_geos'
 
+        # PostGIS < v3 did not support feature_ids
+        # TODO: remove key field (osm_id) from query result to prevent
+        # it being used as a regular attribute
+        key_fld = layer_def.key_field if self.use_feature_id else None
+
+        # Combine all layer's features into a single MVT blob representing one layer
         query = f"""\
 SELECT \
-COALESCE(ST_AsMVT(t, '{layer['id']}', {ext}, 'mvtgeometry'\
+COALESCE(ST_AsMVT(t, '{layer_def["layer"]['id']}', {self.extent}, 'mvtgeometry'\
 {f", '{key_fld}'" if key_fld else ""}), '') \
-as mvtl{extras} FROM {repl_query}"""
+as mvtl{extras} FROM {query}"""
 
-        if self.zoom is not None:
-            query = self.substitute_sql(query, layer_def, self.zoom, self.x, self.y)
         return query
 
+    def layer_to_query(self,
+                       layer_def: Layer,
+                       to_mvt_geometry=True,
+                       mvt_geometry_wrapper: Callable[[str], str] = None,
+                       extra_columns: str = None,
+                       languages_sql: str = None) -> str:
+        layer = layer_def["layer"]
+        query = layer['datasource']['query']
+        if self.zoom is not None:
+            query = self.substitute_sql(query, layer_def, self.zoom, self.x, self.y)
+        has_languages = '{name_languages}' in query
+        if has_languages:
+            if languages_sql is None:
+                languages = self.tileset.definition.get('languages', [])
+                languages_sql = languages_to_sql(languages)
+            query = query.format(name_languages=languages_sql)
+
+        geom_fld = layer_def.geometry_field
+        replacement = ''
+        if to_mvt_geometry:
+            replacement = f"ST_AsMVTGeom(" \
+                          f"{geom_fld}, " \
+                          f"{self.bbox(self.zoom, self.x, self.y)}, " \
+                          f"{self.extent}, " \
+                          f"{layer['buffer_size']}, " \
+                          f"true)"
+            if mvt_geometry_wrapper:
+                replacement = mvt_geometry_wrapper(replacement)
+            replacement += " AS mvtgeometry"
+        if extra_columns:
+            if replacement:
+                replacement += ', '
+            replacement += extra_columns
+
+        if replacement:
+            q = query.replace(geom_fld, replacement)
+            if len(q) - len(replacement) + len(geom_fld) != len(query):
+                raise ValueError(
+                    f"Unable to replace '{geom_fld}' in '{layer['id']}' layer, "
+                    f"expected a single geometry field in the layer query definition")
+            query = q
+
+        return query
+
+    def bbox(self, zoom, x, y):
+        return f"{self.tile_envelope}({zoom}, {x}, {y})"
+
     def substitute_sql(self, query, layer_def: Layer, zoom, x, y):
-        bbox = f"{self.tile_envelope}({zoom}, {x}, {y})"
+        bbox = self.bbox(zoom, x, y)
+
+        # A zoom 0 tile has width/height of 40075016.6855785 units
+        # Buffer expressed as a percentage of a tile width gives us this formula.
+        # Every subsequent zoom divides it by 2
+        buffer_size = layer_def["layer"]['buffer_size']
+        if buffer_size > 0:
+            percentage = 40075016.6855785 * buffer_size / self.extent
+            bbox = f"ST_Expand({bbox}, {percentage}/2^{zoom})"
+
         query = (query
                  .replace("!bbox!", bbox)
                  .replace("z(!scale_denominator!)", str(zoom))
@@ -177,7 +217,7 @@ as mvtl{extras} FROM {repl_query}"""
         Returns field names => SQL types (oid)."""
         query_field_map, languages = await self.get_sql_fields(connection, layer_def)
         query_fields = set(query_field_map.keys())
-        layer_fields, key_fld = layer_def.get_fields()
+        layer_fields = layer_def.get_fields()
         if languages:
             layer_fields += language_codes_to_names(languages)
         layer_fields = set(layer_fields)

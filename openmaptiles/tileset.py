@@ -6,7 +6,7 @@ import os.path
 import codecs
 
 
-class Layer(object):
+class Layer:
     @staticmethod
     def parse(layer_filename):
         layer = parse_file(layer_filename)
@@ -74,31 +74,36 @@ class Layer(object):
         else:
             raise KeyError
 
-    def get_fields(self) -> Tuple[List[str], str]:
-        layer = self['layer']
-        source = layer['datasource']
-        layer_fields = list(layer['fields'].keys())
-        key_field = source['key_field'] if 'key_field' in source else False
-        if self.geometry_field in layer_fields:
-            raise ValueError(
-                f"Layer '{layer['id']}' must not have the implicit 'geometry' field "
-                f"declared in the 'fields' section of the yaml file")
-        if key_field:
-            layer_fields.append(key_field)
-            if source.get('key_field_as_attribute') and \
-                source['key_field_as_attribute'] != 'no':
-                # If 'yes', we will need to generate a wrapper query that includes
-                # osm_id column twice - once for feature_id, and once as an attribute
-                raise ValueError('key_field_as_attribute=yes is not yet implemented')
-        return layer_fields, key_field
+    def get_fields(self) -> List[str]:
+        layer_fields = list(self['layer']['fields'].keys())
+        if self.key_field:
+            layer_fields.append(self.key_field)
+        return layer_fields
 
     @property
-    def geometry_field(self):
+    def key_field(self) -> str:
         source = self['layer']['datasource']
-        return source['geometry'] if 'geometry' in source else 'geometry'
+        result = source['key_field'] if 'key_field' in source else None
+        if result:
+            val = source.get('key_field_as_attribute')
+            if val and val != 'no':
+                # If 'yes', we will need to generate a wrapper query that includes
+                # osm_id column twice - once for feature_id, and once as an attribute
+                raise ValueError(f"key_field_as_attribute={val} is not yet implemented")
+        return result
+
+    @property
+    def geometry_field(self) -> str:
+        source = self['layer']['datasource']
+        result = source['geometry'] if 'geometry' in source else 'geometry'
+        if result in self['layer']['fields']:
+            raise ValueError(
+                f"Layer '{self['layer']['id']}' must not have the implicit 'geometry' "
+                f"field declared in the 'fields' section of the yaml file")
+        return result
 
 
-class Tileset(object):
+class Tileset:
     @staticmethod
     def parse(tileset_filename):
         tileset = parse_file(tileset_filename)['tileset']
