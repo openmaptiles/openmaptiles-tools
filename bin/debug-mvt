@@ -4,7 +4,8 @@ This is a simple vector tile server that returns a PBF tile for  /tiles/{z}/{x}/
 
 Usage:
   debug-mvt <tileset> <tile_zxy> [--layer=<layer>]... [--exclude-layers]
-                      [--show-names] [--show-geometry]
+                      [--column=<column>]... [--show-names] [--show-geometry]
+                      [--no-geom-test] [--no-mvtgeometry] [--verbose]
                       [--pghost=<host>] [--pgport=<port>] [--dbname=<db>]
                       [--user=<user>] [--password=<password>]
   debug-mvt --help
@@ -16,8 +17,13 @@ Usage:
 Options:
   -l --layer=<layer>    If set, limit tile generation to just this layer (could be multiple)
   -x --exclude-layers   If set, uses all layers except the ones listed with -l (-l is required)
+  -c --column=<layer>   If set, limits output to just the given field (could be multiple)
+                        All shown layers must have all of these fields, or use -l to limit.
   -n --show-names       if set, includes all localized names
-  -g --show-geometry    If set, shows geometry as text instead of type+length
+  -g --show-geometry    If set, shows geometry/mvtgeometry as text instead of type+length
+  -m --no-mvtgeometry   Do not include resulting MVT geomeetry in the output
+  -t --no-geom-test     Do not validate all geometries produced by ST_AsMvtGeom().
+  -v --verbose          Print additional debugging information
   --help                Show this screen.
   --version             Show version.
 
@@ -46,8 +52,12 @@ async def main(args):
     pghost, pgport, dbname, user, password = parse_pg_args(args)
     exclude_layers = args['--exclude-layers']
     layers = args['--layer']
+    columns = args['--column']
     show_names = args['--show-names']
     show_geometry = args['--show-geometry']
+    show_mvt_geometry = not args['--no-mvtgeometry']
+    test_geometry = not args['--no-geom-test']
+    verbose = args['--verbose']
     tileset_path = args['<tileset>']
     zxy = args['<tile_zxy>']
     if not re.match(r'\d+/\d+/\d+', zxy):
@@ -58,6 +68,23 @@ async def main(args):
     conn = await asyncpg.connect(
         database=dbname, host=pghost, port=pgport, user=user, password=password,
     )
+
+    messages = []
+
+    def connection_logger(_, msg: asyncpg.PostgresLogMessage):
+        messages.append(msg)
+
+    def print_messages():
+        nonlocal messages
+        for msg in messages:
+            try:
+                # noinspection PyUnresolvedReferences
+                print(f"  {msg.severity}: {msg.message} @ {msg.context}")
+            except AttributeError:
+                print(f"  {msg}")
+        messages = []
+
+    conn.add_log_listener(connection_logger)
     pg_settings, postgis_ver = await show_settings(conn, get_ver=True)
     if postgis_ver < 2.5:
         raise ValueError('Requires PostGIS version 2.5 or later')
@@ -70,38 +97,72 @@ async def main(args):
         exclude_layers=exclude_layers,
     )
 
-    if show_names:
-        name_languages = languages_to_sql(tileset.definition.get('languages', []))
-    else:
-        name_languages = 'NULL as hiden_names'
-    for layer_id, layer_def in mvt.get_layers():
-        source = layer_def.definition['layer']['datasource']
-        query = source['query']
-        query = query.format(name_languages=name_languages)
-        query = mvt.substitute_sql(query, layer_def, zoom, x, y)
-        key_fld = source['key_field'] if 'key_field' in source else False
-        geom_fld = layer_def.geometry_field
-        if show_geometry:
-            geom_repl = f"ST_AsText({geom_fld}) AS {geom_fld}"
+    def geom_info(expr):
+        return f"GeometryType({expr}) || '(' || ST_MemSize({expr}) || ')'"
+
+    def mvt_wrapper(mvt_geom):
+        if test_geometry:
+            res = f"ST_IsValid({mvt_geom}) AS is_valid_mvt, "
         else:
-            geom_repl = f"GeometryType({geom_fld}) || '(' || ST_MemSize({geom_fld}) || ')' AS {geom_fld}"
-        query = query.replace(geom_fld, geom_repl)
+            res = ''
+        if show_geometry:
+            res += f"ST_AsText({mvt_geom})"
+        else:
+            res += geom_info(f"ST_AsText({mvt_geom})")
+        return res
+
+    for layer_id, layer_def in mvt.get_layers():
+        geom_fld = layer_def.geometry_field
+
+        if show_geometry:
+            extra_columns = f"ST_SRID({geom_fld}) || ': ' || " \
+                            f"ST_AsText({geom_fld}) AS {geom_fld}"
+        else:
+            extra_columns = f"{geom_info(geom_fld)} AS {geom_fld}"
+        if test_geometry:
+            extra_columns += f', ST_IsValid({geom_fld}) AS is_valid_geom'
+
+        query = mvt.layer_to_query(
+            layer_def,
+            to_mvt_geometry=show_mvt_geometry,
+            mvt_geometry_wrapper=mvt_wrapper,
+            extra_columns=extra_columns,
+            languages_sql=None if show_names else f'NULL as _hidden_names_',
+        )
+        if verbose:
+            print(f"======= Querying layer {layer_id} =======\n{query.strip()}")
 
         def field_sorter(v):
             """Move osm_id and geometry fields to the right"""
             key = v[0]
-            return 'zzz0' if key == key_fld else 'zzz1' if key == geom_fld else key
+            return 'zzz0' if key == layer_def.key_field \
+                else 'zzz1' if key == 'is_valid_mvt' \
+                else 'zzz2' if key == 'mvtgeometry' \
+                else 'zzz3' if key == 'is_valid_geom' \
+                else 'zzz4' if key == geom_fld \
+                else key
 
         result = []
-        for row in await conn.fetch(f"SELECT * FROM {query}"):
-            vals = {v[0]: v[1] for v in sorted(row.items(), key=field_sorter)}
+        fields = ','.join(columns) if columns else '*'
+        has_names = False
+        for row in await conn.fetch(f"SELECT {fields} FROM {query}"):
+            if columns:
+                vals = dict(row.items())
+            else:
+                vals = dict(sorted(row.items(), key=field_sorter))
+                has_names = '_hidden_names_' in vals
+                if has_names:
+                    del vals['_hidden_names_']
             result.append(vals)
 
         if result:
-            print(f"======= Layer {layer_id} =======")
+            info = '(extra name columns are hidden by default) ' if has_names else ''
+            print(f"======= Layer {layer_id} {info}=======")
+            print_messages()
             print(tabulate(result, headers="keys"))
         else:
             print(f"======= No data in layer {layer_id}")
+            print_messages()
 
 
 if __name__ == '__main__':
