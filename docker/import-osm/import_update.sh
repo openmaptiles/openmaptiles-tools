@@ -11,6 +11,7 @@ export PGDATABASE="${POSTGRES_DB:-${PGDATABASE?}}"
 export PGUSER="${POSTGRES_USER:-${PGUSER?}}"
 export PGPASSWORD="${POSTGRES_PASSWORD:-${PGPASSWORD?}}"
 export PGPORT="${POSTGRES_PORT:-${PGPORT:-5432}}"
+export EXPIRETILES_ZOOM="${EXPIRETILES_ZOOM:-14}"
 
 function update() {
     imposm run \
@@ -19,7 +20,7 @@ function update() {
         -cachedir "$IMPOSM_CACHE_DIR" \
         -diffdir "$DIFF_DIR" \
         -expiretiles-dir "$TILES_DIR" \
-        -expiretiles-zoom 14 \
+        -expiretiles-zoom "$EXPIRETILES_ZOOM" \
         -config "$CONFIG_JSON"
 }
 
