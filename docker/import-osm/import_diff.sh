@@ -11,7 +11,7 @@ export PGDATABASE="${POSTGRES_DB:-${PGDATABASE?}}"
 export PGUSER="${POSTGRES_USER:-${PGUSER?}}"
 export PGPASSWORD="${POSTGRES_PASSWORD:-${PGPASSWORD?}}"
 export PGPORT="${POSTGRES_PORT:-${PGPORT:-5432}}"
-
+export EXPIRETILES_ZOOM="${EXPIRETILES_ZOOM:-14}"
 
 function import_diff() {
     imposm diff \
@@ -20,7 +20,7 @@ function import_diff() {
         -cachedir "$IMPOSM_CACHE_DIR" \
         -diffdir "$IMPORT_DIR" \
         -expiretiles-dir "$IMPORT_DIR" \
-        -expiretiles-zoom 14 \
+        -expiretiles-zoom "$EXPIRETILES_ZOOM" \
         -config "$CONFIG_JSON" \
         "$IMPORT_DIR/changes.osc.gz"
 }

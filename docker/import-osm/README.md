@@ -34,6 +34,8 @@ docker run --rm \
 Use standard Postgres [environment variables](https://www.postgresql.org/docs/current/libpq-envars.html) to connect,
 such as `PGHOST`, `PGDATABASE`, `PGUSER`, `PGPASSWORD`, `PGPORT`.  All are required except for `PGPORT`.
 
+To customize the zoom level used to expire tiles, use the environnement variable `EXPIRETILES_ZOOM` (default to 14). See the [imposm documentation on tiles expiration](https://imposm.org/docs/imposm3/latest/tutorial.html#expire-tiles).
+
 For backward compatibility the script also supports `POSTGRES_HOST`, `POSTGRES_DB`, `POSTGRES_USER`,
 `POSTGRES_PASSWORD`, and `POSTGRES_PORT`, but they are not recommended.
 
