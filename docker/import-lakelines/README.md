@@ -1,4 +1,4 @@
-# Import Lake Centerlines into PostGIS [![Docker Automated build](https://img.shields.io/docker/automated/openmaptiles/import-lakelines.svg?maxAge=2592000)]()
+# Import Lake Centerlines into PostGIS [![Docker Automated build](https://img.shields.io/docker/automated/openmaptiles/import-lakelines.svg?maxAge=2592000)](https://hub.docker.com/r/openmaptiles/import-lakelines/)
 
 This is a Docker image to import centered linestrings for labelling OpenStreetMap lakes from the [osm-lakelines](https://github.com/lukasmartinelli/osm-lakelines) repo.
 ## Usage
