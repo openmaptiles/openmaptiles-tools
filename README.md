@@ -210,11 +210,25 @@ You can view tiles with any MVT-supporting viewer, such as:
 ### Examining realtime tile content
 
 Use `debug-mvt` tool to examine tile content. The tool will query PostgreSQL server and show layers with each data row and geometry type/size.
-This tool can limit output to just a few layers, optionally show all localized names, and show geometries as text.
+This tool can limit output to just a few layers, optionally show all localized names, and show geometries as text. This example queries shows entries in the "place" layer for the specified tile:
 
 ```bash
-# Query tile 3/4/2 and show values in the "place" layer
-debug-mvt openmaptiles.yaml 3/4/2 -l place
+$ debug-mvt openmaptiles.yaml 4/7/6 -l place
+======= Layer place (extra name columns are hidden by default) =======
+  capital  class    iso_a2    name                        name_de                     name_en                       rank       osm_id  is_valid_mvt    mvtgeometry    is_valid_geom    geometry
+---------  -------  --------  --------------------------  --------------------------  --------------------------  ------  -----------  --------------  -------------  ---------------  ----------
+           country  ES        Espaa                       Spanien                     Spain                            1   1483323000  True            POINT(32)      True             POINT(32)
+           country  PT        Portugal                    Portugal                    Portugal                         1  23770282470  True            POINT(32)      True             POINT(32)
+        4  city               Casablanca                  Casablanca                  Casablanca                       2    257307240  True            POINT(32)      True             POINT(32)
+           country  MA        Maroc                       Marokko                     Morocco                          2   4324250410  True            POINT(32)      True             POINT(32)
+        2  city               Madrid                      Madrid                      Madrid                           2    210682950  True            POINT(32)      True             POINT(32)
+        2  city               Lisboa                      Lissabon                    Lisbon                           3   2659584900  True            POINT(32)      True             POINT(32)
+        4  city               Oran                        Oran                        Oran                             4    275651030  True            POINT(32)      True             POINT(32)
+        4  city               Valncia                     Valencia                    Valencia                         4    341056070  True            POINT(32)      True             POINT(32)
+        4  city               Sevilla                     Sevilla                     Seville                          4   2488206560  True            POINT(32)      True             POINT(32)
+        4  city               Fs                          Fs                          Fez                              4   2890354320  True            POINT(32)      True             POINT(32)
+        2  city               Rabat                       Rabat                       Rabat                            4   2991208620  True            POINT(32)      True             POINT(32)
+        ...
 ```
 
 ## Scripts
