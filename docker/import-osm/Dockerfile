@@ -1,7 +1,7 @@
 FROM golang:1.13-buster
 LABEL maintainer="YuriAstrakhan@gmail.com"
 
-ARG PG_MAJOR="11"
+ARG PG_MAJOR="9.6"
 
 # By default for now use custom build until we verify everything is stable
 ARG IMPOSM_REPO="https://github.com/openmaptiles/imposm3.git"
