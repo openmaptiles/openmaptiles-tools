@@ -5,7 +5,7 @@ Shows content of a single MVT tile as layer tables.
 Usage:
   debug-mvt <tileset> <tile_zxy> [--layer=<layer>]... [--exclude-layers]
                       [--column=<column>]... [--show-names] [--show-geometry]
-                      [--no-geom-test] [--no-mvtgeometry] [--verbose]
+                      [--no-geom-test] [--no-mvtgeometry] [--null] [--verbose]
                       [--pghost=<host>] [--pgport=<port>] [--dbname=<db>]
                       [--user=<user>] [--password=<password>]
   debug-mvt --help
@@ -23,6 +23,7 @@ Options:
   -g --show-geometry    If set, shows geometry/mvtgeometry as text instead of type+length
   -m --no-mvtgeometry   Do not include resulting MVT geomeetry in the output
   -t --no-geom-test     Do not validate all geometries produced by ST_AsMvtGeom().
+  --null                Show nulls for all values and not just for geometries.
   -v --verbose          Print additional debugging information
   --help                Show this screen.
   --version             Show version.
@@ -55,6 +56,7 @@ async def main(args):
     show_names = args['--show-names']
     show_geometry = args['--show-geometry']
     show_mvt_geometry = not args['--no-mvtgeometry']
+    show_nulls = args['--null']
     test_geometry = not args['--no-geom-test']
     verbose = args['--verbose']
     tileset_path = args['<tileset>']
@@ -129,27 +131,26 @@ async def main(args):
             print(f"\n======= Querying layer {layer_id} =======\n{query.strip()}\n"
                   f"== MVT SQL\n{layer_sql}")
 
-        def field_sorter(v):
-            """Move osm_id and geometry fields to the right"""
-            key = v[0]
-            return 'zzz0' if key == layer_def.key_field \
-                else 'zzz1' if key == 'is_valid_mvt' \
-                else 'zzz2' if key == 'mvtgeometry' \
-                else 'zzz3' if key == 'is_valid_geom' \
-                else 'zzz4' if key == geom_fld \
-                else key
+        # Re-order columns - move osm_id and geometry fields to the right of the table
+        names = {
+            layer_def.key_field: 'zzz0',
+            'is_valid_mvt': 'zzz1',
+            'mvtgeometry': 'zzz2',
+            'is_valid_geom': 'zzz3',
+            geom_fld: 'zzz4',
+        }
 
         result = []
         fields = ','.join(columns) if columns else '*'
         has_names = False
         for row in await conn.fetch(f"SELECT {fields} FROM {query}"):
-            if columns:
-                vals = dict(row.items())
-            else:
-                vals = dict(sorted(row.items(), key=field_sorter))
-                has_names = '_hidden_names_' in vals
-                if has_names:
-                    del vals['_hidden_names_']
+            vals = list(row.items())
+            if not columns:
+                vals.sort(key=lambda v: names[v[0]] if v[0] in names else v[0])
+            vals = {
+                k: '<null>' if v is None and (show_nulls or k in names) else v
+                for k, v in vals if k != '_hidden_names_'
+            }
             result.append(vals)
 
         layer_mvt = len(await conn.fetchval(layer_sql))
