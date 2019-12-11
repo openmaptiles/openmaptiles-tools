@@ -4,7 +4,7 @@ This is a simple vector tile server that returns a PBF tile for  /tiles/{z}/{x}/
 
 Usage:
   postserve <tileset> [--serve=<host>] [--port=<port>] [--key] [--gzip [<gzlevel>]]
-                      [--no-feature-ids] [--no-tile-envelope] [--file=<sql-file>]
+                      [--no-feature-ids] [--file=<sql-file>]
                       [--layer=<layer>]... [--exclude-layers]
                       [--pghost=<host>] [--pgport=<port>] [--dbname=<db>]
                       [--user=<user>] [--password=<password>]
@@ -23,8 +23,6 @@ Options:
   --gzip                If set, compress MVT with gzip, with optional level=0..9.
   --no-feature-ids      Disable feature ID generation, e.g. from osm_id.
                         Feature IDS are automatically disabled with PostGIS before v3
-  --no-tile-envelope    Disable PostGIS 3.0+ ST_TileEnvelope() function.
-                        ST_TileEnvelope() is auto-disabled with PostGIS before v3.
   -g --test-geometry    Validate all geometries produced by ST_AsMvtGeom(), and warn.
   -v --verbose          Print additional debugging information
   --help                Show this screen.
@@ -88,7 +86,6 @@ def main(args):
         key_column=args['--key'],
         gzip=args['--gzip'] and (args['<gzlevel>'] or True),
         disable_feature_ids=args['--no-feature-ids'],
-        disable_tile_envelope=args['--no-tile-envelope'],
         test_geometry=args['--test-geometry'],
         verbose=args.get('--verbose'),
     ).serve()

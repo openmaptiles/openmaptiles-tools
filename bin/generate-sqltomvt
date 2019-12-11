@@ -4,10 +4,10 @@ This script generates a single SQL statement (either as an SQL function or as a 
 to generate a vector tile (MVT) for the given zoom and bounding box.
 
 Usage:
-  generate-sqltomvt <tileset> [--fname <name>]
+  generate-sqltomvt <tileset> [--fname <name>] [--postgis-ver <version>]
                     [--function | --prepared | --query | --psql | --raw]
                     [--layer=<layer>]... [--exclude-layers] [--key]
-                    [--gzip [<gzlevel>]] [--no-feature-ids] [--no-tile-envelope]
+                    [--gzip [<gzlevel>]] [--no-feature-ids]
                     [--test-geometry]
   generate-sqltomvt --help
   generate-sqltomvt --version
@@ -15,6 +15,8 @@ Usage:
   <tileset>        Tileset definition yaml file
 
 Options:
+  -v --postgis-ver=<v>  Which version of PostGIS to target.  [default: 3.0]
+                        This value changes optimizes generated SQL for the specific ver.
   --fname=<name>        Name of the generated function  [default: gettile]
   -f --function         Generate function generation SQL [default]
   -p --prepared         Generate prepared statement SQL
@@ -27,8 +29,6 @@ Options:
   --gzip                If set, compress MVT with gzip, with optional level=0..9.
                         `gzip()` is available from https://github.com/pramsey/pgsql-gzip
   --no-feature-ids      Disable feature ID generation, e.g. from osm_id.
-                        You must use this flag when generating SQL for PostGIS before v3
-  --no-tile-envelope    Disable PostGIS 3.0+ ST_TileEnvelope() function.
                         You must use this flag when generating SQL for PostGIS before v3
   -g --test-geometry    Validate all geometries produced by ST_AsMvtGeom(), and warn.
   --help                Show this screen.
@@ -51,13 +51,13 @@ if __name__ == '__main__':
 
     mvt = MvtGenerator(
         tileset=args['<tileset>'],
+        postgis_ver=args['--postgis-ver'],
         zoom=zoom, x=x, y=y,
         layer_ids=args['--layer'],
         exclude_layers=args['--exclude-layers'],
         key_column=args['--key'],
         gzip=args['--gzip'] and (args['<gzlevel>'] or True),
-        use_feature_id=not args['--no-feature-ids'],
-        use_tile_envelope=not args['--no-tile-envelope'],
+        use_feature_id=False if args['--no-feature-ids'] else None,
         test_geometry=args['--test-geometry'],
     )
 

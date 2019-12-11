@@ -1,6 +1,6 @@
 import re
 from os import getenv
-from typing import Tuple, Dict
+from typing import Tuple, Dict, Union
 
 from asyncpg import UndefinedFunctionError, UndefinedObjectError, Connection
 
@@ -8,18 +8,17 @@ from openmaptiles.perfutils import COLOR
 from openmaptiles.utils import coalesce
 
 
-async def show_settings(conn: Connection, get_ver=False) -> Tuple[Dict[str, str], bool]:
-    postgis_version = False
-    results = {}
+async def get_postgis_version(conn: Connection) -> Union[str, None]:
+    try:
+        return await conn.fetchval("SELECT postgis_version()")
+    except (UndefinedFunctionError, UndefinedObjectError) as ex:
+        return None
 
-    def parse_postgis_ver(value) -> None:
-        nonlocal postgis_version
-        m = re.match(r'POSTGIS="(\d+\.\d+)', value)
-        postgis_version = float(m.group(1))
 
+async def show_settings(conn: Connection, verbose=True) -> Dict[str, str]:
     settings = {
         'version()': None,
-        'postgis_full_version()': parse_postgis_ver,
+        'postgis_full_version()': None,
         'jit': lambda
             v: 'disable JIT in PG 11-12 for complex queries' if v != 'off' else '',
         'shared_buffers': None,
@@ -30,9 +29,8 @@ async def show_settings(conn: Connection, get_ver=False) -> Tuple[Dict[str, str]
         'max_parallel_workers': None,
         'max_parallel_workers_per_gather': None,
     }
-    if get_ver:
-        settings = {k: v for k, v in settings.items() if k == 'postgis_full_version()'}
     key_len = max((len(v) for v in settings))
+    results = {}
     for setting, validator in settings.items():
         q = f"{'SELECT' if '(' in setting else 'SHOW'} {setting};"
         prefix = ''
@@ -43,14 +41,15 @@ async def show_settings(conn: Connection, get_ver=False) -> Tuple[Dict[str, str]
                 msg = validator(res)
                 if msg:
                     prefix, suffix = COLOR.RED, f" {msg}{COLOR.RESET}"
+            results[setting] = res
         except (UndefinedFunctionError, UndefinedObjectError) as ex:
             res = ex.message
             prefix, suffix = COLOR.RED, COLOR.RESET
+            results[setting] = None
+        if verbose:
+            print(f"* {setting:{key_len}} = {prefix}{res}{suffix}")
 
-        print(f"* {setting:{key_len}} = {prefix}{res}{suffix}")
-        results[setting] = res
-
-    return results, postgis_version
+    return results
 
 
 def parse_pg_args(args):

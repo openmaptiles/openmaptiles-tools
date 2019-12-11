@@ -1,4 +1,4 @@
-from distutils.log import debug
+import re
 from typing import Iterable, Tuple, Dict, Set, Union, List, Callable
 
 from asyncpg import Connection
@@ -15,28 +15,42 @@ class MvtGenerator:
     layer_ids: Set[str]
     exclude_layers: bool  # if True, inverses layer_ids to use all except them
 
-    def __init__(self, tileset: Union[str, Tileset],
+    def __init__(self, tileset: Union[str, Tileset], postgis_ver: str,
                  zoom: Union[str, int], x: Union[str, int], y: Union[str, int],
-                 layer_ids: List[str] = None,
-                 exclude_layers=False, key_column=False, gzip: Union[int, bool] = False,
-                 use_feature_id=True, use_tile_envelope=False,
-                 test_geometry=False):
+                 layer_ids: List[str] = None, exclude_layers=False,
+                 key_column=False, gzip: Union[int, bool] = False,
+                 use_feature_id: bool = None, test_geometry=False, extent=4096):
         if isinstance(tileset, str):
             self.tileset = Tileset.parse(tileset)
         else:
             self.tileset = tileset
-        self.extent = 4096
+        self.extent = extent
         self.pixel_width = PIXEL_SCALE
         self.pixel_height = PIXEL_SCALE
         self.key_column = key_column
         self.gzip = gzip
-        self.use_feature_id = use_feature_id
-        self.tile_envelope = 'ST_TileEnvelope' if use_tile_envelope else 'TileBBox'
         self.test_geometry = test_geometry
         self.set_layer_ids(layer_ids, exclude_layers)
         self.zoom = zoom
         self.x = x
         self.y = y
+
+        m = re.match(r'^(?P<major>\d+)\.(?P<minor>\d+)(\.(?P<patch>\d+))?',
+                     postgis_ver)
+        if not m:
+            raise ValueError(f"Unparsable postgis version string '{postgis_ver}'")
+        self.postgis_ver = (int(m['major']), int(m['minor']),
+                            int(m['patch']) if m['patch'] else None)
+
+        if self.postgis_ver < (3, 0):
+            if use_feature_id:
+                raise ValueError(f"Feature ID is only available in PostGIS v3.0+")
+            self.use_feature_id = False
+            self.tile_envelope = 'TileBBox'
+        else:
+            self.tile_envelope = 'ST_TileEnvelope'
+            self.use_feature_id = True if use_feature_id is None else use_feature_id
+        self.tile_envelope_margin = False
 
     def set_layer_ids(self, layer_ids: List[str], exclude_layers=False):
         if exclude_layers and not layer_ids:
@@ -131,11 +145,23 @@ SELECT {concatenate_layers} AS mvt{extras} FROM (
         key_fld = layer_def.key_field if self.use_feature_id else None
 
         # Combine all layer's features into a single MVT blob representing one layer
+        as_mvt_params = f"'{layer_def['layer']['id']}', {self.extent}, 'mvtgeometry'"
+        if self.postgis_ver < (2, 5):
+            # Postgis for a long time used a dev PostGIS version with legacy param order
+            # ST_AsMVT(text, integer, text, anyelement)
+            as_mvt_params = f"{as_mvt_params}, t"
+        else:
+            as_mvt_params = f"t, {as_mvt_params}"
+
         query = f"""\
 SELECT \
-COALESCE(ST_AsMVT(t, '{layer_def["layer"]['id']}', {self.extent}, 'mvtgeometry'\
-{f", '{key_fld}'" if key_fld else ""}), '') \
+COALESCE(ST_AsMVT({as_mvt_params}{f", '{key_fld}'" if key_fld else ""}), '') \
 as mvtl{extras} FROM {query}"""
+
+        if self.postgis_ver < (2, 5):
+            # ST_AsMVTGeom returned NULL for some geometries,
+            # ignore them to avoid ST_AsMVT errors
+            query += ' WHERE mvtgeometry IS NOT NULL'
 
         return query
 
@@ -183,19 +209,24 @@ as mvtl{extras} FROM {query}"""
 
         return query
 
-    def bbox(self, zoom, x, y):
-        return f"{self.tile_envelope}({zoom}, {x}, {y})"
+    def bbox(self, zoom, x, y, margin=None):
+        margin_str = '' if margin is None else f", {margin}"
+        return f"{self.tile_envelope}({zoom}, {x}, {y}{margin_str})"
 
     def substitute_sql(self, query, layer_def: Layer, zoom, x, y):
-        bbox = self.bbox(zoom, x, y)
-
         # A zoom 0 tile has width/height of 40075016.6855785 units
         # Buffer expressed as a percentage of a tile width gives us this formula.
         # Every subsequent zoom divides it by 2
         buffer_size = layer_def["layer"]['buffer_size']
         if buffer_size > 0:
-            percentage = 40075016.6855785 * buffer_size / self.extent
-            bbox = f"ST_Expand({bbox}, {percentage}/2^{zoom})"
+            if not self.tile_envelope_margin:
+                percentage = 40075016.6855785 * buffer_size / self.extent
+                bbox = f"ST_Expand({self.bbox(zoom, x, y)}, {percentage}/2^{zoom})"
+            else:
+                # Once https://github.com/postgis/postgis/pull/514 is merged
+                bbox = self.bbox(zoom, x, y, float(buffer_size) / self.extent)
+        else:
+            bbox = self.bbox(zoom, x, y)
 
         query = (query
                  .replace("!bbox!", bbox)
