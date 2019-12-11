@@ -38,7 +38,9 @@ build-tests: \
     build/mvttile_query_gzip.sql \
     build/mvttile_query_gzip9.sql \
     build/mvttile_query_no_feat_ids.sql \
-    build/mvttile_query_no_tile_env.sql \
+    build/mvttile_query_v2.4.0dev.sql \
+    build/mvttile_query_v2.5.sql \
+    build/mvttile_query_v3.0.sql \
     build/mvttile_query_test_geom.sql \
     build/mvttile_query_test_geom_key.sql \
     build/doc/doc.md \
@@ -88,8 +90,12 @@ build/mvttile_query_gzip9.sql: prepare
 	$(RUN_CMD) generate-sqltomvt testdata/testlayers/testmaptiles.yaml --query --gzip 9                     > build/mvttile_query_gzip9.sql
 build/mvttile_query_no_feat_ids.sql: prepare
 	$(RUN_CMD) generate-sqltomvt testdata/testlayers/testmaptiles.yaml --query --no-feature-ids             > build/mvttile_query_no_feat_ids.sql
-build/mvttile_query_no_tile_env.sql: prepare
-	$(RUN_CMD) generate-sqltomvt testdata/testlayers/testmaptiles.yaml --query --no-tile-envelope           > build/mvttile_query_no_tile_env.sql
+build/mvttile_query_v2.4.0dev.sql: prepare
+	$(RUN_CMD) generate-sqltomvt testdata/testlayers/testmaptiles.yaml --query --postgis-ver 2.4.0dev       > build/mvttile_query_v2.4.0dev.sql
+build/mvttile_query_v2.5.sql: prepare
+	$(RUN_CMD) generate-sqltomvt testdata/testlayers/testmaptiles.yaml --query --postgis-ver 2.5            > build/mvttile_query_v2.5.sql
+build/mvttile_query_v3.0.sql: prepare
+	$(RUN_CMD) generate-sqltomvt testdata/testlayers/testmaptiles.yaml --query --postgis-ver 3.0            > build/mvttile_query_v3.0.sql
 build/mvttile_query_test_geom.sql: prepare
 	$(RUN_CMD) generate-sqltomvt testdata/testlayers/testmaptiles.yaml --query --test-geometry              > build/mvttile_query_test_geom.sql
 build/mvttile_query_test_geom_key.sql: prepare

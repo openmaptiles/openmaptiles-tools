@@ -12,7 +12,7 @@ from tornado.web import Application, RequestHandler
 # noinspection PyUnresolvedReferences
 from tornado.log import access_log
 
-from openmaptiles.pgutils import show_settings
+from openmaptiles.pgutils import show_settings, get_postgis_version
 from openmaptiles.sqltomvt import MvtGenerator
 from openmaptiles.tileset import Tileset
 
@@ -139,7 +139,7 @@ class Postserve:
 
     def __init__(self, host, port, pghost, pgport, dbname, user, password, metadata,
                  layers, tileset_path, sql_file, key_column, disable_feature_ids,
-                 disable_tile_envelope, gzip, verbose, exclude_layers, test_geometry):
+                 gzip, verbose, exclude_layers, test_geometry):
         self.host = host
         self.port = port
         self.pghost = pghost
@@ -155,7 +155,6 @@ class Postserve:
         self.key_column = key_column
         self.gzip = gzip
         self.disable_feature_ids = disable_feature_ids
-        self.disable_tile_envelope = disable_tile_envelope
         self.test_geometry = test_geometry
         self.verbose = verbose
 
@@ -168,17 +167,15 @@ class Postserve:
         self.metadata["vector_layers"] = []
 
         async with self.pool.acquire() as conn:
-            settings, postgis_ver = await show_settings(conn)
-            if postgis_ver < 2.5:
-                raise ValueError('Requires PostGIS version 2.5 or later')
+            await show_settings(conn)
             self.mvt = MvtGenerator(
                 self.tileset,
+                postgis_ver=await get_postgis_version(conn),
                 zoom='$1', x='$2', y='$3',
                 layer_ids=self.layer_ids,
                 key_column=self.key_column,
                 gzip=self.gzip,
-                use_feature_id=postgis_ver >= 3 and not self.disable_feature_ids,
-                use_tile_envelope=postgis_ver >= 3 and not self.disable_tile_envelope,
+                use_feature_id=False if self.disable_feature_ids else None,
                 test_geometry=self.test_geometry,
                 exclude_layers=self.exclude_layers,
             )

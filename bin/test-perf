@@ -8,7 +8,7 @@ Usage:
               ([--zoom=<zoom>]... | [--minzoom=<min>] [--maxzoom=<max>])
               [--record=<file>] [--compare=<file>] [--buckets=<count>]
               [--key] [--gzip [<gzlevel>]] [--no-color] [--no-feature-ids]
-              [--no-tile-envelope] [--test-geometry] [--verbose]
+              [--test-geometry] [--verbose]
               [--pghost=<host>] [--pgport=<port>] [--dbname=<db>]
               [--user=<user>] [--password=<password>]
 
@@ -36,8 +36,6 @@ Options:
   --no-color            Disable ANSI colors
   --no-feature-ids      Disable feature ID generation, e.g. from osm_id.
                         Feature IDS are automatically disabled with PostGIS before v3.
-  --no-tile-envelope    Disable PostGIS 3.0+ ST_TileEnvelope() function.
-                        ST_TileEnvelope() is auto-disabled with PostGIS before v3.
   -v --verbose          Print additional debugging information.
   --help                Show this screen.
   --version             Show version.
@@ -88,7 +86,6 @@ def main(args):
         save_to=args['--record'],
         compare_with=args['--compare'],
         disable_feature_ids=args['--no-feature-ids'],
-        disable_tile_envelope=args['--no-tile-envelope'],
         key_column=args['--key'],
         gzip=args['--gzip'] and (args['<gzlevel>'] or True),
         verbose=args.get('--verbose'),

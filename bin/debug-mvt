@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """
-This is a simple vector tile server that returns a PBF tile for  /tiles/{z}/{x}/{y}.pbf  requests
+Shows content of a single MVT tile as layer tables.
 
 Usage:
   debug-mvt <tileset> <tile_zxy> [--layer=<layer>]... [--exclude-layers]
@@ -42,8 +42,7 @@ from docopt import docopt, DocoptExit
 from tabulate import tabulate
 
 import openmaptiles
-from openmaptiles.language import languages_to_sql
-from openmaptiles.pgutils import show_settings, parse_pg_args
+from openmaptiles.pgutils import parse_pg_args, get_postgis_version
 from openmaptiles.sqltomvt import MvtGenerator
 from openmaptiles.tileset import Tileset
 
@@ -85,16 +84,12 @@ async def main(args):
         messages = []
 
     conn.add_log_listener(connection_logger)
-    pg_settings, postgis_ver = await show_settings(conn, get_ver=True)
-    if postgis_ver < 2.5:
-        raise ValueError('Requires PostGIS version 2.5 or later')
     mvt = MvtGenerator(
         tileset,
         zoom=zoom, x=x, y=y,
         layer_ids=layers,
-        use_feature_id=postgis_ver >= 3,
-        use_tile_envelope=postgis_ver >= 3,
         exclude_layers=exclude_layers,
+        postgis_ver=await get_postgis_version(conn),
     )
 
     def geom_info(expr):
@@ -129,8 +124,10 @@ async def main(args):
             extra_columns=extra_columns,
             languages_sql=None if show_names else f'NULL as _hidden_names_',
         )
+        layer_sql = mvt.generate_layer(layer_def)
         if verbose:
-            print(f"======= Querying layer {layer_id} =======\n{query.strip()}")
+            print(f"\n======= Querying layer {layer_id} =======\n{query.strip()}\n"
+                  f"== MVT SQL\n{layer_sql}")
 
         def field_sorter(v):
             """Move osm_id and geometry fields to the right"""
@@ -155,13 +152,16 @@ async def main(args):
                     del vals['_hidden_names_']
             result.append(vals)
 
+        layer_mvt = len(await conn.fetchval(layer_sql))
+
         if result:
-            info = '(extra name columns are hidden by default) ' if has_names else ''
-            print(f"======= Layer {layer_id} {info}=======")
+            info = ' (extra name columns are hidden by default) ' if has_names else ''
+            print(f"======= Layer {layer_id}{info}: {layer_mvt:,} bytes in MVT =======")
             print_messages()
             print(tabulate(result, headers="keys"))
         else:
-            print(f"======= No data in layer {layer_id}")
+            info = f' (layer data had non-zero {layer_mvt} bytes)' if layer_mvt else ''
+            print(f"======= No data in layer {layer_id}{info}")
             print_messages()
 
 

@@ -10,8 +10,8 @@ from asyncpg import Connection
 from docopt import DocoptExit
 
 from openmaptiles.perfutils import change, PerfSummary, PerfBucket, \
-    PerfRoot, TestCase, print_graph, COLOR
-from openmaptiles.pgutils import show_settings
+    PerfRoot, TestCase, print_graph
+from openmaptiles.pgutils import show_settings, get_postgis_version
 from openmaptiles.sqltomvt import MvtGenerator
 from openmaptiles.tileset import Tileset
 from openmaptiles.utils import round_td
@@ -49,8 +49,7 @@ class PerfTester:
                  password: str, summary: bool, per_layer: bool, buckets: int,
                  save_to: Union[None, str, Path], compare_with: Union[None, str, Path],
                  key_column: bool, gzip: bool, disable_feature_ids: bool = None,
-                 disable_tile_envelope: bool = None, exclude_layers: bool = False,
-                 verbose: bool = None):
+                 exclude_layers: bool = False, verbose: bool = None):
         self.tileset = Tileset.parse(tileset)
         self.dbname = dbname
         self.pghost = pghost
@@ -62,7 +61,6 @@ class PerfTester:
         self.key_column = key_column
         self.gzip = gzip
         self.disable_feature_ids = disable_feature_ids
-        self.disable_tile_envelope = disable_tile_envelope
         self.verbose = verbose
         self.per_layer = per_layer
         self.save_to = Path(save_to) if save_to else None
@@ -111,17 +109,13 @@ class PerfTester:
                 self.save_results()
 
     async def _run(self, conn: Connection):
-        self.results.pg_settings, postgis_ver = await show_settings(conn)
+        self.results.pg_settings = await show_settings(conn)
         print("\nValidating SQL fields in all layers of the tileset")
-        use_feature_id = postgis_ver >= 3 and not self.disable_feature_ids
-        use_tile_envelope = postgis_ver >= 3 and not self.disable_tile_envelope
-        self.results.settings['use_feature_ids'] = use_feature_id
-        self.results.settings['use_tile_envelope'] = use_tile_envelope
         self.mvt = MvtGenerator(
             self.tileset,
+            postgis_ver=await get_postgis_version(conn),
             zoom='$1', x='xval.x', y='yval.y',
-            use_feature_id=use_feature_id,
-            use_tile_envelope=use_tile_envelope,
+            use_feature_id=False if self.disable_feature_ids else None,
             gzip=self.gzip,
             key_column=self.key_column,
         )
@@ -130,11 +124,6 @@ class PerfTester:
             fields = await self.mvt.validate_layer_fields(conn, layer_id, layer_def)
             self.results.layer_fields[layer_id] = list(fields.keys())
         self.test_cases = []
-        if postgis_ver < 2.5:
-            if self.tests != ['null']:
-                raise ValueError('Requires PostGIS version 2.5 or later')
-            print(f'WARN: No PostGIS v2.5+ found, performance tests will not be run.')
-            return
         old_tests = self.old_run.tests if self.old_run else None
         for layer in (self.layers if self.per_layer else [None]):
             for test in self.tests:
