@@ -37,13 +37,13 @@ from collections import defaultdict
 import asyncpg
 from asyncpg import Connection
 from docopt import docopt
-from typing import Iterable, Tuple, Set, List
+from typing import Iterable, List
 
 import requests
 import openmaptiles
-from openmaptiles.pgutils import parse_pg_args
+from openmaptiles.pgutils import parse_pg_args, PgWarnings
 from openmaptiles.tileset import Tileset
-from openmaptiles.utils import print_err, batches
+from openmaptiles.utils import batches
 
 
 async def main(args):
@@ -56,7 +56,7 @@ async def main(args):
     conn = await asyncpg.connect(
         database=dbname, host=pghost, port=pgport, user=user, password=password,
     )
-    conn.add_log_listener(connection_logger)
+    PgWarnings(conn)
     await conn.set_builtin_type_codec('hstore', codec_name='pg_contrib.hstore')
 
     print(f'Searching for Wikidata IDs in {len(tables)} tables...')
@@ -120,14 +120,6 @@ WHERE id SIMILAR TO 'Q[1-9][0-9]{{0,18}}'"""
         ids.append(int(row['id'][1:]))
     ids.sort()
     return ids
-
-
-def connection_logger(_, msg: asyncpg.PostgresLogMessage):
-    try:
-        # noinspection PyUnresolvedReferences
-        print_err(f"  {msg.severity}: {msg.message} @ {msg.context}")
-    except AttributeError:
-        print_err(f"  {msg}")
 
 
 def entity_id(column):
