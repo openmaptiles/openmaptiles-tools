@@ -43,7 +43,7 @@ from docopt import docopt, DocoptExit
 from tabulate import tabulate
 
 import openmaptiles
-from openmaptiles.pgutils import parse_pg_args, get_postgis_version
+from openmaptiles.pgutils import parse_pg_args, get_postgis_version, PgWarnings
 from openmaptiles.sqltomvt import MvtGenerator
 from openmaptiles.tileset import Tileset
 
@@ -69,23 +69,7 @@ async def main(args):
     conn = await asyncpg.connect(
         database=dbname, host=pghost, port=pgport, user=user, password=password,
     )
-
-    messages = []
-
-    def connection_logger(_, msg: asyncpg.PostgresLogMessage):
-        messages.append(msg)
-
-    def print_messages():
-        nonlocal messages
-        for msg in messages:
-            try:
-                # noinspection PyUnresolvedReferences
-                print(f"  {msg.severity}: {msg.message} @ {msg.context}")
-            except AttributeError:
-                print(f"  {msg}")
-        messages = []
-
-    conn.add_log_listener(connection_logger)
+    pg_warnings = PgWarnings(conn, delay_printing=True)
     mvt = MvtGenerator(
         tileset,
         zoom=zoom, x=x, y=y,
@@ -158,12 +142,12 @@ async def main(args):
         if result:
             info = ' (extra name columns are hidden by default) ' if has_names else ''
             print(f"======= Layer {layer_id}{info}: {layer_mvt:,} bytes in MVT =======")
-            print_messages()
+            pg_warnings.print()
             print(tabulate(result, headers="keys"))
         else:
             info = f' (layer data had non-zero {layer_mvt} bytes)' if layer_mvt else ''
             print(f"======= No data in layer {layer_id}{info}")
-            print_messages()
+            pg_warnings.print()
 
 
 if __name__ == '__main__':

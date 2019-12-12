@@ -12,7 +12,7 @@ from tornado.web import Application, RequestHandler
 # noinspection PyUnresolvedReferences
 from tornado.log import access_log
 
-from openmaptiles.pgutils import show_settings, get_postgis_version
+from openmaptiles.pgutils import show_settings, get_postgis_version, PgWarnings
 from openmaptiles.sqltomvt import MvtGenerator
 from openmaptiles.tileset import Tileset
 
@@ -101,11 +101,7 @@ class GetTile(RequestHandledWithCors):
                     if self.verbose or messages:
                         print(f"Tile {zoom}/{x}/{y} is empty.")
                 for msg in messages:
-                    try:
-                        # noinspection PyUnresolvedReferences
-                        print(f"  {msg.severity}: {msg.message} @ {msg.context}")
-                    except AttributeError:
-                        print(f"  {msg}")
+                    PgWarnings.print_message(msg)
                 connection.remove_log_listener(logger)
 
         except ConnectionDoesNotExistError as err:

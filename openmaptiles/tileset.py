@@ -11,32 +11,24 @@ class Layer:
     def parse(layer_filename):
         layer = parse_file(layer_filename)
 
-        def parse_imposm_mappings():
+        def iterate_imposm_mapping_files():
             for data_source in layer.get('datasources', []):
                 if data_source['type'] != 'imposm3':
                     continue
-
                 mapping_path = data_source['mapping_file']
                 if not os.path.isabs(mapping_path):
                     mapping_path = os.path.join(
                         os.path.dirname(layer_filename),
                         mapping_path
                     )
+                yield mapping_path
 
+        def parse_imposm_mappings():
+            for mapping_path in iterate_imposm_mapping_files():
                 yield parse_file(mapping_path)
 
         def parse_imposm_mappings_str():
-            for data_source in layer.get('datasources', []):
-                if data_source['type'] != 'imposm3':
-                    continue
-
-                mapping_path = data_source['mapping_file']
-                if not os.path.isabs(mapping_path):
-                    mapping_path = os.path.join(
-                        os.path.dirname(layer_filename),
-                        mapping_path
-                    )
-
+            for mapping_path in iterate_imposm_mapping_files():
                 with codecs.open(mapping_path, 'r', 'utf-8') as f:
                     yield f.read()
 

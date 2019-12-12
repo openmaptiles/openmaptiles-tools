@@ -16,12 +16,13 @@ from openmaptiles.tileset import Layer
 
 
 def collect_etldot(layer):
-    dot = ('digraph G\n'
-           '{\n'
-           '/* generated from the source code [ by generate-etlgraph  v' + openmaptiles.__version__ + '}  */ \n'
-                                                                                                      'rankdir=LR;\n')
+    dot = f"""\
+digraph G
+{{
+/* generated from the source code [by generate-etlgraph v{openmaptiles.__version__}] */
+rankdir=LR;
+"""
 
-    layer_name = layer['layer']['id']
     dot += '\n'
     for mappingstr in layer.imposm_mappings_str:
         for line in mappingstr.splitlines():
@@ -38,14 +39,14 @@ def collect_etldot(layer):
     return dot
 
 
-if __name__ == '__main__':
-    args = docopt(__doc__, version=openmaptiles.__version__)
+def main(args):
     layer = Layer.parse(args['<layer-definition>'])
 
     layer_path, layer_filename = os.path.split(args['<layer-definition>'])
 
     # add a prefix for a new .dot,.png,.svg file
-    dotbasefile = os.path.join(args['<output-path>'], 'etl_' + layer_filename.split('.')[0])
+    dotbasefile = os.path.join(args['<output-path>'],
+                               'etl_' + layer_filename.split('.')[0])
 
     dot_filename = dotbasefile + '.dot'
     old_dot = ''
@@ -53,7 +54,6 @@ if __name__ == '__main__':
     print(args['<output-path>'])
     print(dot_filename)
 
-    layer = Layer.parse(args['<layer-definition>'])
     etldoc = collect_etldot(layer)
 
     # IF exists THEN read the old .dot content
@@ -81,5 +81,10 @@ if __name__ == '__main__':
             os.system(f"dot -Tsvg {dotbasefile}.dot -o {dotbasefile}.svg")
             print(f"Generated : {dotbasefile} (.dot .svg) ")
         else:
-            print('Warning: Could not find the `dot` command, check the graphviz installation!')
+            print('Warning: Could not find the `dot` command, '
+                  'check the graphviz installation!')
         print('')
+
+
+if __name__ == '__main__':
+    main(docopt(__doc__, version=openmaptiles.__version__))

@@ -51,6 +51,8 @@ def create_imposm3_mapping(tileset_filename):
                         definition['sql_filter'])
                 generalized_tables[table_name] = definition
             for table_name, definition in mapping.get('tables', {}).items():
+                # Remove all OpenMapTiles custom keys to avoid confusing Imposm
+                definition.pop('_resolve_wikidata', None)
                 tables[table_name] = definition
             for tag_name, definition in mapping.get('tags', {}).items():
                 tags[tag_name] = definition

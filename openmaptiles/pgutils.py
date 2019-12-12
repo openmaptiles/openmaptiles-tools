@@ -2,10 +2,11 @@ import re
 from os import getenv
 from typing import Tuple, Dict, Union
 
+import asyncpg
 from asyncpg import UndefinedFunctionError, UndefinedObjectError, Connection
 
 from openmaptiles.perfutils import COLOR
-from openmaptiles.utils import coalesce
+from openmaptiles.utils import coalesce, print_err
 
 
 async def get_postgis_version(conn: Connection) -> Union[str, None]:
@@ -69,3 +70,29 @@ def parse_pg_args(args):
         args.get("--password"), getenv('POSTGRES_PASSWORD'),
         getenv('PGPASSWORD'), 'openmaptiles')
     return pghost, pgport, dbname, user, password
+
+
+class PgWarnings:
+    def __init__(self, conn: Connection, delay_printing=False) -> None:
+        self.messages = []
+        self.delay_printing = delay_printing
+        conn.add_log_listener(lambda _, msg: self.on_warning(msg))
+
+    def on_warning(self, _, msg: asyncpg.PostgresLogMessage):
+        if self.delay_printing:
+            self.messages.append(msg)
+        else:
+            self.print_message(msg)
+
+    @staticmethod
+    def print_message(msg: asyncpg.PostgresLogMessage):
+        try:
+            # noinspection PyUnresolvedReferences
+            print_err(f"  {msg.severity}: {msg.message} @ {msg.context}")
+        except AttributeError:
+            print_err(f"  {msg}")
+
+    def print(self):
+        for msg in self.messages:
+            self.print_message(msg)
+        self.messages = []

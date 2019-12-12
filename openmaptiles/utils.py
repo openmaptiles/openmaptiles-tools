@@ -3,9 +3,12 @@ import re
 import sys
 from asyncio.futures import Future
 from datetime import timedelta
-from typing import List, Callable, Any, Dict, Awaitable, Iterable
+from typing import List, Callable, Any, Dict, Awaitable, Iterable, TypeVar
 
-from .consts import *
+from openmaptiles.consts import *
+
+T = TypeVar('T')
+T2 = TypeVar('T2')
 
 
 def coalesce(*args):
@@ -142,3 +145,16 @@ def round_td(delta: timedelta):
 
 def print_err(*args, **kwargs):
     print(*args, **kwargs, file=sys.stderr)
+
+
+def batches(items: Iterable[T], batch_size: int,
+            decorator: Callable[[T], T2] = lambda v: v) -> Iterable[List[T2]]:
+    """Given a stream of objects, create a stream of batches of those objects"""
+    res = []
+    for value in items:
+        res.append(decorator(value))
+        if len(res) >= batch_size:
+            yield res
+            res = []
+    if res:
+        yield res
