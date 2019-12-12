@@ -46,6 +46,7 @@ import openmaptiles
 from openmaptiles.pgutils import parse_pg_args, get_postgis_version
 from openmaptiles.sqltomvt import MvtGenerator
 from openmaptiles.tileset import Tileset
+from openmaptiles.utils import print_err
 
 
 async def main(args):
@@ -80,9 +81,9 @@ async def main(args):
         for msg in messages:
             try:
                 # noinspection PyUnresolvedReferences
-                print(f"  {msg.severity}: {msg.message} @ {msg.context}")
+                print_err(f"  {msg.severity}: {msg.message} @ {msg.context}")
             except AttributeError:
-                print(f"  {msg}")
+                print_err(f"  {msg}")
         messages = []
 
     conn.add_log_listener(connection_logger)

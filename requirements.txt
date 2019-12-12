@@ -1,11 +1,12 @@
 ## This list is also used by setup.py - install_requires
 ## But there it removes all version restrictions
+ascii_graph==1.5.1
 asyncpg==0.19.0
+dataclasses-json==0.3.5
 docopt==0.6.2
 graphviz==0.11.1
 psycopg2-binary==2.8.3
 pyyaml==5.1.2
-tornado==6.0.3
-ascii_graph==1.5.1
-dataclasses-json==0.3.5
+requests==2.22.0
 tabulate==0.8.6
+tornado==6.0.3
