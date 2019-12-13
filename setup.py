@@ -1,4 +1,3 @@
-# from distutils.core import setup
 import setuptools
 import re
 from pathlib import Path
@@ -8,13 +7,19 @@ path = Path('.')
 with (path / "README.md").open() as fh:
     long_description = fh.read()
 
-with (path / "VERSION").open() as fh:
-    version = fh.read().strip()
+version_file = path / "openmaptiles" / "__init__.py"
+with version_file.open() as fh:
+    m = re.search(r"^__version__\s*=\s*(['\"])([^'\"]*)\1", fh.read().strip(), re.M)
+    if not m:
+        raise ValueError(f"Version string is not found in {version_file}")
+    version = m.group(2)
 
 with (path / "requirements.txt").open(encoding="utf-8") as fh:
     # Requirements will contain a list of libraries without version restrictions
     # It seems this is a common practice for the setup.py vs requirements.txt
-    requirements = [m.group(1) for m in (re.match(r'^[ \t]*([^>=<!#\n]+).*', l) for l in fh.readlines()) if m]
+    requirements = [m.group(1) for m in
+                    (re.match(r'^[ \t]*([^>=<!#\n]+).*', l) for l in fh.readlines())
+                    if m]
 
 scripts = [str(p) for p in path.glob('bin/*') if p.is_file()]
 
