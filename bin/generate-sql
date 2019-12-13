@@ -1,12 +1,15 @@
 #!/usr/bin/env python
 """
 Usage:
-  generate-sql <tileset> [--dir <dir>]
+  generate-sql <tileset> [--dir <dir>] [--nodata]
   generate-sql --help
   generate-sql --version
 
 Options:
-  -d --dir=<dir>      Output multiple sql files into this directory. Prints to STDOUT by default.
+  -d --dir=<dir>      Output multiple sql files into this directory.
+                      Without the -d parameter, prints everything to STDOUT.
+  -n --nodata         If set, materialized views are created without the data.
+                      Use refresh-views utility to refresh views after creation.
   --help              Show this screen.
   --version           Show version.
 """
@@ -18,11 +21,13 @@ from openmaptiles.sql import collect_sql
 
 if __name__ == '__main__':
     args = docopt(__doc__, version=openmaptiles.__version__)
+    nodata = args['--nodata']
+    tileset = args['<tileset>']
     if not args['--dir']:
-        print(collect_sql(args['<tileset>']))
+        print(collect_sql(tileset, nodata=nodata))
     else:
         run_first, parallel_sql, run_last = collect_sql(
-            args['<tileset>'], parallel=True)
+            tileset, nodata=nodata, parallel=True)
 
         path = Path(args['--dir'])
         path.mkdir(parents=True, exist_ok=True)

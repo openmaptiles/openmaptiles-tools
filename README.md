@@ -95,10 +95,16 @@ layer:
       # Dictionary defines mapping of OSM values to the OMT field value
       values:
         school:
-          subclass: ['school','kindergarten']
-        alcohol_place:
-          shop: ['bar']
-          subclass: ['alcohol','beverages','wine%']
+          # subclass IN ('school','kindergarten') OR subclass LIKE 'uni%'
+          subclass: ['school','kindergarten','uni%']
+        railway:
+          # (subclass='station' AND mapping_key='railway')
+          # OR subclass in ('halt','tram_stop','subway') 
+          - __AND__:
+              subclass: 'station'
+              mapping_key: 'railway'
+          - subclass: ['halt', 'tram_stop', 'subway']
+        
 schema:
   - ./building.sql
 datasources:
@@ -107,27 +113,21 @@ datasources:
 ```
 
 For the well known values (enums), the `fields` section can also contain the mapping of the input (OSM) values.
-The above example has two output fields - `render_height` and `class`. The `class` field could be one of the predefined
-values. An object would have `class=school` if the OSM object has `subclass` either `school` or `kindergarten`.
-An object would have `class=alcohol_place` if it either has `shop=bar` or `subclass` having one of the 3 values.
 
 If a layer SQL files contains `%%FIELD_MAPPING: class%%`, `generate-sql` script will replace it
 
 ```sql
 SELECT CASE
     %%FIELD_MAPPING: class%%
-    ELSE NULL
 END, ...
 ```
 into
 ```sql
 SELECT CASE
-    WHEN "subclass" IN ('school', 'kindergarten') THEN 'school'
-    WHEN "shop"='bar'
-        OR "subclass" IN ('alcohol','beverages')
-        OR "subclass" LIKE 'wine%'
-        THEN 'alcohol_place'
-    ELSE NULL
+    WHEN "subclass" IN ('school', 'kindergarten')
+        OR "subclass" LIKE 'uni%' THEN 'school'
+    WHEN ("subclass" = 'station' AND "mapping_key" = 'railway')
+        OR "subclass" in ('halt','tram_stop','subway') THEN 'railway' 
 END, ...
 ```
 

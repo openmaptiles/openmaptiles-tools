@@ -1,13 +1,17 @@
 import re
+from typing import Union
+
 from sys import stderr
 
 from .tileset import Tileset
 
 
-def collect_sql(tileset_filename, parallel=False):
+def collect_sql(tileset_filename, parallel=False, nodata=False):
     """If parallel is True, returns a sql value that must be executed first,
         and a lists of sql values that can be ran in parallel.
-        If parallel is False, returns a single sql string"""
+        If parallel is False, returns a single sql string.
+        nodata=True replaces all "/* DELAY_MATERIALIZED_VIEW_CREATION */"
+        with the "WITH NO DATA" SQL."""
     tileset = Tileset.parse(tileset_filename)
 
     run_first = get_slice_language_tags(tileset.languages)
@@ -15,7 +19,7 @@ def collect_sql(tileset_filename, parallel=False):
 
     parallel_sql = []
     for layer in tileset.layers:
-        schemas = '\n\n'.join((to_sql(v, layer) for v in layer.schemas))
+        schemas = '\n\n'.join((to_sql(v, layer, nodata) for v in layer.schemas))
         parallel_sql.append(f"""\
 DO $$ BEGIN RAISE NOTICE 'Processing layer {layer.id}'; END$$;
 
@@ -48,67 +52,117 @@ $$ LANGUAGE SQL IMMUTABLE;
 """
 
 
-def to_sql(sql, layer):
-    """Clean up SQL, and perform any needed code injections"""
-    sql = sql.strip()
+class FieldExpander:
+    def __init__(self, field, layer, indent):
+        self.field = field
+        self.layer = layer
+        self.indent = indent
+        self.layer_id = self.layer.definition['layer']['id']
 
-    # Replace "%%FIELD_MAPPING: <fieldname>%%" with fields from layer definition
-    def field_map(match):
-        indent = match.group(1)
-        field = match.group(2)
-        layer_def = layer.definition['layer']
-        fields = layer_def['fields']
-        if field not in fields:
-            raise ValueError(f"Field '{field}' not found in the layer definition file")
-        if 'values' not in fields[field]:
+    def parse(self):
+        fields = self.layer.definition['layer']['fields']
+        fld = self.field
+        if fld not in fields:
+            raise ValueError(f"Field '{fld}' not found in the layer definition file")
+        if 'values' not in fields[fld]:
             raise ValueError(
-                f"Field '{field}' has no values defined in the layer definition file")
-        values = fields[field]['values']
+                f"Field '{fld}' has no values defined in the layer definition file")
+        values = fields[fld]['values']
         if not isinstance(values, dict):
-            raise ValueError(f"Definition for {field}/values has to be a dictionary")
+            raise ValueError(f"Definition for {fld}/values has to be a dictionary")
+
         conditions = []
         ignored = []
         for map_to, mapping in values.items():
             # mapping is a dictionary of input_fields -> (a value or a list of values)
             # If it is not a dictionary, skip it
-            if not isinstance(mapping, dict):
+            if not isinstance(mapping, dict) and not isinstance(mapping, list):
                 ignored.append(map_to)
                 continue
-            whens = []
-            for in_fld, in_vals in mapping.items():
-                if isinstance(in_vals, str):
-                    in_vals = [in_vals]
-                wildcards = [v for v in in_vals if '%' in v]
-                in_vals = [v for v in in_vals if '%' not in v]
-                if in_vals:
-                    if len(in_vals) == 1:
-                        expr = f"={sql_value(in_vals[0])}"
-                    else:
-                        expr = f" IN ({', '.join((sql_value(v) for v in in_vals))})"
-                    whens.append(f'{sql_field(in_fld)}{expr}')
-                for wildcard in wildcards:
-                    whens.append(f'{sql_field(in_fld)} LIKE {sql_value(wildcard)}')
-            if whens:
-                cond = f'\n{indent}    OR '.join(whens) + \
-                       (' ' if len(whens) == 1 else f'\n{indent}    ')
-                conditions.append(f"WHEN {cond}THEN {sql_value(map_to)}")
+            expr = self.to_expression(map_to, mapping)
+            if expr:
+                conditions.append(expr)
             else:
                 ignored.append(map_to)
         if ignored and not stderr.isatty():
-            print(f"-- Assuming manual SQL handling of field '{field}' values "
-                  f"[{','.join(ignored)}] in layer {layer_def['id']}", file=stderr)
-        return indent + f'\n{indent}'.join(conditions)
+            print(f"-- Assuming manual SQL handling of field '{fld}' values "
+                  f"[{','.join(ignored)}] in layer {self.layer_id}",
+                  file=stderr)
+        return self.indent + f'\n{self.indent}'.join(conditions)
 
+    def to_expression(self, map_to, mapping: Union[dict, list], op='OR', top=True):
+        if isinstance(mapping, list):
+            expressions = [self.to_expression(map_to, v, top=False) for v in mapping]
+        elif not isinstance(mapping, dict):
+            raise ValueError(f"Definition for {self.field}/values/{map_to} "
+                             f"in layer {self.layer_id} must be a list or a dictionary")
+        elif list(mapping.keys()) == ['__AND__']:
+            return self.to_expression(map_to, mapping['__AND__'], 'AND', top)
+        elif list(mapping.keys()) == ['__OR__']:
+            return self.to_expression(map_to, mapping['__OR__'], 'OR', top)
+        else:
+            if '__AND__' in mapping or '__OR__' in mapping:
+                raise ValueError(
+                    f"Definition for {self.field}/values/{map_to} in layer "
+                    f"{self.layer_id} mixes __AND__ or __OR__ with values")
+            expressions = []
+            for in_fld, in_vals in mapping.items():
+                in_fld = self.sql_field(in_fld)
+                if isinstance(in_vals, str):
+                    in_vals = [in_vals]
+                wildcards = [self.sql_value(v) for v in in_vals if '%' in v]
+                in_vals = [self.sql_value(v) for v in in_vals if '%' not in v]
+                conditions = [f'{in_fld} LIKE {w}' for w in wildcards]
+                if in_vals:
+                    if len(in_vals) == 1:
+                        conditions.insert(0, f"{in_fld} = {in_vals[0]}")
+                    else:
+                        conditions.insert(0, f"{in_fld} IN ({', '.join(in_vals)})")
+                if op == 'OR':
+                    expressions.extend(conditions)
+                else:
+                    expr = f' OR '.join(conditions)
+                    expressions.append(f"({expr})" if len(conditions) > 1 else expr)
+        if top:
+            if not expressions:
+                return False
+            expr = f'\n{self.indent}    {op} '.join(expressions) + \
+                   (' ' if len(expressions) == 1 else f'\n{self.indent}    ')
+            return f"WHEN {expr}THEN {self.sql_value(map_to)}"
+        elif not expressions:
+            raise ValueError(f"Invalid subexpression {self.field}/values/{map_to} "
+                             f"in layer {self.layer_id} - empty sub-conditions")
+        else:
+            expr = f' {op} '.join(expressions)
+            return f"({expr})" if len(expressions) > 1 else expr
+
+    @staticmethod
+    def sql_field(field):
+        if not re.match(r'^[a-zA-Z][_a-zA-Z0-9]*$', field):
+            raise ValueError(f'Unexpected symbols in the field "{field}"')
+        return f'"{field}"'
+
+    @staticmethod
+    def sql_value(value):
+        if "'" not in value:
+            return f"'{value}'"
+        return "E'" + value.replace('\\', '\\\\').replace("'", "\\'") + "'"
+
+
+def to_sql(sql, layer, nodata):
+    """Clean up SQL, and perform any needed code injections"""
+    sql = sql.strip()
+
+    # Replace "%%FIELD_MAPPING: <fieldname>%%" with fields from layer definition
+    def field_map(match):
+        return FieldExpander(match.group(2), layer, match.group(1)).parse()
+
+    # replace FIELD_MAPPING:<fieldname> param with the generated SQL CASE statement
     sql = re.sub(r'( *)%%\s*FIELD_MAPPING\s*:\s*([a-zA-Z0-9_-]+)\s*%%', field_map, sql)
 
+    # inject "WITH NO DATA" for the materialized views
+    if nodata:
+        sql = re.sub(
+            r'/\*\s*DELAY_MATERIALIZED_VIEW_CREATION\s*\*/', ' WITH NO DATA ', sql)
+
     return sql
-
-
-def sql_field(field):
-    return f'"{field}"'
-
-
-def sql_value(value):
-    if "'" not in value:
-        return f"'{value}'"
-    return "E'" + value.replace('\\', '\\\\').replace("'", "\\'") + "'"
