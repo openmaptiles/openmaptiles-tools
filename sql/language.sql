@@ -1,5 +1,3 @@
--- This file was migrated from https://github.com/openmaptiles/import-sql/blob/master/language.sql
-
 CREATE OR REPLACE FUNCTION delete_empty_keys(tags hstore) RETURNS hstore AS $$
 DECLARE
   result hstore;
