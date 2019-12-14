@@ -1,0 +1,66 @@
+#!/usr/bin/env bash
+set -o errexit
+set -o pipefail
+set -o nounset
+
+: "${IMPORT_DIR:=/import}"
+# Do not use .pbf extension to avoid accidental conflict with the original pbf with multiple runs
+: "${BORDERS_PBF_FILE:="$IMPORT_DIR/borders/filtered.pbf"}"
+: "${BORDERS_CSV_FILE:="$IMPORT_DIR/borders/lines.csv"}"
+
+# For backward compatibility, allow both PG* and POSTGRES_* forms,
+# with the non-standard POSTGRES_* form taking precedence.
+# An error will be raised if neither form is given, except for the PGPORT
+export PGHOST="${POSTGRES_HOST:-${PGHOST?}}"
+export PGDATABASE="${POSTGRES_DB:-${PGDATABASE?}}"
+export PGUSER="${POSTGRES_USER:-${PGUSER?}}"
+export PGPASSWORD="${POSTGRES_PASSWORD:-${PGPASSWORD?}}"
+export PGPORT="${POSTGRES_PORT:-${PGPORT:-5432}}"
+
+: "${TABLE_NAME:=osm_border_linestring}"
+
+
+# First argument is the PBF file to parse.
+# If there are no arguments, searches for the first *.pbf file in the $IMPORT_DIR
+if [[ $# -eq 0 ]]; then
+  if [ "$(ls -A "$IMPORT_DIR"/*.pbf 2> /dev/null)" ]; then
+    for IMPORT_PBF_FILE in "$IMPORT_DIR"/*.pbf; do
+      break
+    done
+  else
+    echo "No PBF files found in the $IMPORT_DIR dir."
+    exit 1
+  fi
+else
+  IMPORT_PBF_FILE="$1"
+fi
+
+
+echo "Filtering $IMPORT_PBF_FILE into $BORDERS_PBF_FILE"
+mkdir -p "$(dirname "${BORDERS_PBF_FILE?}")"
+rm -rf "${BORDERS_PBF_FILE?}"
+osmborder_filter -o "$BORDERS_PBF_FILE" "$IMPORT_PBF_FILE"
+
+
+echo "Creating a CSV borders file $BORDERS_CSV_FILE"
+mkdir -p "$(dirname "${BORDERS_CSV_FILE?}")"
+rm -rf "${BORDERS_CSV_FILE?}"
+osmborder -o "$BORDERS_CSV_FILE" "$BORDERS_PBF_FILE"
+
+
+echo "Importing $BORDERS_CSV_FILE into $PGHOST:$PGPORT/$PGDATABASE as table $TABLE_NAME..."
+psql -c "DROP TABLE IF EXISTS $TABLE_NAME CASCADE;" \
+     -c "CREATE TABLE $TABLE_NAME (osm_id bigint, admin_level int, dividing_line bool, disputed bool, maritime bool, geometry Geometry(LineString, 3857));" \
+     -c "CREATE INDEX ON $TABLE_NAME USING gist (geometry);"
+pgfutter \
+    --schema "public" \
+    --host "$PGHOST" \
+    --port "$PGPORT" \
+    --dbname "$PGDATABASE" \
+    --username "$PGUSER" \
+    --pass "$PGPASSWORD" \
+    --table "$TABLE_NAME" \
+  csv \
+    --fields "osm_id,admin_level,dividing_line,disputed,maritime,geometry" \
+    --delimiter $'\t' \
+  "$BORDERS_CSV_FILE"
