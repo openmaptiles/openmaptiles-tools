@@ -78,7 +78,7 @@ class PgWarnings:
         self.delay_printing = delay_printing
         conn.add_log_listener(lambda _, msg: self.on_warning(msg))
 
-    def on_warning(self, _, msg: asyncpg.PostgresLogMessage):
+    def on_warning(self, msg: asyncpg.PostgresLogMessage):
         if self.delay_printing:
             self.messages.append(msg)
         else:
