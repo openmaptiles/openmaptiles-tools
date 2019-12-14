@@ -2,9 +2,9 @@ ARG BASE_TAG=latest
 FROM openmaptiles/openmaptiles-tools:${BASE_TAG}
 LABEL maintainer="YuriAstrakhan@gmail.com"
 
-ARG RELEASE_VERSION="v3.0.0-beta"
+ARG RELEASE_VERSION="v3.1.0"
 # In case there is no osmborder_lines published on github under RELEASE_VERSION version, use this one
-ARG FALLBACK_DUMP_VERSION="v3.0.0-beta"
+ARG FALLBACK_DUMP_VERSION="v3.1.0"
 
 ENV PGFUTTER_VERSION="v1.2" \
     RELEASES_PREFIX="https://github.com/openmaptiles/openmaptiles-tools/releases/download/" \
