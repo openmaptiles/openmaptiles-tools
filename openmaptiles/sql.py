@@ -10,21 +10,18 @@ def collect_sql(tileset_filename, parallel=False):
         If parallel is False, returns a single sql string"""
     tileset = Tileset.parse(tileset_filename)
 
-    definition = tileset.definition
-    languages = map(lambda l: str(l), definition.get('languages', []))
-    run_first = get_slice_language_tags(languages)
+    run_first = get_slice_language_tags(tileset.languages)
     run_last = ''  # at this point we don't have any SQL to run at the end
 
     parallel_sql = []
     for layer in tileset.layers:
-        name = layer['layer']['id']
         schemas = '\n\n'.join((to_sql(v, layer) for v in layer.schemas))
         parallel_sql.append(f"""\
-DO $$ BEGIN RAISE NOTICE 'Processing layer {name}'; END$$;
+DO $$ BEGIN RAISE NOTICE 'Processing layer {layer.id}'; END$$;
 
 {schemas}
 
-DO $$ BEGIN RAISE NOTICE 'Finished layer {name}'; END$$;
+DO $$ BEGIN RAISE NOTICE 'Finished layer {layer.id}'; END$$;
 """)
 
     if parallel:

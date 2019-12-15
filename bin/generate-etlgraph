@@ -15,7 +15,7 @@ import openmaptiles
 from openmaptiles.tileset import Layer
 
 
-def collect_etldot(layer):
+def collect_etldot(layer: Layer):
     dot = f"""\
 digraph G
 {{
@@ -24,8 +24,8 @@ rankdir=LR;
 """
 
     dot += '\n'
-    for mappingstr in layer.imposm_mappings_str:
-        for line in mappingstr.splitlines():
+    for mapping_file in layer.imposm_mapping_files:
+        for line in mapping_file.read_text().splitlines():
             sline = line.strip(' \t\n\r')
             if sline[:9] == '# etldoc:':
                 dot += sline[9:].strip(' \t\n\r') + '\n'
