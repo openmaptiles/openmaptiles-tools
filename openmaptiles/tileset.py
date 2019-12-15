@@ -1,6 +1,6 @@
-from deprecated import deprecated
 from pathlib import Path
-from typing import List, Generator, Union, Optional, Any, Dict
+from pathlib import Path
+from typing import List, Union, Dict
 
 import sys
 import yaml
@@ -16,9 +16,9 @@ class Field:
         self.description = None
         self.values = None
         if isinstance(definition, str):
-            self.description = definition
+            self.description = definition.strip()
         elif isinstance(definition, dict):
-            self.description = definition.get('description')
+            self.description = definition.get('description', '').strip()
             values = definition.get('values')
             if values:
                 if isinstance(values, dict):
@@ -35,7 +35,7 @@ class Field:
 class Layer:
     @staticmethod
     def parse(layer_filename: Union[str, Path], root_dir: Path = None,
-              tileset: Tileset = None) -> 'Layer':
+              tileset: 'Tileset' = None) -> 'Layer':
         # if layer_filename is a rooted path, the optional root_dir will be ignored
         layer_filename = Path(root_dir or '', layer_filename).resolve()
         layer_dir = layer_filename.parent
@@ -54,7 +54,7 @@ class Layer:
 
     def __init__(self, filename: Path, definition: dict,
                  mapping_files: List[Path], mappings: List[dict],
-                 schemas: List[str], tileset: Tileset):
+                 schemas: List[str], tileset: 'Tileset'):
         self.filename = filename
         self.definition = definition
         self.imposm_mapping_files = mapping_files
@@ -87,7 +87,7 @@ class Layer:
 
     @property
     def description(self) -> str:
-        return self.definition['layer'].get('description', '')
+        return self.definition['layer'].get('description', '').strip()
 
     @property
     def buffer_size(self) -> int:
@@ -188,7 +188,7 @@ class Tileset:
 
     @property
     def description(self) -> str:
-        return self.definition['description']
+        return self.definition.get('description', '').strip()
 
     @property
     def id(self) -> str:

@@ -180,11 +180,10 @@ as mvtl{extras} FROM {query}"""
                 languages_sql = languages_to_sql(self.tileset.languages)
             query = query.format(name_languages=languages_sql)
 
-        geom_fld = layer.geometry_field
         replacement = ''
         if to_mvt_geometry:
             replacement = f"ST_AsMVTGeom(" \
-                          f"{geom_fld}, " \
+                          f"{layer.geometry_field}, " \
                           f"{self.bbox(self.zoom, self.x, self.y)}, " \
                           f"{self.extent}, " \
                           f"{layer.buffer_size}, " \
@@ -198,10 +197,10 @@ as mvtl{extras} FROM {query}"""
             replacement += extra_columns
 
         if replacement:
-            q = query.replace(geom_fld, replacement)
-            if len(q) - len(replacement) + len(geom_fld) != len(query):
+            q = query.replace(layer.geometry_field, replacement)
+            if len(q) - len(replacement) + len(layer.geometry_field) != len(query):
                 raise ValueError(
-                    f"Unable to replace '{geom_fld}' in '{layer.id}' layer, "
+                    f"Unable to replace '{layer.geometry_field}' in {layer.id} layer, "
                     f"expected a single geometry field in the layer query definition")
             query = q
 
