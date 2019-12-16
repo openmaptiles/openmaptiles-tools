@@ -16,18 +16,21 @@ from openmaptiles.tileset import Layer
 from openmaptiles.language import languages_to_sql
 
 
-if __name__ == '__main__':
-    #  print('-------------------- Dev--------------------')
-    args = docopt(__doc__, version=openmaptiles.__version__)
+def main(args):
+    bbox = "ST_SetSRID(" \
+           "'BOX3D(-20037508.34 -20037508.34, 20037508.34 20037508.34)'::box3d, 3857 )"
+    zoom = args['<zoom-level>']
     layer = Layer.parse(args['<layer-definition>'])
 
-    bbox="ST_SetSRID('BOX3D(-20037508.34 -20037508.34, 20037508.34 20037508.34)'::box3d, 3857 )"
-    zoomlevel=args['<zoom-level>']
-    datasource = layer['layer']['datasource']
-    query=datasource['query']
-    name_languages = languages_to_sql([])
-    sql=query.replace('!bbox!',bbox).replace('z(!scale_denominator!)', zoomlevel ).replace('!pixel_width!','1').replace('{name_languages}',name_languages)
+    sql = (layer.query
+           .replace('!bbox!', bbox)
+           .replace('z(!scale_denominator!)', zoom)
+           .replace('!pixel_width!', '1')
+           .replace('{name_languages}', languages_to_sql([])))
 
-    extract_query = re.compile(r'\((.*)\) AS *')
-    match = extract_query.search(sql)
+    match = re.search(r'\((.*)\) AS *', sql)
     print(match.group(1))
+
+
+if __name__ == '__main__':
+    main(docopt(__doc__, version=openmaptiles.__version__))

@@ -8,82 +8,71 @@ Options:
   --help                Show this screen.
   --version             Show version.
 """
-from docopt import docopt
-import os.path
 import distutils.spawn
+import os.path
+import re
+from pathlib import Path
+
+from docopt import docopt
+
 import openmaptiles
 from openmaptiles.tileset import Layer
 
+# search for  '# etldoc:...' and '-- etldoc:...'
+re_mapping = re.compile(r'^\s*#\s*etldoc\s*:(.*)$')
+re_schema = re.compile(r'^\s*--\s*etldoc\s*:(.*)$')
 
-def collect_etldot(layer: Layer):
-    dot = f"""\
+
+def generate_etldoc(layer: Layer):
+    return f"""\
 digraph G
 {{
 /* generated from the source code [by generate-etlgraph v{openmaptiles.__version__}] */
 rankdir=LR;
+
+{parse(layer.imposm_mapping_files, re_mapping)}\
+{parse(layer.schemas, re_schema)}
+}}
 """
 
-    dot += '\n'
-    for mapping_file in layer.imposm_mapping_files:
-        for line in mapping_file.read_text().splitlines():
-            sline = line.strip(' \t\n\r')
-            if sline[:9] == '# etldoc:':
-                dot += sline[9:].strip(' \t\n\r') + '\n'
 
-    for schema in layer.schemas:
-        for line in schema.splitlines():
-            sline = line.strip(' \t\n\r')
-            if sline[:10] == '-- etldoc:':
-                dot += sline[10:].strip(' \t\n\r') + '\n'
-    dot += '\n}\n'
-    return dot
+def parse(content_list: list, matcher: re):
+    result = []
+    for item in content_list:
+        content = item.read_text('utf-8') if isinstance(item, Path) else item
+        for line in content.splitlines():
+            m = matcher.match(line)
+            if m:
+                result.append(m.group(1).strip(' \t\n\r'))
+    if result:
+        return '\n'.join(result) + '\n'
+    return ''
 
 
 def main(args):
     layer = Layer.parse(args['<layer-definition>'])
+    output_base = Path(args['<output-path>'], 'etl_' + layer.filename.stem)
+    dot_file = output_base.with_suffix('.dot')
 
-    layer_path, layer_filename = os.path.split(args['<layer-definition>'])
+    etldoc = generate_etldoc(layer)
+    old_txt = dot_file.read_text('utf-8') if dot_file.exists() else ''
 
-    # add a prefix for a new .dot,.png,.svg file
-    dotbasefile = os.path.join(args['<output-path>'],
-                               'etl_' + layer_filename.split('.')[0])
-
-    dot_filename = dotbasefile + '.dot'
-    old_dot = ''
-
-    print(args['<output-path>'])
-    print(dot_filename)
-
-    etldoc = collect_etldot(layer)
-
-    # IF exists THEN read the old .dot content
-    if os.path.isfile(dot_filename):
-        with open(dot_filename, 'r') as dot_file_r:
-            old_dot = dot_file_r.read()
-            dot_file_r.close()
-
-    # Content is changed ?
-    if etldoc.strip(' \t\n\r') == old_dot.strip(' \t\n\r'):
-        print(f"Not changed dotfile : {layer['layer']['id']}\n")
+    # Only modify if the file content has changes
+    if etldoc.strip(' \t\n\r') == old_txt.strip(' \t\n\r'):
+        print(f"No changes in {dot_file} for layer {layer.id}")
     else:
-        if old_dot == '':
-            print(f"Create dotfile : {layer['layer']['id']}")
-        else:
-            print(f"Update dotfile: {layer['layer']['id']}")
+        print(f"{'Updating' if old_txt else 'Creating'} {dot_file} (layer {layer.id})")
+        dot_file.write_text(etldoc, 'utf-8')
 
-        # Write a new dot file
-        with open(dot_filename, 'wt', encoding='utf-8') as dot_file_w:
-            dot_file_w.write(etldoc)
-
-        # Generate png and svg
+        # Generate png and svg files if `dot` (graphviz) exists
         if distutils.spawn.find_executable('dot'):
-            os.system(f"dot -Tpng {dotbasefile}.dot -o {dotbasefile}.png")
-            os.system(f"dot -Tsvg {dotbasefile}.dot -o {dotbasefile}.svg")
-            print(f"Generated : {dotbasefile} (.dot .svg) ")
+            os.system(f"dot -Tpng {dot_file} -o '{output_base.with_suffix('.png')}'")
+            os.system(f"dot -Tsvg {dot_file} -o '{output_base.with_suffix('.svg')}'")
+            print(f"Generated {output_base}{{.dot, .png, .svg}}")
         else:
+            print(f"Generated {dot_file}")
             print('Warning: Could not find the `dot` command, '
-                  'check the graphviz installation!')
-        print('')
+                  'check if graphviz is installed!')
 
 
 if __name__ == '__main__':

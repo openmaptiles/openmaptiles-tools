@@ -1,9 +1,9 @@
 from pathlib import Path
-from pathlib import Path
 from typing import List, Union, Dict
 
 import sys
 import yaml
+from deprecated import deprecated
 
 
 class Field:
@@ -12,9 +12,9 @@ class Field:
     values: Dict[str, str]
 
     def __init__(self, name: str, definition: Union[str, dict]):
-        self.name = name
-        self.description = None
-        self.values = None
+        self.name = name.strip()
+        self.description = ''
+        self.values = {}
         if isinstance(definition, str):
             self.description = definition.strip()
         elif isinstance(definition, dict):
@@ -34,34 +34,32 @@ class Field:
 
 class Layer:
     @staticmethod
-    def parse(layer_filename: Union[str, Path], root_dir: Path = None,
-              tileset: 'Tileset' = None) -> 'Layer':
-        # if layer_filename is a rooted path, the optional root_dir will be ignored
-        layer_filename = Path(root_dir or '', layer_filename).resolve()
-        layer_dir = layer_filename.parent
-        layer = parse_file(layer_filename)
+    def parse(layer_filename: Union[str, Path]) -> 'Layer':
+        return Layer(layer_filename)
 
-        mapping_files = [Path(layer_dir, ds['mapping_file'])
-                         for ds in layer.get('datasources', [])
-                         if ds['type'] == 'imposm3']
-
-        mappings = [parse_file(f) for f in mapping_files]
-
-        schemas = [Path(layer_dir, f).read_text('utf-8')
-                   for f in layer.get('schema', [])]
-
-        return Layer(layer_filename, layer, mapping_files, mappings, schemas, tileset)
-
-    def __init__(self, filename: Path, definition: dict,
-                 mapping_files: List[Path], mappings: List[dict],
-                 schemas: List[str], tileset: 'Tileset'):
-        self.filename = filename
-        self.definition = definition
-        self.imposm_mapping_files = mapping_files
-        self.imposm_mappings = mappings
-        self.schemas = schemas
+    def __init__(self, filename: Path, tileset: 'Tileset' = None):
         self.tileset = tileset
-        self.fields = {k: Field(k, v) for k, v in definition['layer']['fields'].items()}
+
+        # if layer_filename is a rooted path, the optional root_path will be ignored
+        root_path = tileset.filename.parent if tileset else ''
+        self.filename = Path(root_path, filename).resolve()
+        layer_dir = self.filename.parent
+
+        self.definition = parse_file(self.filename)
+
+        self.imposm_mapping_files = [Path(layer_dir, ds['mapping_file'])
+                                     for ds in self.definition.get('datasources', [])
+                                     if ds['type'] == 'imposm3']
+
+        self.imposm_mappings = [parse_file(f) for f in self.imposm_mapping_files]
+
+        self.schemas = [Path(layer_dir, f).read_text('utf-8')
+                        for f in self.definition.get('schema', [])]
+
+        self.fields = {k: Field(k, v) for k, v in
+                       self.definition['layer']['fields'].items()}
+
+        validate_properties(self, f"Layer {filename}")
 
     # TODO: enable deprecation warning
     # @deprecated(version='3.2.0', reason='use named properties instead')
@@ -99,7 +97,19 @@ class Layer:
 
     @property
     def srs(self) -> str:
-        return self.definition['layer'].get('srs', self.tileset.default_srs)
+        res = self.definition['layer'].get(
+            'srs',
+            self.tileset.default_srs if self.tileset
+            else '+proj=merc +a=6378137 +b=6378137 +lat_ts=0.0 +lon_0=0.0 '
+                 '+x_0=0.0 +y_0=0.0 +k=1.0 +units=m +nadgrids=@null '
+                 '+wktext +no_defs +over')
+        return res
+
+    @property
+    def srid(self) -> str:
+        res = self.definition['layer']['datasource'].get(
+            'srid', self.tileset.default_srid if self.tileset else '900913')
+        return res
 
     @property
     def geometry_field(self) -> str:
@@ -123,12 +133,7 @@ class Layer:
     @property
     def key_field_as_attribute(self) -> bool:
         val = self.definition['layer']['datasource'].get('key_field_as_attribute')
-        return val and val != 'no'
-
-    @property
-    def srid(self) -> str:
-        return self.definition['layer']['datasource'].get('srid',
-                                                          self.tileset.default_srid)
+        return bool(val and val != 'no')
 
     @property
     def query(self) -> str:
@@ -136,23 +141,21 @@ class Layer:
 
 
 class Tileset:
-    filename: str
+    filename: Path
     definition: dict
     layers: List[Layer]
 
     @staticmethod
     def parse(tileset_filename: Union[str, Path]) -> 'Tileset':
-        tileset_filename = Path(tileset_filename).resolve()
-        tileset = parse_file(tileset_filename)['tileset']
-        layers = []
-        for layer_filename in tileset['layers']:
-            layers.append(Layer.parse(layer_filename, tileset_filename.parent))
-        return Tileset(tileset_filename, tileset, layers)
+        return Tileset(tileset_filename)
 
-    def __init__(self, filename, definition, layers):
-        self.filename = filename
-        self.definition = definition
-        self.layers = layers
+    def __init__(self, filename):
+        self.filename = Path(filename).resolve()
+        self.definition = parse_file(self.filename)['tileset']
+        self.layers = []
+        for layer_filename in self.definition['layers']:
+            self.layers.append(Layer(layer_filename, self))
+        validate_properties(self, f"Tileset {filename}")
 
     # TODO: enable deprecation warning
     # @deprecated(version='3.2.0', reason='use named properties instead')
@@ -231,3 +234,18 @@ def parse_file(file: Path) -> dict:
             print(f'Could not parse {file}')
             print(e)
             sys.exit(1)
+
+
+def validate_properties(obj, info):
+    """Ensure that none of the object properties raise errors"""
+    errors = []
+    for attr in dir(obj):
+        try:
+            getattr(obj, attr)
+        except Exception as ex:
+            errors.append((attr, ex))
+    if errors:
+        err = f"\n{info} has invalid data:\n"
+        err += "\n".join((f"  * {n}: {repr(e)}" for n, e in errors))
+        err += "\n"
+        raise ValueError(err)

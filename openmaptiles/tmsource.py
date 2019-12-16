@@ -43,7 +43,7 @@ def generate_layer(layer: Layer, query_tokens, db_params):
             'extent': [-20037508.34, -20037508.34, 20037508.34, 20037508.34],
             'geometry_field': layer.geometry_field,
             'key_field': layer.key_field or '',
-            'key_field_as_attribute': 'yes' if layer.key_field_as_attribute else '',
+            'key_field_as_attribute': layer.key_field_as_attribute,
             'max_size': layer.max_size,
             'port': db_params.port,
             'srid': layer.srid,

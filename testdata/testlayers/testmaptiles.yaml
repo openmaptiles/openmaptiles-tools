@@ -3,6 +3,8 @@ tileset:
     - housenumber/housenumber.yaml
     - enumfield/enumfield.yaml
   name: TestMapTiles v1.0
+  version: 1.1.1
+  id: testmaptiles
   description: "Simple tileset for testing."
   attribution: "<a href=\"http://www.openstreetmap.org/about/\" target=\"_blank\">&copy; OpenStreetMap contributors</a>"
   center: [-12.2168, 28.6135, 4]
