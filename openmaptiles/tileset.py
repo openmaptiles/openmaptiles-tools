@@ -61,8 +61,7 @@ class Layer:
 
         validate_properties(self, f"Layer {filename}")
 
-    # TODO: enable deprecation warning
-    # @deprecated(version='3.2.0', reason='use named properties instead')
+    @deprecated(version='3.2.0', reason='use named properties instead')
     def __getitem__(self, attr):
         if attr in self.definition:
             return self.definition[attr]
@@ -157,8 +156,7 @@ class Tileset:
             self.layers.append(Layer(layer_filename, self))
         validate_properties(self, f"Tileset {filename}")
 
-    # TODO: enable deprecation warning
-    # @deprecated(version='3.2.0', reason='use named properties instead')
+    @deprecated(version='3.2.0', reason='use named properties instead')
     def __getitem__(self, attr):
         if attr in self.definition:
             return self.definition[attr]
