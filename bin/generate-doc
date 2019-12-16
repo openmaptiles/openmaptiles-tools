@@ -24,7 +24,7 @@ def generate_field_doc(field: Field):
 
 def main(args):
     layer = Layer.parse(args['<layer-definition>'])
-    fields_doc = '\n'.join((generate_field_doc(f) for f in layer.fields.values()))
+    fields_doc = '\n'.join((generate_field_doc(f) for f in layer.fields))
     print(f"{layer.description}\n\n## Fields\n\n{fields_doc}\n\n\n")
 
 

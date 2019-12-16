@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import List, Union, Dict
+from typing import List, Union, Dict, Any
 
 import sys
 import yaml
@@ -9,7 +9,7 @@ from deprecated import deprecated
 class Field:
     name: str
     description: str
-    values: Dict[str, str]
+    values: Dict[str, Any]
 
     def __init__(self, name: str, definition: Union[str, dict]):
         self.name = name.strip()
@@ -31,8 +31,21 @@ class Field:
         elif definition:
             raise ValueError(f'Field {name} has an unexpected type {type(definition)}')
 
+    def __str__(self):
+        if self.description:
+            return f"{self.name} -- {self.description}"
+        else:
+            return self.name
+
 
 class Layer:
+    filename: Path
+    definition: dict
+    imposm_mapping_files: List[Path]
+    imposm_mappings: List[dict]
+    schemas: List[str]
+    fields: List[Field]
+
     @staticmethod
     def parse(layer_filename: Union[str, Path]) -> 'Layer':
         return Layer(layer_filename)
@@ -56,10 +69,19 @@ class Layer:
         self.schemas = [Path(layer_dir, f).read_text('utf-8')
                         for f in self.definition.get('schema', [])]
 
-        self.fields = {k: Field(k, v) for k, v in
-                       self.definition['layer']['fields'].items()}
+        self.fields = [Field(k, v) for k, v in
+                       self.definition['layer']['fields'].items()]
 
         validate_properties(self, f"Layer {filename}")
+
+        if any(v.name == self.geometry_field for v in self.fields):
+            raise ValueError(
+                f"Layer '{self.id}' must not have an implicit '{self.geometry_field}' "
+                f"field declared in the 'fields' section of the yaml file")
+        if self.key_field and self.key_field_as_attribute:
+            # If 'yes', we will need to generate a wrapper query that includes
+            # osm_id column twice - once for feature_id, and once as an attribute
+            raise ValueError(f"key_field_as_attribute=yes is not yet implemented")
 
     @deprecated(version='3.2.0', reason='use named properties instead')
     def __getitem__(self, attr):
@@ -112,22 +134,11 @@ class Layer:
 
     @property
     def geometry_field(self) -> str:
-        result = self.definition['layer']['datasource'].get(
-            'geometry_field', 'geometry')
-        if result in self.fields:
-            raise ValueError(
-                f"Layer '{self.id}' must not have the implicit "
-                f"'geometry' field declared in the 'fields' section of the yaml file")
-        return result
+        return self.definition['layer']['datasource'].get('geometry_field', 'geometry')
 
     @property
-    def key_field(self) -> str:
-        result = self.definition['layer']['datasource'].get('key_field')
-        if result and self.key_field_as_attribute:
-            # If 'yes', we will need to generate a wrapper query that includes
-            # osm_id column twice - once for feature_id, and once as an attribute
-            raise ValueError(f"key_field_as_attribute=yes is not yet implemented")
-        return result
+    def key_field(self) -> Union[str, None]:
+        return self.definition['layer']['datasource'].get('key_field')
 
     @property
     def key_field_as_attribute(self) -> bool:
@@ -137,6 +148,13 @@ class Layer:
     @property
     def query(self) -> str:
         return self.definition['layer']['datasource']['query']
+
+    def __str__(self) -> str:
+        if self.tileset:
+            path = self.filename.relative_to(self.tileset.filename.parent)
+        else:
+            path = self.filename
+        return f"{self.id} ({path})"
 
 
 class Tileset:
@@ -222,6 +240,9 @@ class Tileset:
     @property
     def version(self) -> str:
         return self.definition['version']
+
+    def __str__(self) -> str:
+        return f"{self.name} ({self.filename})"
 
 
 def parse_file(file: Path) -> dict:
