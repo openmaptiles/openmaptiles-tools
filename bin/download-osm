@@ -14,6 +14,9 @@ Options:
 
 Any aria2c parameters can be set after the '--' string. For example, set download dir:
     download-osm planet -- -d ./download
+By default, aria2c is executed with --checksum (md5 hash) and --split parameters.
+Split is used to download with as many streams, as download-osm finds.
+Use  --split  or  -s  parameter to override that number.
 """
 
 import asyncio
@@ -262,7 +265,13 @@ async def main(aria2c_args, args):
     use_primary = args['--include-primary']
 
     urls, md5 = await Catalog().init(verbose, use_primary)
-    params = ['aria2c', f'--checksum=md5={md5}'] + aria2c_args + urls
+
+    params = ['aria2c', f'--checksum=md5={md5}']
+    if not any((v for v in aria2c_args if re.match(r'^[\'"]*(-s|--split)', v))):
+        # user has not passed -s or --split, so set it the same url count
+        params.append(f'--split={len(urls)}')
+    params.extend(aria2c_args)
+    params.extend(urls)
 
     print('---- RUNNING aria2c ----')
     if verbose:
