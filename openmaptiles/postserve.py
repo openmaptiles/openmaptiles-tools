@@ -133,10 +133,10 @@ class Postserve:
     pool: Pool
     mvt: MvtGenerator
 
-    def __init__(self, host, port, pghost, pgport, dbname, user, password, metadata,
+    def __init__(self, url, port, pghost, pgport, dbname, user, password, metadata,
                  layers, tileset_path, sql_file, key_column, disable_feature_ids,
                  gzip, verbose, exclude_layers, test_geometry):
-        self.host = host
+        self.url = url
         self.port = port
         self.pghost = pghost
         self.pgport = pgport
@@ -158,7 +158,7 @@ class Postserve:
 
     async def init_connection(self):
         self.metadata["tiles"] = [
-            f"http://{self.host}:{self.port}" + "/tiles/{z}/{x}/{y}.pbf",
+            f"{self.url}" + "/tiles/{z}/{x}/{y}.pbf",
         ]
         self.metadata["vector_layers"] = []
 
@@ -235,7 +235,7 @@ class Postserve:
 
         application.listen(self.port)
         print(f"Postserve started, listening on 0.0.0.0:{self.port}")
-        print(f"Use http://{self.host}:{self.port} as the data source")
+        print(f"Use {self.url} as the data source")
         IOLoop.instance().start()
 
 
