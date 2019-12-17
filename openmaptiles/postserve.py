@@ -133,7 +133,7 @@ class Postserve:
     pool: Pool
     mvt: MvtGenerator
 
-    def __init__(self, url, port, pghost, pgport, dbname, user, password, metadata,
+    def __init__(self, url, port, pghost, pgport, dbname, user, password,
                  layers, tileset_path, sql_file, key_column, disable_feature_ids,
                  gzip, verbose, exclude_layers, test_geometry):
         self.url = url
@@ -143,7 +143,6 @@ class Postserve:
         self.dbname = dbname
         self.user = user
         self.password = password
-        self.metadata = metadata
         self.tileset_path = tileset_path
         self.sql_file = sql_file
         self.layer_ids = layers
@@ -156,11 +155,24 @@ class Postserve:
 
         self.tileset = Tileset.parse(self.tileset_path)
 
+        self.metadata = dict(
+            format="pbf",
+            name=self.tileset.name,
+            id=self.tileset.id,
+            bounds=self.tileset.bounds,
+            center=self.tileset.center,
+            maxzoom=self.tileset.maxzoom,
+            minzoom=self.tileset.minzoom,
+            version=self.tileset.version,
+            attribution=self.tileset.attribution,
+            description=self.tileset.description,
+            pixel_scale=self.tileset.pixel_scale,
+            tilejson="2.0.0",
+            tiles=[f"{self.url}" + "/tiles/{z}/{x}/{y}.pbf"],
+            vector_layers=[]
+        )
+
     async def init_connection(self):
-        self.metadata["tiles"] = [
-            f"{self.url}" + "/tiles/{z}/{x}/{y}.pbf",
-        ]
-        self.metadata["vector_layers"] = []
 
         async with self.pool.acquire() as conn:
             await show_settings(conn)
