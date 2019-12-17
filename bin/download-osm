@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 """
 Usage:
-  download-osm planet [--verbose] [--include-primary] [ -- any aria2c parameters ]
+  download-osm planet [--verbose] [--include-primary] [--] [<arguments>...]
   download-osm --help
   download-osm --version
 
@@ -20,21 +20,18 @@ Use  --split  or  -s  parameter to override that number.
 """
 
 import asyncio
-import sys
+import re
+import subprocess
 from collections import defaultdict
 from dataclasses import dataclass
 from datetime import datetime
+from typing import List, Dict, Tuple
 
 import aiohttp
-import re
-
-import subprocess
 from aiohttp import ClientSession
 from bs4 import BeautifulSoup
 # noinspection PyProtectedMember
-from docopt import docopt, DocoptExit
-from typing import List, Dict, Tuple
-
+from docopt import docopt
 from tabulate import tabulate
 
 import openmaptiles
@@ -254,38 +251,25 @@ async def fetch(session: ClientSession, url: str):
         return await resp.text()
 
 
-async def main(aria2c_args, args):
-    # Workaround for docopt limitation:
-    # We need to print  [ -- any aria2c parameters ]  in the help message,
-    # but not allow any of those words as parameters.
-    if args['any'] or args['aria2c'] or args['parameters']:
-        raise DocoptExit()
-
+async def main(args):
     verbose = args['--verbose']
     use_primary = args['--include-primary']
+    aria2c_args = args['<arguments>']
 
     urls, md5 = await Catalog().init(verbose, use_primary)
 
     params = ['aria2c', f'--checksum=md5={md5}']
-    if not any((v for v in aria2c_args if re.match(r'^[\'"]*(-s|--split)', v))):
-        # user has not passed -s or --split, so set it the same url count
+    if not any((v for v in aria2c_args if v == '-s' or v.startswith('--split'))):
+        # user has not passed -s or --split, so use as many streams as urls
         params.append(f'--split={len(urls)}')
     params.extend(aria2c_args)
     params.extend(urls)
 
     print('---- RUNNING aria2c ----')
-    if verbose:
-        print(f"Command line:\n  {subprocess.list2cmdline(params)}\n")
+    print(f"  {subprocess.list2cmdline(params)}\n")
     res = subprocess.run(params)
     exit(res.returncode)
 
 
 if __name__ == '__main__':
-    argv = sys.argv[1:]
-    argv_aria2c = []
-    if '--' in argv:
-        argv_aria2c = argv[argv.index('--') + 1:]
-        argv = argv[:argv.index('--')]
-    asyncio.run(
-        main(argv_aria2c,
-             docopt(__doc__, argv=argv, version=openmaptiles.__version__)))
+    asyncio.run(main(docopt(__doc__, version=openmaptiles.__version__)))
