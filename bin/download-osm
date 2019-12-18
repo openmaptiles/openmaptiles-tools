@@ -1,13 +1,33 @@
 #!/usr/bin/env python
 """
 Usage:
-  download-osm planet [--verbose] [--include-primary] [--] [<arguments>...]
+  download-osm planet [-l] [-p] [-n] [-v] [--] [<arguments>...]
+  download-osm url       <url>  [-n] [-v] [--] [<arguments>...]
+  download-osm geofabrik <id>   [-n] [-v] [--] [<arguments>...]
+  download-osm bbbike    <id>   [-n] [-v] [--] [<arguments>...]
+  download-osm osmfr     <id>   [-n] [-v] [--] [<arguments>...]
   download-osm --help
   download-osm --version
 
+Download types:
+  planet           Loads latest planet file (50+ GB) from all known mirrors
+  url <url>        Loads file from the specific <url>.
+                   If <url>.md5 is available, download-osm will use it to validate.
+  geofabrik <id>   Loads file from Geofabrik by ID, where the ID is part of the URL, e.g.
+                   "australia-oceania/new-zealand". Download will add '-latest.osm.pbf'.
+                   See https://download.geofabrik.de/
+  bbbike <id>      Loads file from BBBike by extract ID, for example "Austin".
+                   See https://download.bbbike.org/osm/
+  osmfr <id>       Loads file from openstreetmap.fr by extract ID, for example
+                   "central-america/costa_rica".  Download will add '-latest.osm.pbf'.
+                   See https://download.openstreetmap.fr/extracts
+
 Options:
-  --include-primary     If set, will download from the main osm.org (please avoid
+  -l --force-latest     Always download the very latest available planet file,
+                        even if there are too few mirrors that have it.
+  -p --include-primary  If set, will download from the main osm.org (please avoid
                         using this parameter to reduce the load on the primary server)
+  -n --dry-run          If set, do all the steps except the actual data download.
   -v --verbose          Print additional debugging information
   --help                Show this screen.
   --version             Show version.
@@ -31,7 +51,7 @@ import aiohttp
 from aiohttp import ClientSession
 from bs4 import BeautifulSoup
 # noinspection PyProtectedMember
-from docopt import docopt
+from docopt import docopt, DocoptExit, __all__ as docopt_funcs
 from tabulate import tabulate
 
 import openmaptiles
@@ -54,17 +74,15 @@ class Catalog:
             Site('US', 'https://ftpmirror.your.org/pub/openstreetmap/pbf/'),
         ]
 
-    async def init(self, verbose: bool, use_primary: bool) -> Tuple[List[str], str]:
+    async def init(self,
+                   session: ClientSession, verbose: bool,
+                   use_primary: bool, force_latest: bool) -> Tuple[List[str], str]:
         """Load the list of all available sources from all mirror sites,
         and pick the most recent file that is widely available.
         Returns a list of urls and the expected md5 hash.
         """
         sources_by_hash: Dict[str, List[Source]] = defaultdict(list)
-        async with aiohttp.ClientSession(headers={
-            'User-Agent': 'OpenMapTiles download-osm '
-                          '(https://github.com/openmaptiles/openmaptiles-tools)'
-        }) as session:
-            await asyncio.wait([v.init(session, verbose) for v in self.sites])
+        await asyncio.wait([v.init(session, verbose) for v in self.sites])
         for site in self.sites:
             for s in site.sources:
                 sources_by_hash[s.hash].append(s)
@@ -103,7 +121,7 @@ class Catalog:
                 for s in stats]
         print(tabulate(info, headers="keys") + '\n')
 
-        if len(stats) > 1 and stats[0][1] * 1.5 < stats[1][1]:
+        if not force_latest and len(stats) > 1 and stats[0][1] * 1.5 < stats[1][1]:
             hash_to_download = stats[1][2]
             info = f" because the latest {stats[0][0]:%Y-%m-%d} is not widespread yet"
         else:
@@ -117,12 +135,12 @@ class Catalog:
         if len(src_list) > 2 and not use_primary:
             src_list = [v for v in src_list if not v.site.avoid_by_default]
 
-        print(f"Will download {ts} "
-              f"(size={src_list[0].file_len:,} B, md5={src_list[0].hash}, "
-              f"regions={','.join(sorted((v.site.country for v in src_list)))}){info}")
+        print(f"Will download planet published on {ts}, "
+              f"size={src_list[0].size_mb()}, md5={src_list[0].hash}, "
+              f"using {len(src_list)} sources{info}")
         if verbose:
-            info = [dict(country=s.site.country, url=s.url) for s in src_list]
-            print(tabulate(info, headers="keys") + '\n')
+            print(tabulate([dict(country=s.site.country, url=s.url) for s in src_list],
+                           headers="keys") + '\n')
 
         return [s.url for s in src_list], hash_to_download
 
@@ -166,8 +184,8 @@ class Site:
                 [(v.text.strip(), v['href'].strip())
                  for v in soup.find_all('a') if 'href' in v.attrs],
                 verbose)
-            await asyncio.wait([v.load_hash(session) for v in sources] +
-                               [v.load_metadata(session) for v in sources])
+            await asyncio.wait([v.load_hash(session, verbose) for v in sources] +
+                               [v.load_metadata(session, verbose) for v in sources])
             sources = [s for s in sources if s.is_valid]
             if not sources:
                 raise ValueError(f"No sources found")
@@ -195,7 +213,7 @@ class Site:
                 if not is_md5:
                     if date in all_sources:
                         raise ValueError(f"{date} already already exists")
-                    all_sources[date] = Source(self, name, url, dt)
+                    all_sources[date] = Source(name, url, dt, self)
                 else:
                     if date not in all_sources:
                         raise ValueError(f"md5 file exists, but data file does not")
@@ -214,62 +232,119 @@ class Site:
 
 @dataclass
 class Source:
-    site: Site
-    text: str
+    name: str
     url: str
-    timestamp: datetime
+    timestamp: datetime = None
+    site: Site = None
     url_hash: str = None
     hash: str = None
     file_len: int = None
     is_valid: bool = False
 
     def __str__(self):
-        return f"{self.text} from {self.url} ({self.site.country})"
+        res = f"{self.name} from {self.url}"
+        if self.site:
+            res = f"{res} ({self.site.country})"
+        return res
 
-    async def load_hash(self, session: ClientSession):
-        if self.url_hash:
+    async def load_hash(self, session: ClientSession, verbose: bool):
+        if not self.url_hash:
+            return
+        try:
+            if verbose:
+                print(f"Getting md5 checksum from {self.url_hash}")
             self.hash = (await fetch(session, self.url_hash)).strip().split(' ')[0]
+        except Exception as ex:
+            print_err(f"Unable to load md5 hash for {self}: {ex}")
 
-    async def load_metadata(self, session: ClientSession):
+    async def load_metadata(self, session: ClientSession, verbose: bool):
         if not self.url:
             return
         try:
+            if verbose:
+                print(f"Getting content length for {self.url}")
             async with session.head(self.url) as resp:
                 if resp.status >= 400:
-                    raise ValueError(f"Status={resp.status} for HEAD req {self.url}")
+                    raise ValueError(f"Status={resp.status} for HEAD request")
                 if 'Content-Length' in resp.headers:
                     self.file_len = int(resp.headers['Content-Length'])
                     self.is_valid = True
         except Exception as ex:
             print_err(f"Unable to load metadata for {self}: {ex}")
 
+    def size_mb(self):
+        return ("Unknown" if self.file_len is None
+                else f"{self.file_len / 1024.0 / 1024:,.1f} MB")
+
 
 async def fetch(session: ClientSession, url: str):
     async with session.get(url) as resp:
         if resp.status >= 400:
-            raise ValueError(f"Received status={resp.status} loading {url}")
+            raise ValueError(f"Received status={resp.status}")
         return await resp.text()
 
 
 async def main(args):
-    verbose = args['--verbose']
-    use_primary = args['--include-primary']
-    aria2c_args = args['<arguments>']
+    dry_run = args['--dry-run']
+    aria2c_args = args.arguments
 
-    urls, md5 = await Catalog().init(verbose, use_primary)
+    async with aiohttp.ClientSession(headers={
+        'User-Agent': 'OpenMapTiles download-osm '
+                      '(https://github.com/openmaptiles/openmaptiles-tools)'
+    }) as session:
+        if args.planet:
+            use_primary = args['--include-primary']
+            force_latest = args['--force-latest']
+            urls, md5 = await Catalog().init(session, args.verbose, use_primary,
+                                             force_latest)
+        else:
+            name = args.id if args.id else 'raw url'
+            if args.url:
+                url = args.url
+            elif args.geofabrik:
+                url = f"https://download.geofabrik.de/{args.id}-latest.osm.pbf"
+            elif args.bbbike:
+                url = f"https://download.bbbike.org/" \
+                      f"osm/bbbike/{args.id}/{args.id}.osm.pbf"
+            elif args.osmfr:
+                url = f"http://download.openstreetmap.fr/" \
+                      f"extracts/{args.id}-latest.osm.pbf"
+            else:
+                raise DocoptExit()
+            src = Source(name, url, url_hash=url + '.md5')
+            await asyncio.wait([src.load_hash(session, args.verbose),
+                                src.load_metadata(session, args.verbose)])
+            if not src.is_valid:
+                print_err(f"Unable to load {src.name} metadata, aborting.")
+                exit(1)
+            urls = [src.url]
+            md5 = src.hash
+            print(f"Will download {src.url} (size={src.size_mb()}, md5={src.hash})")
 
-    params = ['aria2c', f'--checksum=md5={md5}']
+    params = ['aria2c']
+    if md5:
+        params.append(f'--checksum=md5={md5}')
     if not any((v for v in aria2c_args if v == '-s' or v.startswith('--split'))):
         # user has not passed -s or --split, so use as many streams as urls
         params.append(f'--split={len(urls)}')
     params.extend(aria2c_args)
     params.extend(urls)
 
-    print('---- RUNNING aria2c ----')
     print(f"  {subprocess.list2cmdline(params)}\n")
-    res = subprocess.run(params)
-    exit(res.returncode)
+    if not dry_run:
+        res = subprocess.run(params)
+        exit(res.returncode)
+    else:
+        print("Data is not downloaded (used with --dry-run)")
 
 
 if __name__ == '__main__':
+    if 'magic' not in docopt_funcs:
+        print("""
+Found invalid version of docopt. Must use docopt_ng instead. Uninstall it with
+  $ python3 -m pip uninstall docopt
+and re-install all required dependencies with
+  $ python3 -m pip install -r requirements.txt
+""")
+        exit(1)
     asyncio.run(main(docopt(__doc__, version=openmaptiles.__version__)))
