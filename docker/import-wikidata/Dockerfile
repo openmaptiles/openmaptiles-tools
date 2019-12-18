@@ -7,7 +7,8 @@ RUN mkdir -p /usr/src/app
 WORKDIR /usr/src/app
 
 COPY . /usr/src/app
-RUN pip install .
+RUN pip install . \
+    && mv bin/* .
 
 WORKDIR /import
 VOLUME /import
