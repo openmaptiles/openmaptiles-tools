@@ -1,5 +1,5 @@
-VERSION := $(shell cat ../../VERSION)
-DOCKER_IMAGE := openmaptiles/import-osm
+VERSION ?= $(shell grep __version__ ../../openmaptiles/__init__.py | sed -E 's/^(.*"([^"]+)".*|.*)$$/\2/')
+DOCKER_IMAGE ?= openmaptiles/import-osm
 
 .PHONY: build
 build:

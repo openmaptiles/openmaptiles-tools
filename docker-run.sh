@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 set -e
 
-: "${VERSION:=$(cat "$(dirname "$0")/VERSION")}"
+# Get package version from the openmaptiles/__init__.py
+: "${VERSION:=$(grep '__version__' "$(dirname "$0")/openmaptiles/__init__.py" | sed -E 's/^(.*"([^"]+)".*|.*)$/\2/')}"
 : "${IMAGE_NAME:=openmaptiles/openmaptiles-tools}"
 : "${DOCKER_IMAGE:=${IMAGE_NAME}:${VERSION}}"
 : "${DOCKER_USER:=$(id -u "${USER}"):$(id -g "${USER}")}"

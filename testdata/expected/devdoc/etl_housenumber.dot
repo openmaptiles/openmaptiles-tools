@@ -1,6 +1,6 @@
 digraph G
 {
-/* generated from the source code [by generate-etlgraph v3.1.0] */
+/* generated from the source code [by generate-etlgraph v3.2.0] */
 rankdir=LR;
 
 imposm3 -> osm_housenumber_point
