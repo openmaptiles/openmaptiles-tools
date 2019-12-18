@@ -60,7 +60,7 @@ PYTHONPATH=$PWD python3 bin/generate-imposm3 ../openmaptiles/openmaptiles.yaml
 
 Use `make test` to run all of the tests locally.  The Makefile will build a docker image with all the code, run all tests, and compare the build result with the files in the [testdata/expected](./testdata/expected) dir.
 
-Run `make rebuild-expected` after you modify the output produced by the generation scripts. This will re-create the expected test results to match the actual ones, and make sure the changes are what you want. 
+Run `make rebuild-expected` after you modify the output produced by the generation scripts. This will re-create the expected test results to match the actual ones, and make sure the changes are what you want.
 
 ## Data Concepts
 
@@ -99,12 +99,11 @@ layer:
           subclass: ['school','kindergarten','uni%']
         railway:
           # (subclass='station' AND mapping_key='railway')
-          # OR subclass in ('halt','tram_stop','subway') 
+          # OR subclass in ('halt','tram_stop','subway')
           - __AND__:
               subclass: 'station'
               mapping_key: 'railway'
           - subclass: ['halt', 'tram_stop', 'subway']
-        
 schema:
   - ./building.sql
 datasources:
@@ -127,7 +126,7 @@ SELECT CASE
     WHEN "subclass" IN ('school', 'kindergarten')
         OR "subclass" LIKE 'uni%' THEN 'school'
     WHEN ("subclass" = 'station' AND "mapping_key" = 'railway')
-        OR "subclass" in ('halt','tram_stop','subway') THEN 'railway' 
+        OR "subclass" in ('halt','tram_stop','subway') THEN 'railway'
 END, ...
 ```
 
@@ -199,7 +198,7 @@ Use `postserve <tileset>` to start serving. Use `--help` to get the list of Post
 docker run -it --rm -u $(id -u ${USER}):$(id -g ${USER}) \
     -v "${PWD}:/tileset" --net=host \
     openmaptiles/openmaptiles-tools \
-    postserve openmaptiles.yaml 
+    postserve openmaptiles.yaml
 ```
 
 #### Viewing dynamic tiles
@@ -262,7 +261,7 @@ Uses tileset definition to create a PostgreSQL
  [create function](https://www.postgresql.org/docs/9.1/sql-createfunction.html) SQL code
  to generate an entire vector tile in the Mapbox Vector Tile format with a single `getTile(z,x,y)` query
  using PostGIS MVT support.
- 
+
 Use `--help` to get all parameters.
 
 **NOTE:** Current [openmaptiles/postgis](https://github.com/openmaptiles/postgis) image (v2.9 and before) has incorrect
@@ -353,7 +352,7 @@ mbtiles-tools ./data/tiles.mbtiles meta-all
 ```
 
 ### Add simple metadata to mbtiles file
-Updates `metadata` table in the mbtiles file. See [mbtiles-tools](#mbtiles-file-tools) for other tools. 
+Updates `metadata` table in the mbtiles file. See [mbtiles-tools](#mbtiles-file-tools) for other tools.
 Example:
 ```
 generate-metadata ./data/tiles.mbtiles
