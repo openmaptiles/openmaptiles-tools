@@ -176,24 +176,24 @@ class Postserve:
                 exclude_layers=self.exclude_layers,
             )
             pg_types = await get_sql_types(conn)
-            for layer_id, layer_def in self.mvt.get_layers():
-                fields = await self.mvt.validate_layer_fields(conn, layer_id, layer_def)
+            for layer_id, layer in self.mvt.get_layers():
+                fields = await self.mvt.validate_layer_fields(conn, layer_id, layer)
                 unknown = {
                     name: oid for name, oid in fields.items()
-                    if oid not in pg_types and name != layer_def.geometry_field
+                    if oid not in pg_types and name != layer.geometry_field
                 }
                 if unknown:
                     print(f"Ignoring fields with unknown SQL types (OIDs): "
                           f"[{', '.join([f'{n} ({o})' for n, o in unknown.items()])}]")
 
                 self.metadata["vector_layers"].append(dict(
-                    id=(layer_def["layer"]['id']),
+                    id=layer.id,
                     fields={name: pg_types[type_oid]
                             for name, type_oid in fields.items()
                             if type_oid in pg_types},
                     maxzoom=self.metadata["maxzoom"],
                     minzoom=self.metadata["minzoom"],
-                    description=layer_def["layer"]["description"],
+                    description=layer.description,
                 ))
 
     def serve(self):
