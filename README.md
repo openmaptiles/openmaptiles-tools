@@ -346,6 +346,12 @@ You need to provide PostgreSQL database connection settings before generating th
 generate-tm2source <tileset> --host="localhost" --port=5432 --database="osm" --user="osm" --password="osm"
 ```
 
+### Import OSM Borders
+
+The **import-borders** script will take the first PBF file from the `/import` dir (by default), extract borders with [osmborder tool](https://github.com/pnorman/osmborder), and import resulting CSV file into the database as osm_border_linestring table (by default).
+
+This utility requires PostgreSQL's PG* environment variables.
+
 ## Importing into Postgres
 The `import-sql` script can execute a single SQL file in Postgres when the file is given as the first parameter.
 
