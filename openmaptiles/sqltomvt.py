@@ -122,14 +122,14 @@ SELECT {concatenate_layers} AS mvt{extras} FROM (
 
         return query + '\n'
 
-    def generate_layer(self, layer_def: Layer):
+    def generate_layer(self, layer: Layer):
         """
         Convert layer definition into a SQL statement.
         """
         columns = None
         if self.test_geometry:
-            columns = f"(1-ST_IsValid({layer_def.geometry_field})::int) as bad_geos"
-        query = self.layer_to_query(layer_def, extra_columns=columns)
+            columns = f"(1-ST_IsValid({layer.geometry_field})::int) as bad_geos"
+        query = self.layer_to_query(layer, extra_columns=columns)
 
         extras = ''
         if self.test_geometry:
@@ -142,10 +142,10 @@ SELECT {concatenate_layers} AS mvt{extras} FROM (
         # PostGIS < v3 did not support feature_ids
         # TODO: remove key field (osm_id) from query result to prevent
         # it being used as a regular attribute
-        key_fld = layer_def.key_field if self.use_feature_id else None
+        key_fld = layer.key_field if self.use_feature_id else None
 
         # Combine all layer's features into a single MVT blob representing one layer
-        as_mvt_params = f"'{layer_def['layer']['id']}', {self.extent}, 'mvtgeometry'"
+        as_mvt_params = f"'{layer.id}', {self.extent}, 'mvtgeometry'"
         if self.postgis_ver < (2, 5):
             # Postgis for a long time used a dev PostGIS version with legacy param order
             # ST_AsMVT(text, integer, text, anyelement)
@@ -166,30 +166,27 @@ as mvtl{extras} FROM {query}"""
         return query
 
     def layer_to_query(self,
-                       layer_def: Layer,
+                       layer: Layer,
                        to_mvt_geometry=True,
                        mvt_geometry_wrapper: Callable[[str], str] = None,
                        extra_columns: str = None,
                        languages_sql: str = None) -> str:
-        layer = layer_def["layer"]
-        query = layer['datasource']['query']
+        query = layer.query
         if self.zoom is not None:
-            query = self.substitute_sql(query, layer_def, self.zoom, self.x, self.y)
+            query = self.substitute_sql(query, layer, self.zoom, self.x, self.y)
         has_languages = '{name_languages}' in query
         if has_languages:
             if languages_sql is None:
-                languages = self.tileset.definition.get('languages', [])
-                languages_sql = languages_to_sql(languages)
+                languages_sql = languages_to_sql(self.tileset.languages)
             query = query.format(name_languages=languages_sql)
 
-        geom_fld = layer_def.geometry_field
         replacement = ''
         if to_mvt_geometry:
             replacement = f"ST_AsMVTGeom(" \
-                          f"{geom_fld}, " \
+                          f"{layer.geometry_field}, " \
                           f"{self.bbox(self.zoom, self.x, self.y)}, " \
                           f"{self.extent}, " \
-                          f"{layer['buffer_size']}, " \
+                          f"{layer.buffer_size}, " \
                           f"true)"
             if mvt_geometry_wrapper:
                 replacement = mvt_geometry_wrapper(replacement)
@@ -200,10 +197,10 @@ as mvtl{extras} FROM {query}"""
             replacement += extra_columns
 
         if replacement:
-            q = query.replace(geom_fld, replacement)
-            if len(q) - len(replacement) + len(geom_fld) != len(query):
+            q = query.replace(layer.geometry_field, replacement)
+            if len(q) - len(replacement) + len(layer.geometry_field) != len(query):
                 raise ValueError(
-                    f"Unable to replace '{geom_fld}' in '{layer['id']}' layer, "
+                    f"Unable to replace '{layer.geometry_field}' in {layer.id} layer, "
                     f"expected a single geometry field in the layer query definition")
             query = q
 
@@ -213,18 +210,17 @@ as mvtl{extras} FROM {query}"""
         margin_str = '' if margin is None else f", {margin}"
         return f"{self.tile_envelope}({zoom}, {x}, {y}{margin_str})"
 
-    def substitute_sql(self, query, layer_def: Layer, zoom, x, y):
+    def substitute_sql(self, query, layer: Layer, zoom, x, y):
         # A zoom 0 tile has width/height of 40075016.6855785 units
         # Buffer expressed as a percentage of a tile width gives us this formula.
         # Every subsequent zoom divides it by 2
-        buffer_size = layer_def["layer"]['buffer_size']
-        if buffer_size > 0:
+        if layer.buffer_size > 0:
             if not self.tile_envelope_margin:
-                percentage = 40075016.6855785 * buffer_size / self.extent
+                percentage = 40075016.6855785 * layer.buffer_size / self.extent
                 bbox = f"ST_Expand({self.bbox(zoom, x, y)}, {percentage}/2^{zoom})"
             else:
                 # Once https://github.com/postgis/postgis/pull/514 is merged
-                bbox = self.bbox(zoom, x, y, float(buffer_size) / self.extent)
+                bbox = self.bbox(zoom, x, y, float(layer.buffer_size) / self.extent)
         else:
             bbox = self.bbox(zoom, x, y)
 
@@ -241,18 +237,18 @@ as mvtl{extras} FROM {query}"""
         return query
 
     async def validate_layer_fields(
-        self, connection: Connection, layer_id: str, layer_def: Layer
+        self, connection: Connection, layer_id: str, layer: Layer
     ) -> Dict[str, str]:
         """Validate that fields in the layer definition match the ones
         returned by the dummy (0-length) SQL query.
         Returns field names => SQL types (oid)."""
-        query_field_map, languages = await self.get_sql_fields(connection, layer_def)
+        query_field_map, languages = await self.get_sql_fields(connection, layer)
         query_fields = set(query_field_map.keys())
-        layer_fields = layer_def.get_fields()
+        layer_fields = layer.get_fields()
         if languages:
             layer_fields += language_codes_to_names(languages)
         layer_fields = set(layer_fields)
-        geom_fld = layer_def.geometry_field
+        geom_fld = layer.geometry_field
         if geom_fld not in query_fields:
             raise ValueError(
                 f"Layer '{layer_id}' query does not generate expected '{geom_fld}'"
@@ -274,22 +270,22 @@ as mvtl{extras} FROM {query}"""
         return query_field_map
 
     async def get_sql_fields(
-        self, connection: Connection, layer_def: Layer
+        self, connection: Connection, layer: Layer
     ) -> Tuple[Dict[str, str], Iterable[str]]:
         """Get field names => SQL types (oid) by executing a dummy query"""
-        query = layer_def["layer"]['datasource']['query']
+        query = layer.query
         if '{name_languages}' in query:
-            languages = self.tileset.definition.get('languages', [])
+            languages = self.tileset.languages
             query = query.format(name_languages=languages_to_sql(languages))
         else:
             languages = False
-        query = self.substitute_sql(query, layer_def, 0, 0, 0)
+        query = self.substitute_sql(query, layer, 0, 0, 0)
         st = await connection.prepare(f"SELECT * FROM {query} WHERE false LIMIT 0")
         query_field_map = {fld.name: fld.type.oid for fld in st.get_attributes()}
         return query_field_map, languages
 
     def get_layers(self) -> Iterable[Tuple[str, Layer]]:
-        all_layers = [(l["layer"]['id'], l) for l in self.tileset.layers]
+        all_layers = [(v.id, v) for v in self.tileset.layers]
         if not all_layers:
             raise DocoptExit('Could not find any layer definitions')
         duplicates = find_duplicates([k for k, v in all_layers])
@@ -312,7 +308,6 @@ as mvtl{extras} FROM {query}"""
             raise DocoptExit(
                 f"Unable to find layer [{', '.join(unknown)}]. Available layers:\n" +
                 '\n'.join(f"* {k}" + (
-                    f"\n{v['layer']['description']}" if v['layer'].get('description')
-                    else ''
+                    f"\n{v.description}" if v.description else ''
                 ) for k, v in all_layers)
             )

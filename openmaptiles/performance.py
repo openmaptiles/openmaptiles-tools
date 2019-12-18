@@ -83,10 +83,10 @@ class PerfTester:
         if test_all:
             # Do this after validating individual tests, they are ignored but validated
             tests = [v for v in TEST_CASES.keys() if v != 'null']
-        all_layers = [l["layer"]['id'] for l in self.tileset.layers]
+        all_layers = [v.id for v in self.tileset.layers]
         if layers and exclude_layers:
             # inverse layers list
-            layers = [l for l in all_layers if l not in layers]
+            layers = [v for v in all_layers if v not in layers]
         elif not layers and per_layer:
             layers = all_layers
         # Keep the order, but ensure no duplicates
