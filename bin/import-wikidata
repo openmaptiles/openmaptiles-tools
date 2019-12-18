@@ -132,7 +132,8 @@ def wd_query(sparql):
         data={'query': sparql},
         headers={
             'Accept': 'application/sparql-results+json',
-            'User-Agent': 'OpenMapTiles OSM name resolver (https://github.com/openmaptiles/openmaptiles)'
+            'User-Agent': f'OpenMapTiles OSM name resolver {openmaptiles.__version__}'
+                          '(https://github.com/openmaptiles/openmaptiles)'
         })
     try:
         if not r.ok:

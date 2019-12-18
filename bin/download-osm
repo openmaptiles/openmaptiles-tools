@@ -289,7 +289,7 @@ async def main(args):
     aria2c_args = args.arguments
 
     async with aiohttp.ClientSession(headers={
-        'User-Agent': 'OpenMapTiles download-osm '
+        'User-Agent': f'OpenMapTiles download-osm {openmaptiles.__version__}'
                       '(https://github.com/openmaptiles/openmaptiles-tools)'
     }) as session:
         if args.planet:
