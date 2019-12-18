@@ -3,7 +3,7 @@ from typing import Union
 
 from sys import stderr
 
-from .tileset import Tileset
+from openmaptiles.tileset import Tileset, Layer
 
 
 def collect_sql(tileset_filename, parallel=False, nodata=False):
@@ -53,27 +53,21 @@ $$ LANGUAGE SQL IMMUTABLE;
 
 
 class FieldExpander:
-    def __init__(self, field, layer, indent):
-        self.field = field
+    def __init__(self, field: str, layer: Layer, indent: str):
+        field = [v for v in layer.fields if v.name == field]
+        if len(field) != 1:
+            raise ValueError(f"Field {field} was not found in layer {layer.id}")
+        if not field[0].values:
+            raise ValueError(f"Field '{field[0].name}' in layer {layer.id} "
+                             f"has no defined values")
+        self.field = field[0]
         self.layer = layer
         self.indent = indent
-        self.layer_id = self.layer.definition['layer']['id']
 
     def parse(self):
-        fields = self.layer.definition['layer']['fields']
-        fld = self.field
-        if fld not in fields:
-            raise ValueError(f"Field '{fld}' not found in the layer definition file")
-        if 'values' not in fields[fld]:
-            raise ValueError(
-                f"Field '{fld}' has no values defined in the layer definition file")
-        values = fields[fld]['values']
-        if not isinstance(values, dict):
-            raise ValueError(f"Definition for {fld}/values has to be a dictionary")
-
         conditions = []
         ignored = []
-        for map_to, mapping in values.items():
+        for map_to, mapping in self.field.values.items():
             # mapping is a dictionary of input_fields -> (a value or a list of values)
             # If it is not a dictionary, skip it
             if not isinstance(mapping, dict) and not isinstance(mapping, list):
@@ -85,8 +79,8 @@ class FieldExpander:
             else:
                 ignored.append(map_to)
         if ignored and not stderr.isatty():
-            print(f"-- Assuming manual SQL handling of field '{fld}' values "
-                  f"[{','.join(ignored)}] in layer {self.layer_id}",
+            print(f"-- Assuming manual SQL handling of field '{self.field.name}' "
+                  f"values [{','.join(ignored)}] in layer {self.layer.id}",
                   file=stderr)
         return self.indent + f'\n{self.indent}'.join(conditions)
 
@@ -94,8 +88,8 @@ class FieldExpander:
         if isinstance(mapping, list):
             expressions = [self.to_expression(map_to, v, top=False) for v in mapping]
         elif not isinstance(mapping, dict):
-            raise ValueError(f"Definition for {self.field}/values/{map_to} "
-                             f"in layer {self.layer_id} must be a list or a dictionary")
+            raise ValueError(f"Definition for {self.field.name}/values/{map_to} "
+                             f"in layer {self.layer.id} must be a list or a dictionary")
         elif list(mapping.keys()) == ['__AND__']:
             return self.to_expression(map_to, mapping['__AND__'], 'AND', top)
         elif list(mapping.keys()) == ['__OR__']:
@@ -103,8 +97,8 @@ class FieldExpander:
         else:
             if '__AND__' in mapping or '__OR__' in mapping:
                 raise ValueError(
-                    f"Definition for {self.field}/values/{map_to} in layer "
-                    f"{self.layer_id} mixes __AND__ or __OR__ with values")
+                    f"Definition for {self.field.name}/values/{map_to} in layer "
+                    f"{self.layer.id} mixes __AND__ or __OR__ with values")
             expressions = []
             for in_fld, in_vals in mapping.items():
                 in_fld = self.sql_field(in_fld)
@@ -130,8 +124,8 @@ class FieldExpander:
                    (' ' if len(expressions) == 1 else f'\n{self.indent}    ')
             return f"WHEN {expr}THEN {self.sql_value(map_to)}"
         elif not expressions:
-            raise ValueError(f"Invalid subexpression {self.field}/values/{map_to} "
-                             f"in layer {self.layer_id} - empty sub-conditions")
+            raise ValueError(f"Invalid subexpression {self.field.name}/values/{map_to} "
+                             f"in layer {self.layer.id} - empty sub-conditions")
         else:
             expr = f' {op} '.join(expressions)
             return f"({expr})" if len(expressions) > 1 else expr
@@ -153,11 +147,11 @@ def to_sql(sql, layer, nodata):
     """Clean up SQL, and perform any needed code injections"""
     sql = sql.strip()
 
-    # Replace "%%FIELD_MAPPING: <fieldname>%%" with fields from layer definition
+    # Replace "%%FIELD_MAPPING: <field_name>%%" with fields from layer definition
     def field_map(match):
         return FieldExpander(match.group(2), layer, match.group(1)).parse()
 
-    # replace FIELD_MAPPING:<fieldname> param with the generated SQL CASE statement
+    # replace FIELD_MAPPING:<field_name> param with the generated SQL CASE statement
     sql = re.sub(r'( *)%%\s*FIELD_MAPPING\s*:\s*([a-zA-Z0-9_-]+)\s*%%', field_map, sql)
 
     # inject "WITH NO DATA" for the materialized views
