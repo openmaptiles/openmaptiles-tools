@@ -1,66 +1,107 @@
-from collections import namedtuple
+import re
+from pathlib import Path
 
 from graphviz import Digraph
+from typing import Tuple, List
 
-Table = namedtuple('Table', ['name', 'fields', 'mapping', 'type'])
-
-
-def values_label(osm_values):
-    return '\n'.join(osm_values)
+from openmaptiles.tileset import process_layers, Layer
 
 
-def normalize_graphviz_labels(label):
-    return label.replace(':', '_')
+class GraphGenerator:
+    def __init__(self, filename, output_dir, compare_dir, cleanup, extensions):
+        self.messages = []
+        self.filename = Path(filename)
+        self.output_dir = Path(output_dir)
+        self.compare_dir = Path(compare_dir) if compare_dir else None
+        self.cleanup = cleanup
+        self.extensions = extensions
+
+    def do_layer(self, layer, is_tileset) -> None:
+        graph, path = self.get_graph(layer, is_tileset)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        for ext in self.extensions:
+            print(f"{'Verifying' if self.compare_dir else 'Creating'} {path}.{ext}")
+            new_file = graph.render(filename=path, format=ext, cleanup=self.cleanup)
+            self.compare_file(path, '.' + ext, new_file)
+        if not self.cleanup:
+            self.compare_file(path, '', path)
+
+    def get_graph(self, layer: Layer, is_tileset: bool) -> Tuple[Digraph, Path]:
+        pass
+
+    def compare_file(self, dot_file, ext, new_file):
+        if not self.compare_dir:
+            return
+        cmp_with = Path(self.compare_dir,
+                        dot_file.relative_to(self.output_dir)).with_suffix(ext)
+        try:
+            old = cmp_with.read_bytes()
+            new = Path(new_file).read_bytes()
+            if old != new:
+                raise ValueError(f'file has changed, old size = '
+                                 f'{len(old):,} B,  new = {len(new):,} B')
+        except Exception as ex:
+            self.messages.append(f"Error validating {cmp_with}: {ex}")
+
+    def run(self) -> int:
+        process_layers(self.filename, self.do_layer)
+        if self.messages:
+            print(f'Validation errors:')
+            for msg in self.messages:
+                print(msg)
+            return 1
+        return 0
 
 
-def generate_mapping_subgraph(table):
-    subgraph = Digraph(table.name, node_attr={
-        'width:': '20',
-        'fixed_size': 'shape'
-    })
+class EtlGraph(GraphGenerator):
+    # search for  '# etldoc:...' and '-- etldoc:...'
+    re_mapping = re.compile(r'^\s*#\s*etldoc\s*:(.*)$')
+    re_schema = re.compile(r'^\s*--\s*etldoc\s*:(.*)$')
 
-    subgraph.node(table.name, shape='box')
-
-    for osm_key, osm_values in table.mapping:
-        node_name = 'key_' + normalize_graphviz_labels(osm_key)
-        subgraph.node(node_name, label=osm_key, shape='box')
-
-        subgraph.edge(node_name, table.name,
-                      label=values_label(osm_values))
-
-    return subgraph
-
-
-def replace_generalization_postfix(table_name):
-    return table_name.replace('_gen0', '').replace('_gen1', '')
-
-
-def merge_grouped_mappings(mappings):
-    """Merge multiple mappings into a single mapping for drawing"""
-    for mapping_group, mapping_value in mappings.items():
-        yield mapping_group, mapping_value
-
-
-def find_tables(config):
-    for table_name, table_value in config['tables'].items():
-        fields = table_value.get('fields')
-
-        if table_value.get('type_mappings'):
-            mapping = list(merge_grouped_mappings(table_value['type_mappings']))
+    def get_graph(self, layer: Layer, is_tileset: bool) -> Tuple[Digraph, Path]:
+        body = self.parse_files(layer.imposm_mapping_files, self.re_mapping) + \
+               self.parse_files(layer.schemas, self.re_schema)
+        if is_tileset:
+            path = self.output_dir / layer.id / 'etl_diagram'
         else:
-            mapping = table_value.get('mapping', {}).items()
+            path = self.output_dir / f'etl_{layer.id}'
+        return Digraph('G', graph_attr=dict(rankdir='LR'), body=body), path
 
-        if mapping and fields:
-            yield Table(table_name, fields, mapping, table_value['type'])
+    @staticmethod
+    def parse_files(content_list: list, matcher: re):
+        result = []
+        for item in content_list:
+            content = item.read_text('utf-8') if isinstance(item, Path) else item
+            for line in content.splitlines():
+                m = matcher.match(line)
+                if m:
+                    result.append(m.group(1).strip(' \t\n\r'))
+        return result
 
 
-def generate_table_mapping_diagram(mapping_config):
-    graph = Digraph('Imposm Mapping', format='png', graph_attr={
-        'rankdir': 'LR',
-        'ranksep': '3'
-    })
+class MappingGraph(GraphGenerator):
+    def get_graph(self, layer: Layer, is_tileset: bool) -> Tuple[Digraph, Path]:
+        graph = Digraph('Imposm Mapping', graph_attr=dict(rankdir='LR', ranksep='3'))
 
-    for table in find_tables(mapping_config):
-        graph.subgraph(generate_mapping_subgraph(table))
+        for imposm_mapping in layer.imposm_mappings:
+            for name, value in imposm_mapping['tables'].items():
+                mapping = value.get('type_mappings') or value.get('mapping')
+                if mapping:
+                    graph.subgraph(
+                        self.generate_mapping_subgraph(name, mapping.items()))
 
-    return graph
+        path = self.output_dir
+        if is_tileset:
+            path = path / layer.id / 'mapping_diagram'
+        return graph, path
+
+    @staticmethod
+    def generate_mapping_subgraph(name, mapping):
+        subgraph = Digraph(name, node_attr=dict(fixed_size='shape'))
+        subgraph.node(name, shape='box')
+        for osm_key, osm_values in mapping:
+            node_name = 'key_' + osm_key.replace(':', '_')
+            subgraph.node(node_name, label=osm_key, shape='box')
+            subgraph.edge(node_name, name, label='\n'.join(osm_values))
+
+        return subgraph

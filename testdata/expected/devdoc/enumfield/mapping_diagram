@@ -1,0 +1,3 @@
+digraph "Imposm Mapping" {
+	graph [rankdir=LR ranksep=3]
+}

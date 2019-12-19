@@ -1,0 +1,11 @@
+digraph "Imposm Mapping" {
+	graph [rankdir=LR ranksep=3]
+	subgraph housenumber_point {
+		node [fixed_size=shape]
+		housenumber_point [shape=box]
+		key_points [label=points shape=box]
+		key_points -> housenumber_point [label="addr:housenumber"]
+		key_polygons [label=polygons shape=box]
+		key_polygons -> housenumber_point [label="addr:housenumber"]
+	}
+}

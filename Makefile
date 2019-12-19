@@ -69,5 +69,8 @@ build-tests: prepare
 && generate-doc      testdata/testlayers/housenumber/housenumber.yaml                           > $$BUILD/doc.md \
 && generate-sqlquery testdata/testlayers/housenumber/housenumber.yaml 14                        > $$BUILD/sqlquery.sql \
 && mkdir -p $$BUILD/devdoc \
-&& generate-etlgraph testdata/testlayers/housenumber/housenumber.yaml $$BUILD/devdoc \
+&& generate-etlgraph testdata/testlayers/testmaptiles.yaml $$BUILD/devdoc --keep -f png -f svg \
+&& generate-etlgraph testdata/testlayers/housenumber/housenumber.yaml $$BUILD/devdoc --keep -f png -f svg \
+&& generate-mapping-graph testdata/testlayers/testmaptiles.yaml $$BUILD/devdoc --keep -f png -f svg \
+&& generate-mapping-graph testdata/testlayers/housenumber/housenumber.yaml $$BUILD/devdoc/mapping_diagram --keep -f png -f svg \
 '

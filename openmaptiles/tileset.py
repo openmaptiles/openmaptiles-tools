@@ -1,9 +1,16 @@
+from dataclasses import dataclass
 from pathlib import Path
-from typing import List, Union, Dict, Any
+from typing import List, Union, Dict, Any, Callable
 
 import sys
 import yaml
 from deprecated import deprecated
+
+
+@dataclass
+class ParsedData:
+    data: dict
+    path: Path
 
 
 class Field:
@@ -47,18 +54,24 @@ class Layer:
     fields: List[Field]
 
     @staticmethod
-    def parse(layer_filename: Union[str, Path]) -> 'Layer':
-        return Layer(layer_filename)
+    def parse(layer_source: Union[str, Path, ParsedData]) -> 'Layer':
+        return Layer(layer_source)
 
-    def __init__(self, filename: Path, tileset: 'Tileset' = None):
+    def __init__(self,
+                 layer_source: Union[str, Path, ParsedData],
+                 tileset: 'Tileset' = None):
         self.tileset = tileset
 
-        # if layer_filename is a rooted path, the optional root_path will be ignored
-        root_path = tileset.filename.parent if tileset else ''
-        self.filename = Path(root_path, filename).resolve()
-        layer_dir = self.filename.parent
+        if isinstance(layer_source, ParsedData):
+            self.filename = layer_source.path
+            self.definition = layer_source.data
+        else:
+            # if layer_source is a rooted path, the optional root_path will be ignored
+            root_path = tileset.filename.parent if tileset else ''
+            self.filename = Path(root_path, layer_source).resolve()
+            self.definition = parse_file(self.filename)
 
-        self.definition = parse_file(self.filename)
+        layer_dir = self.filename.parent
 
         self.imposm_mapping_files = [Path(layer_dir, ds['mapping_file'])
                                      for ds in self.definition.get('datasources', [])
@@ -72,7 +85,7 @@ class Layer:
         self.fields = [Field(k, v) for k, v in
                        self.definition['layer']['fields'].items()]
 
-        validate_properties(self, f"Layer {filename}")
+        validate_properties(self, f"Layer {self.filename}")
 
         if any(v.name == self.geometry_field for v in self.fields):
             raise ValueError(
@@ -163,16 +176,22 @@ class Tileset:
     layers: List[Layer]
 
     @staticmethod
-    def parse(tileset_filename: Union[str, Path]) -> 'Tileset':
-        return Tileset(tileset_filename)
+    def parse(tileset_source: Union[str, Path, ParsedData]) -> 'Tileset':
+        return Tileset(tileset_source)
 
-    def __init__(self, filename):
-        self.filename = Path(filename).resolve()
-        self.definition = parse_file(self.filename)['tileset']
+    def __init__(self, tileset_source: Union[str, Path, ParsedData]):
+        if isinstance(tileset_source, ParsedData):
+            self.filename = tileset_source.path
+            self.definition = tileset_source.data
+        else:
+            self.filename = Path(tileset_source).resolve()
+            self.definition = parse_file(self.filename)
+
+        self.definition = self.definition['tileset']
         self.layers = []
         for layer_filename in self.definition['layers']:
             self.layers.append(Layer(layer_filename, self))
-        validate_properties(self, f"Tileset {filename}")
+        validate_properties(self, f"Tileset {self.filename}")
 
     @deprecated(version='3.2.0', reason='use named properties instead')
     def __getitem__(self, attr):
@@ -268,3 +287,18 @@ def validate_properties(obj, info):
         err += "\n".join((f"  * {n}: {repr(e)}" for n, e in errors))
         err += "\n"
         raise ValueError(err)
+
+
+def process_layers(filename: Path, processor: Callable[[Layer, bool], None]):
+    """
+    Open a tileset or a layer yaml file, and execute callback for each layer.
+    Second parameter indicates if this is part of a tileset or not."""
+    parsed = ParsedData(parse_file(filename), filename)
+    if 'tileset' in parsed.data:
+        for layer in Tileset.parse(parsed).layers:
+            processor(layer, True)
+    elif 'layer' in parsed.data:
+        processor(Layer.parse(parsed), False)
+    else:
+        raise ValueError(f"Unrecognized content in file {filename} "
+                         f"- expecting 'tileset' or 'layer' top element")
