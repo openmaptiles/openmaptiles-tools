@@ -1,0 +1,350 @@
+#!/usr/bin/env python
+"""
+Usage:
+  download-osm planet [-l] [-p] [-n] [-v] [--] [<arguments>...]
+  download-osm url       <url>  [-n] [-v] [--] [<arguments>...]
+  download-osm geofabrik <id>   [-n] [-v] [--] [<arguments>...]
+  download-osm bbbike    <id>   [-n] [-v] [--] [<arguments>...]
+  download-osm osmfr     <id>   [-n] [-v] [--] [<arguments>...]
+  download-osm --help
+  download-osm --version
+
+Download types:
+  planet           Loads latest planet file (50+ GB) from all known mirrors
+  url <url>        Loads file from the specific <url>.
+                   If <url>.md5 is available, download-osm will use it to validate.
+  geofabrik <id>   Loads file from Geofabrik by ID, where the ID is part of the URL, e.g.
+                   "australia-oceania/new-zealand". Download will add '-latest.osm.pbf'.
+                   See https://download.geofabrik.de/
+  bbbike <id>      Loads file from BBBike by extract ID, for example "Austin".
+                   See https://download.bbbike.org/osm/
+  osmfr <id>       Loads file from openstreetmap.fr by extract ID, for example
+                   "central-america/costa_rica".  Download will add '-latest.osm.pbf'.
+                   See https://download.openstreetmap.fr/extracts
+
+Options:
+  -l --force-latest     Always download the very latest available planet file,
+                        even if there are too few mirrors that have it.
+  -p --include-primary  If set, will download from the main osm.org (please avoid
+                        using this parameter to reduce the load on the primary server)
+  -n --dry-run          If set, do all the steps except the actual data download.
+  -v --verbose          Print additional debugging information
+  --help                Show this screen.
+  --version             Show version.
+
+Any aria2c parameters can be set after the '--' string. For example, set download dir:
+    download-osm planet -- -d ./download
+By default, aria2c is executed with --checksum (md5 hash) and --split parameters.
+Split is used to download with as many streams, as download-osm finds.
+Use  --split  or  -s  parameter to override that number.
+"""
+
+import asyncio
+import re
+import subprocess
+from collections import defaultdict
+from dataclasses import dataclass
+from datetime import datetime
+from typing import List, Dict, Tuple
+
+import aiohttp
+from aiohttp import ClientSession
+from bs4 import BeautifulSoup
+# noinspection PyProtectedMember
+from docopt import docopt, DocoptExit, __all__ as docopt_funcs
+from tabulate import tabulate
+
+import openmaptiles
+from openmaptiles.utils import print_err
+
+
+class Catalog:
+    def __init__(self):
+        self.sites = [
+            Site('GB', 'https://planet.openstreetmap.org/pbf/', avoid_by_default=True),
+            Site('DE', 'https://download.bbbike.org/osm/planet/'),
+            Site('DE', 'https://ftp.spline.de/pub/openstreetmap/pbf/'),
+            Site('DE', 'https://ftp5.gwdg.de'
+                       '/pub/misc/openstreetmap/planet.openstreetmap.org/pbf/'),
+            Site('JP', 'https://planet.passportcontrol.net/pbf/'),
+            Site('NL', 'https://ftp.nluug.nl/maps/planet.openstreetmap.org/pbf/'),
+            Site('NL', 'https://ftp.snt.utwente.nl/pub/misc/openstreetmap/'),
+            Site('TW', 'https://free.nchc.org.tw/osm.planet/pbf/'),
+            Site('US', 'https://ftp.osuosl.org/pub/openstreetmap/pbf/'),
+            Site('US', 'https://ftpmirror.your.org/pub/openstreetmap/pbf/'),
+        ]
+
+    async def init(self,
+                   session: ClientSession, verbose: bool,
+                   use_primary: bool, force_latest: bool) -> Tuple[List[str], str]:
+        """Load the list of all available sources from all mirror sites,
+        and pick the most recent file that is widely available.
+        Returns a list of urls and the expected md5 hash.
+        """
+        sources_by_hash: Dict[str, List[Source]] = defaultdict(list)
+        await asyncio.wait([v.init(session, verbose) for v in self.sites])
+        for site in self.sites:
+            for s in site.sources:
+                sources_by_hash[s.hash].append(s)
+        # Remove "latest" from sources if they have no md5 hash
+        # noinspection PyTypeChecker
+        no_hash_sources = sources_by_hash.pop(None, [])
+
+        ts_to_hash = self.get_attr_to_hash(sources_by_hash, 'timestamp', 'file date')
+        if not ts_to_hash:
+            raise ValueError(f"Unable to consistently load data - dates don't match")
+
+        # Sources without md5 can only be used if there is one unique length per md5.
+        # If more than one hash has the same length (e.g. download sizes didn't change),
+        # we don't know which is which, so we have to ignore them.
+        len_to_hash = self.get_attr_to_hash(sources_by_hash, 'file_len', 'length')
+        if len_to_hash or not no_hash_sources:
+            for src in no_hash_sources:
+                if src.file_len in len_to_hash:
+                    src.hash = len_to_hash[src.file_len]
+                    sources_by_hash[src.hash].append(src)
+                else:
+                    print(f"Source {src} has unrecognized file length={src.file_len}")
+        else:
+            print(f"Unable to use sources - unable to match 'latest' without date/md5:")
+            for s in no_hash_sources:
+                print(s)
+
+        # Pick the best hash to download - should have the largest timestamp,
+        # but if the count is too low, use the second most common timestamp.
+        stats = [(v[0].timestamp, len(v), v[0].hash)
+                 for v in sources_by_hash.values()]
+        stats.sort(reverse=True)
+
+        print("Latest files available:")
+        info = [dict(date=f"{s[0]:%Y-%m-%d}", number_of_sites=s[1], md5=s[2])
+                for s in stats]
+        print(tabulate(info, headers="keys") + '\n')
+
+        if not force_latest and len(stats) > 1 and stats[0][1] * 1.5 < stats[1][1]:
+            hash_to_download = stats[1][2]
+            info = f" because the latest {stats[0][0]:%Y-%m-%d} is not widespread yet"
+        else:
+            hash_to_download = stats[0][2]
+            info = ""
+
+        src_list = sources_by_hash[hash_to_download]
+        ts = next((v.timestamp for v in src_list if v.timestamp), None)
+        ts = f"{ts:%Y-%m-%d}" if ts else "latest (unknown date)"
+
+        if len(src_list) > 2 and not use_primary:
+            src_list = [v for v in src_list if not v.site.avoid_by_default]
+
+        print(f"Will download planet published on {ts}, "
+              f"size={src_list[0].size_mb()}, md5={src_list[0].hash}, "
+              f"using {len(src_list)} sources{info}")
+        if verbose:
+            print(tabulate([dict(country=s.site.country, url=s.url) for s in src_list],
+                           headers="keys") + '\n')
+
+        return [s.url for s in src_list], hash_to_download
+
+    @staticmethod
+    def get_attr_to_hash(sources_by_hash, attr_name, attr_desc):
+        """Verify that a specific attribute is unique per hash in all sources"""
+        attr_to_hash = {}
+        for sources in sources_by_hash.values():
+            for source in sources:
+                attr = getattr(source, attr_name)
+                if attr is None:
+                    continue
+                if attr not in attr_to_hash:
+                    attr_to_hash[attr] = source.hash
+                elif attr_to_hash[attr] != source.hash:
+                    print(f"Multiple files with the same {attr_desc} have different "
+                          f"hashes:")
+                    print(f"* {source}, {attr_desc}={attr}, hash={source.hash}")
+                    src = sources_by_hash[attr_to_hash[attr]][0]
+                    print(f"* {src}, {attr_desc}={(getattr(src, attr))}, "
+                          f"hash={src.hash}")
+                    return None
+        return attr_to_hash
+
+
+class Site:
+    re_name = re.compile(r'^planet-(\d{6}|latest)\.osm\.pbf(\.md5)?$')
+
+    def __init__(self, country, url, avoid_by_default=False):
+        self.country: str = country
+        self.url: str = url
+        self.avoid_by_default: bool = avoid_by_default
+        self.sources: List[Source] = []
+
+    async def init(self, session: ClientSession, verbose: bool):
+        """initialize the self.sources with the relevant Source objects
+        by parsing the mirror's site HTML page, and getting all <a> tags"""
+        try:
+            soup = BeautifulSoup(await fetch(session, self.url), 'html.parser')
+            sources = self.parse_hrefs(
+                [(v.text.strip(), v['href'].strip())
+                 for v in soup.find_all('a') if 'href' in v.attrs],
+                verbose)
+            await asyncio.wait([v.load_hash(session, verbose) for v in sources] +
+                               [v.load_metadata(session, verbose) for v in sources])
+            sources = [s for s in sources if s.is_valid]
+            if not sources:
+                raise ValueError(f"No sources found")
+            if len(sources) > 1 and sources[0].hash == sources[1].hash:
+                del sources[0]  # latest is the same as the last one
+            self.sources = sources
+        except Exception as ex:
+            print_err(f"Unable to use {self.country} source {self.url}: {ex}")
+
+    def parse_hrefs(self, items: List[tuple], verbose) -> List['Source']:
+        """Convert a list of (name, href) tuples to a list of valid sources,
+        including only the two most recent ones, plus the 'latest' if available."""
+        all_sources: Dict[str, Source] = {}
+        for name, href in sorted(items):
+            m = self.re_name.match(name)
+            if not m:
+                if verbose:
+                    print(f"Unexpected name '{name}' from {self.url}")
+                continue
+            try:
+                url = href if '/' in href else (self.url + href)
+                date = m.group(1)
+                is_md5 = bool(m.group(2))
+                dt = None if date == 'latest' else datetime.strptime(date, '%y%m%d')
+                if not is_md5:
+                    if date in all_sources:
+                        raise ValueError(f"{date} already already exists")
+                    all_sources[date] = Source(name, url, dt, self)
+                else:
+                    if date not in all_sources:
+                        raise ValueError(f"md5 file exists, but data file does not")
+                    all_sources[date].url_hash = url
+            except Exception as ex:
+                print_err(f'Error: {ex}, while parsing {name} from {self.url}')
+
+        # get the last 2 sources that have dates in the name, as well as the "latest"
+        latest = all_sources.pop('latest', None)
+        result = [all_sources[k]
+                  for k in list(sorted(all_sources.keys(), reverse=True))[:2]]
+        if latest:
+            result.insert(0, latest)
+        return result
+
+
+@dataclass
+class Source:
+    name: str
+    url: str
+    timestamp: datetime = None
+    site: Site = None
+    url_hash: str = None
+    hash: str = None
+    file_len: int = None
+    is_valid: bool = False
+
+    def __str__(self):
+        res = f"{self.name} from {self.url}"
+        if self.site:
+            res = f"{res} ({self.site.country})"
+        return res
+
+    async def load_hash(self, session: ClientSession, verbose: bool):
+        if not self.url_hash:
+            return
+        try:
+            if verbose:
+                print(f"Getting md5 checksum from {self.url_hash}")
+            self.hash = (await fetch(session, self.url_hash)).strip().split(' ')[0]
+        except Exception as ex:
+            print_err(f"Unable to load md5 hash for {self}: {ex}")
+
+    async def load_metadata(self, session: ClientSession, verbose: bool):
+        if not self.url:
+            return
+        try:
+            if verbose:
+                print(f"Getting content length for {self.url}")
+            async with session.head(self.url) as resp:
+                if resp.status >= 400:
+                    raise ValueError(f"Status={resp.status} for HEAD request")
+                if 'Content-Length' in resp.headers:
+                    self.file_len = int(resp.headers['Content-Length'])
+                    self.is_valid = True
+        except Exception as ex:
+            print_err(f"Unable to load metadata for {self}: {ex}")
+
+    def size_mb(self):
+        return ("Unknown" if self.file_len is None
+                else f"{self.file_len / 1024.0 / 1024:,.1f} MB")
+
+
+async def fetch(session: ClientSession, url: str):
+    async with session.get(url) as resp:
+        if resp.status >= 400:
+            raise ValueError(f"Received status={resp.status}")
+        return await resp.text()
+
+
+async def main(args):
+    dry_run = args['--dry-run']
+    aria2c_args = args.arguments
+
+    async with aiohttp.ClientSession(headers={
+        'User-Agent': f'OpenMapTiles download-osm {openmaptiles.__version__}'
+                      '(https://github.com/openmaptiles/openmaptiles-tools)'
+    }) as session:
+        if args.planet:
+            use_primary = args['--include-primary']
+            force_latest = args['--force-latest']
+            urls, md5 = await Catalog().init(session, args.verbose, use_primary,
+                                             force_latest)
+        else:
+            name = args.id if args.id else 'raw url'
+            if args.url:
+                url = args.url
+            elif args.geofabrik:
+                url = f"https://download.geofabrik.de/{args.id}-latest.osm.pbf"
+            elif args.bbbike:
+                url = f"https://download.bbbike.org/" \
+                      f"osm/bbbike/{args.id}/{args.id}.osm.pbf"
+            elif args.osmfr:
+                url = f"http://download.openstreetmap.fr/" \
+                      f"extracts/{args.id}-latest.osm.pbf"
+            else:
+                raise DocoptExit()
+            src = Source(name, url, url_hash=url + '.md5')
+            await asyncio.wait([src.load_hash(session, args.verbose),
+                                src.load_metadata(session, args.verbose)])
+            if not src.is_valid:
+                print_err(f"Unable to load {src.name} metadata, aborting.")
+                exit(1)
+            urls = [src.url]
+            md5 = src.hash
+            print(f"Will download {src.url} (size={src.size_mb()}, md5={src.hash})")
+
+    params = ['aria2c']
+    if md5:
+        params.append(f'--checksum=md5={md5}')
+    if not any((v for v in aria2c_args if v == '-s' or v.startswith('--split'))):
+        # user has not passed -s or --split, so use as many streams as urls
+        params.append(f'--split={len(urls)}')
+    params.extend(aria2c_args)
+    params.extend(urls)
+
+    print(f"  {subprocess.list2cmdline(params)}\n")
+    if not dry_run:
+        res = subprocess.run(params)
+        exit(res.returncode)
+    else:
+        print("Data is not downloaded (used with --dry-run)")
+
+
+if __name__ == '__main__':
+    if 'magic' not in docopt_funcs:
+        print("""
+Found invalid version of docopt. Must use docopt_ng instead. Uninstall it with
+  $ python3 -m pip uninstall docopt
+and re-install all required dependencies with
+  $ python3 -m pip install -r requirements.txt
+""")
+        exit(1)
+    asyncio.run(main(docopt(__doc__, version=openmaptiles.__version__)))

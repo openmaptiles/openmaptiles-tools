@@ -231,7 +231,29 @@ $ debug-mvt openmaptiles.yaml 4/7/6 -l place
         ...
 ```
 
-## Scripts
+## Tools
+
+### Multi-streamed OSM Data Downloader
+`download-osm` tool can be used to download an area extract or the entire planet file,
+and validate file content.  The entire planet file is downloaded from all available
+OSM mirrors at the same time to distribute the load across mirrors, and makes download faster.
+The tool will ensure you get the latest version, verifies that all mirrors contain the same
+version, and validates the download with md5 hash. By default the tool will not download from
+the primary OSM site to reduce its load.  Downloader uses [aria2c](https://aria2.github.io/).
+Downloader can also get files from [Geofabrik](https://download.geofabrik.de/),
+[BBBike](https://download.bbbike.org/osm/), and
+[openstreemap.fr](https://download.openstreetmap.fr/extracts), or an arbitrary URL.
+
+```bash
+# downloads the latest version to the current directory
+download-osm planet
+
+# download to the target dir by passing -d ... param to aria2c
+download-osm planet -- -d ./downloads
+
+# download New Zealand extract from Geofabrik
+download geofabrik australia-oceania/new-zealand
+```
 
 ### Generate SQL code to create MVT tiles directly by PostGIS
 

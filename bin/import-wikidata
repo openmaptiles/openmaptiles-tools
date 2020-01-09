@@ -23,7 +23,7 @@ Options:
   --help                Show this screen.
   --version             Show version.
 
-POSTGRES options:
+PostgreSQL Options:
   -h --pghost=<host>    Postgres hostname. By default uses POSTGRES_HOST env or "localhost" if not set.
   -P --pgport=<port>    Postgres port. By default uses POSTGRES_PORT env or "5432" if not set.
   -d --dbname=<db>      Postgres db name. By default uses POSTGRES_DB env or "openmaptiles" if not set.
@@ -132,7 +132,8 @@ def wd_query(sparql):
         data={'query': sparql},
         headers={
             'Accept': 'application/sparql-results+json',
-            'User-Agent': 'OpenMapTiles OSM name resolver (https://github.com/openmaptiles/openmaptiles)'
+            'User-Agent': f'OpenMapTiles OSM name resolver {openmaptiles.__version__}'
+                          '(https://github.com/openmaptiles/openmaptiles)'
         })
     try:
         if not r.ok:

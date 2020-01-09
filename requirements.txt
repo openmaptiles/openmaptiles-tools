@@ -1,10 +1,12 @@
 ## This list is also used by setup.py - install_requires
 ## But there it removes all version restrictions
+aiohttp==3.6.2
 ascii_graph==1.5.1
 asyncpg==0.19.0
+beautifulsoup4==4.8.1
 dataclasses-json==0.3.5
 deprecated==1.2.7
-docopt==0.6.2
+docopt-ng==0.7.2
 graphviz==0.11.1
 psycopg2-binary==2.8.3
 pyyaml==5.1.2
