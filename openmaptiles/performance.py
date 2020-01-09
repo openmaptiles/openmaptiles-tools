@@ -27,8 +27,16 @@ TEST_CASES: Dict[str, TestCase] = {v.id: v for v in [
         (2490, 6158), (4851, 6159)),  # DO NOT CHANGE THESE COORDINATES
     TestCase(
         'eu-prague',
-        'A region around Prague, CZ',
+        'A region around Prague of mixed urban and country side, CZ',
         (8832, 5536), (8863, 5567)),  # DO NOT CHANGE THESE COORDINATES
+    TestCase(
+        'eu-london',
+        'A dense urban region around London, UK',
+        (8175, 5441), (8192, 5452)),  # DO NOT CHANGE THESE COORDINATES
+    TestCase(
+        'eu-paris',
+        'A dense urban region around Paris with all buildings, FR',
+        (8289, 5629), (8307, 5643)),  # DO NOT CHANGE THESE COORDINATES
     TestCase(
         'ocean',
         'Ocean tiles without much content',
