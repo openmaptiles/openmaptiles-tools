@@ -27,7 +27,7 @@ Where the `<script-name>` could be any of the scripts in the [bin/](./bin) direc
 
 ```bash
 # Some tool require these packages. On Debian/Ubuntu you can install them with
-sudo apt install graphviz sqlite3
+sudo apt install graphviz sqlite3 aria2
 
 # install the package directly from git
 python3 -m pip install git+https://github.com/openmaptiles/openmaptiles-tools
