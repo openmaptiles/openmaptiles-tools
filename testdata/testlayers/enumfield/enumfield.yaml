@@ -14,9 +14,41 @@ layer:
           natural: 'grassland'
           # Anything with % should use 'LIKE' instead of equality
           landuse: ['grass', 'meadow%', 'allotments', 'grassland', 'park', 'village_green', 'recreation_ground']
+        school:
+          subclass: ['school','kindergarten','uni%']
+        railway:
+          - __AND__:
+              subclass: 'station'
+              mapping_key: 'railway'
+          - subclass: ['halt', 'tram_stop', 'subway']
+        andfield:
+          __AND__:
+            field1: 'a1fld1'
+            field2: ['a1fld2a', '%a1fld2b%', 'a1fld2c']
+            field3: 'a1fld3'
+        listfield:
+          - fld1: lf1
+          - fld2: ['lf2a', 'lf2b']
+            fld3: lf3
+          - __OR__:
+              fld4: lf4
+              fld5: ['lf5a', 'lf5b', 'lf5c%']
+          - __AND__:
+              fld6: lf6
+              fld7: ['lf7a', 'lf7b', 'lf7c%']
+          - __AND__:
+            - fld8: lf8
+            - fld9: ['lf9a', 'lf9b']
+              fld10: lf10
+            - __OR__:
+                fld11: lf11
+                fld12: ['lf12a', 'lf12b', 'lf12c%']
         # These options are not auto-generated
-        other1: {}
-        other2: false
+        other_null:
+        other_obj: {}
+        other_false: false
+        other_true: true
+        other_str: 'str'
   datasource:
     geometry_field: geometry
     key_field: osm_id
