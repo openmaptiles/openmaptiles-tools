@@ -156,7 +156,7 @@ tileset:
 ```
 
 ## Testing tiles
-### Tile size and PostrgeSQL querying speed
+### Tile size and PostgreSQL querying speed
 Use `test-perf` to evaluate tile generation performance against a PostgreSQL database.
 This utility can test individual layers, several layers at once, as well as the whole tile.
 It has several pre-defined testing areas to provide cross-test consistency.
