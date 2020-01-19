@@ -1,6 +1,6 @@
 import collections
+
 from .tileset import Tileset, Layer
-from .language import languages_to_sql
 
 DbParams = collections.namedtuple('DbParams',
                                   ['dbname', 'host', 'port', 'password', 'user'])
@@ -21,18 +21,14 @@ def generate_tm2source(tileset_filename, db_params):
         'Layer': [],
     }
 
-    query_tokens = {
-        'name_languages': languages_to_sql(tileset.languages),
-    }
-
     for layer in tileset.layers:
-        tm2layer = generate_layer(layer, query_tokens, db_params)
+        tm2layer = generate_layer(layer, db_params)
         tm2['Layer'].append(tm2layer)
 
     return tm2
 
 
-def generate_layer(layer: Layer, query_tokens, db_params):
+def generate_layer(layer: Layer, db_params):
     return {
         'id': layer.id,
         'srs': layer.srs,
@@ -47,7 +43,7 @@ def generate_layer(layer: Layer, query_tokens, db_params):
             'max_size': layer.max_size,
             'port': db_params.port,
             'srid': layer.srid,
-            'table': layer.query.format(**query_tokens),
+            'table': layer.query,
             'type': 'postgis',
             'host': db_params.host,
             'dbname': db_params.dbname,

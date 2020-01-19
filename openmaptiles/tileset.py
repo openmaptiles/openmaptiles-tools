@@ -7,6 +7,13 @@ import yaml
 from deprecated import deprecated
 
 
+def tag_fields_to_sql(fields):
+    """Converts a list of fields stored in the tags hstore into a list of SQL fields:
+        name:en   =>   NULLIF(tags->'name:en', '') AS name:en
+    """
+    return [f"NULLIF(tags->'{fld}', '') AS \"{fld}\"" for fld in fields]
+
+
 @dataclass
 class ParsedData:
     data: dict
@@ -108,9 +115,13 @@ class Layer:
             raise KeyError
 
     def get_fields(self) -> List[str]:
+        """Get a list of field names this layer generates.
+           Geometry field is not included."""
         layer_fields = list(self.definition['layer']['fields'].keys())
         if self.key_field:
             layer_fields.append(self.key_field)
+        if self.tileset and self.has_localized_names:
+            layer_fields += self.tileset.languages_as_fields()
         return layer_fields
 
     @property
@@ -159,8 +170,23 @@ class Layer:
         return bool(val and val != 'no')
 
     @property
-    def query(self) -> str:
+    def raw_query(self) -> str:
+        """Query string as defined in the layer file"""
         return self.definition['layer']['datasource']['query']
+
+    @property
+    def has_localized_names(self) -> bool:
+        return '{name_languages}' in self.raw_query
+
+    @property
+    def query(self) -> str:
+        """Query string with resolved localized names.
+        If parent tileset is missing, only uses automatic fields"""
+        if self.tileset:
+            fields = self.tileset.languages_as_sql_fields()
+        else:
+            fields = tag_fields_to_sql(Tileset.auto_language_fields)
+        return self.raw_query.format(name_languages=(', '.join(fields)))
 
     def __str__(self) -> str:
         if self.tileset:
@@ -171,6 +197,9 @@ class Layer:
 
 
 class Tileset:
+    # These fields will always be included, in addition to the ones in tile definition
+    auto_language_fields = ['name_int', 'name:latin', 'name:nonlatin']
+
     filename: Path
     definition: dict
     layers: List[Layer]
@@ -238,7 +267,7 @@ class Tileset:
 
     @property
     def layer_paths(self) -> List[Path]:
-        return [l.filename for l in self.layers]
+        return [v.filename for v in self.layers]
 
     @property
     def maxzoom(self) -> int:
@@ -259,6 +288,20 @@ class Tileset:
     @property
     def version(self) -> str:
         return self.definition['version']
+
+    def languages_as_fields(self) -> List[str]:
+        """
+        Get languages as a list of SQL field names,
+        decorated as "name:code", as well as the default ones.
+        """
+        return [f"name:{lang}"
+                for lang in self.languages] + Tileset.auto_language_fields
+
+    def languages_as_sql_fields(self) -> List[str]:
+        """Get language codes as a list of SQL fields:
+            en   =>   NULLIF(tags->'name:en', '') AS name:en
+        """
+        return tag_fields_to_sql(self.languages_as_fields())
 
     def __str__(self) -> str:
         return f"{self.name} ({self.filename})"

@@ -9,11 +9,12 @@ Options:
   --help               Show this screen.
   --version            Show version.
 """
-from docopt import docopt
 import re
+
+from docopt import docopt
+
 import openmaptiles
 from openmaptiles.tileset import Layer
-from openmaptiles.language import languages_to_sql
 
 
 def main(args):
@@ -25,8 +26,7 @@ def main(args):
     sql = (layer.query
            .replace('!bbox!', bbox)
            .replace('z(!scale_denominator!)', zoom)
-           .replace('!pixel_width!', '1')
-           .replace('{name_languages}', languages_to_sql([])))
+           .replace('!pixel_width!', '1'))
 
     match = re.search(r'\((.*)\) AS *', sql)
     print(match.group(1))
