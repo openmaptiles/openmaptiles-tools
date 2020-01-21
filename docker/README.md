@@ -38,17 +38,6 @@ Each subdir here creates a docker image that either generates some data, or is b
 [![](https://img.shields.io/docker/stars/openmaptiles/import-osmborder?label=stars)](https://hub.docker.com/r/openmaptiles/import-osmborder)
 <br><small>Migrated from [import-osmborder](https://github.com/openmaptiles/import-osmborder) repo, `/import` dir (archived)</small>
 
-## [import-sql](import-sql)
-[![](https://img.shields.io/docker/cloud/build/openmaptiles/import-sql?&logo=OpenStreetMap&label=build)](https://hub.docker.com/r/openmaptiles/import-sql)
-[![](https://img.shields.io/docker/automated/openmaptiles/import-sql?label=build)](https://hub.docker.com/r/openmaptiles/import-sql/builds)
-[![](https://img.shields.io/microbadger/layers/openmaptiles/import-sql)](https://hub.docker.com/r/openmaptiles/import-sql)
-[![](https://img.shields.io/microbadger/image-size/openmaptiles/import-sql?label=size)](https://hub.docker.com/r/openmaptiles/import-sql)
-[![](https://img.shields.io/docker/pulls/openmaptiles/import-sql?label=downloads)](https://hub.docker.com/r/openmaptiles/import-sql)
-[![](https://img.shields.io/docker/stars/openmaptiles/import-sql?label=stars)](https://hub.docker.com/r/openmaptiles/import-sql)
-<br><small>Migrated from [import-sql](https://github.com/openmaptiles/import-sql) repo (archived)</small>
-
-**Note:** This image is obsolete, and should not be used. Use `openmaptiles-tools` image instead. `import_sql.sh` was copied to `/bin` as `import-sql`.
-
 ## [import-water](import-water)
 [![](https://img.shields.io/docker/cloud/build/openmaptiles/import-water?&logo=OpenStreetMap&label=build)](https://hub.docker.com/r/openmaptiles/import-water)
 [![](https://img.shields.io/docker/automated/openmaptiles/import-water?label=build)](https://hub.docker.com/r/openmaptiles/import-water/builds)
@@ -57,15 +46,6 @@ Each subdir here creates a docker image that either generates some data, or is b
 [![](https://img.shields.io/docker/pulls/openmaptiles/import-water?label=downloads)](https://hub.docker.com/r/openmaptiles/import-water)
 [![](https://img.shields.io/docker/stars/openmaptiles/import-water?label=stars)](https://hub.docker.com/r/openmaptiles/import-water)
 <br><small>Migrated from [import-water](https://github.com/openmaptiles/import-water) repo (archived)</small>
-
-## [import-wikidata](import-wikidata)
-[![](https://img.shields.io/docker/cloud/build/openmaptiles/import-wikidata?&logo=OpenStreetMap&label=build)](https://hub.docker.com/r/openmaptiles/import-wikidata)
-[![](https://img.shields.io/docker/automated/openmaptiles/import-wikidata?label=build)](https://hub.docker.com/r/openmaptiles/import-wikidata/builds)
-[![](https://img.shields.io/microbadger/layers/openmaptiles/import-wikidata)](https://hub.docker.com/r/openmaptiles/import-wikidata)
-[![](https://img.shields.io/microbadger/image-size/openmaptiles/import-wikidata?label=size)](https://hub.docker.com/r/openmaptiles/import-wikidata)
-[![](https://img.shields.io/docker/pulls/openmaptiles/import-wikidata?label=downloads)](https://hub.docker.com/r/openmaptiles/import-wikidata)
-[![](https://img.shields.io/docker/stars/openmaptiles/import-wikidata?label=stars)](https://hub.docker.com/r/openmaptiles/import-wikidata)
-<br><small>Migrated from [import-wikidata](https://github.com/openmaptiles/import-wikidata) repo (archived)</small>
 
 # Tools
 
@@ -95,3 +75,14 @@ Each subdir here creates a docker image that either generates some data, or is b
 [![](https://img.shields.io/docker/pulls/openmaptiles/postgis?label=downloads)](https://hub.docker.com/r/openmaptiles/postgis)
 [![](https://img.shields.io/docker/stars/openmaptiles/postgis?label=stars)](https://hub.docker.com/r/openmaptiles/postgis)
 <br><small>Migrated from [postgis](https://github.com/openmaptiles/postgis) repo (archived)</small>
+
+# Deprecated Legacy Tools
+
+These Docker images are no longer maintained or published, and should not be used.
+## [import-sql](https://hub.docker.com/r/openmaptiles/import-sql)
+
+Use [import-sql](../README.md#importing-into-postgres) in the `openmaptiles-tools` image instead of `import_sql.sh`.  Originally migrated from [import-sql](https://github.com/openmaptiles/import-sql) repo.
+
+## [import-wikidata](https://hub.docker.com/r/openmaptiles/import-wikidata)
+
+Use [import-wikidata](../README.md#import-wikidata-localized-names) in the `openmaptiles-tools` image instead.  Originally migrated from  [import-wikidata](https://github.com/openmaptiles/import-wikidata) repo.

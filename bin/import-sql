@@ -44,7 +44,7 @@ function import_all_sql_files() {
         echo "File $dir/run_first.sql not found, skipping"
       fi
 
-      # Run import_sql script in parallel, up to MAX_PARALLEL_PSQL processes at the same time
+      # Run import-sql script in parallel, up to MAX_PARALLEL_PSQL processes at the same time
       : "${MAX_PARALLEL_PSQL:=5}"
       echo "Importing $(find "$dir/parallel" -name "*.sql" | wc -l) sql files from $dir/parallel/, up to $MAX_PARALLEL_PSQL files at the same time"
       find "$dir/parallel" -name "*.sql" -print0 | xargs -0 -I{} -P "$MAX_PARALLEL_PSQL" "$0" "{}"
