@@ -1,78 +1,41 @@
 #!/usr/bin/env python
 """
+Extract dependencies from the SQL and yaml layer files,
+and create dot/png/svg files for documentation.
+
 Usage:
-  generate-etlgraph <layer-definition>  <output-path>
+  generate-etlgraph <tileset-or-layer-file> <output-path> [<compare-path>] [--keep]
+                    [--format <format>]...
   generate-etlgraph --help
   generate-etlgraph --version
+
+  <tileset-or-layer-file>   If tileset file is given, will create one dir per layer
+                            in the output directory.
+  <compare-path>            If set, compares generated graphs with graphs that already
+                            exist at this location, and exit with non-zero code
+                            if they are not the same.
+
 Options:
+  -k --keep             If set, do not delete generated .dot file
+  -f --format <format>  Specify which format(s) to output.  [default: png]
   --help                Show this screen.
   --version             Show version.
 """
-import distutils.spawn
-import os.path
-import re
-from pathlib import Path
 
 from docopt import docopt
 
 import openmaptiles
-from openmaptiles.tileset import Layer
-
-# search for  '# etldoc:...' and '-- etldoc:...'
-re_mapping = re.compile(r'^\s*#\s*etldoc\s*:(.*)$')
-re_schema = re.compile(r'^\s*--\s*etldoc\s*:(.*)$')
-
-
-def generate_etldoc(layer: Layer):
-    return f"""\
-digraph G
-{{
-/* generated from the source code [by generate-etlgraph v{openmaptiles.__version__}] */
-rankdir=LR;
-
-{parse(layer.imposm_mapping_files, re_mapping)}\
-{parse(layer.schemas, re_schema)}
-}}
-"""
-
-
-def parse(content_list: list, matcher: re):
-    result = []
-    for item in content_list:
-        content = item.read_text('utf-8') if isinstance(item, Path) else item
-        for line in content.splitlines():
-            m = matcher.match(line)
-            if m:
-                result.append(m.group(1).strip(' \t\n\r'))
-    if result:
-        return '\n'.join(result) + '\n'
-    return ''
+from openmaptiles.diagram import EtlGraph
 
 
 def main(args):
-    layer = Layer.parse(args['<layer-definition>'])
-    output_base = Path(args['<output-path>'], 'etl_' + layer.filename.stem)
-    dot_file = output_base.with_suffix('.dot')
-
-    etldoc = generate_etldoc(layer)
-    old_txt = dot_file.read_text('utf-8') if dot_file.exists() else ''
-
-    # Only modify if the file content has changes
-    if etldoc.strip(' \t\n\r') == old_txt.strip(' \t\n\r'):
-        print(f"No changes in {dot_file} for layer {layer.id}")
-    else:
-        print(f"{'Updating' if old_txt else 'Creating'} {dot_file} (layer {layer.id})")
-        dot_file.write_text(etldoc, 'utf-8')
-
-        # Generate png and svg files if `dot` (graphviz) exists
-        if distutils.spawn.find_executable('dot'):
-            os.system(f"dot -Tpng {dot_file} -o '{output_base.with_suffix('.png')}'")
-            os.system(f"dot -Tsvg {dot_file} -o '{output_base.with_suffix('.svg')}'")
-            print(f"Generated {output_base}{{.dot, .png, .svg}}")
-        else:
-            print(f"Generated {dot_file}")
-            print('Warning: Could not find the `dot` command, '
-                  'check if graphviz is installed!')
+    exit(EtlGraph(
+        args['<tileset-or-layer-file>'],
+        args['<output-path>'],
+        args['<compare-path>'],
+        not args['--keep'],
+        args['--format'],
+    ).run())
 
 
 if __name__ == '__main__':

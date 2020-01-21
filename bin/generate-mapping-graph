@@ -1,22 +1,39 @@
 #!/usr/bin/env python
 """
 Usage:
-  generate-mapping-graph <layer-definition> <filename>
+  generate-mapping-graph <tileset-or-layer-file> <output-path> [<compare-path>] [--keep]
+                         [--format <format>]...
   generate-mapping-graph --help
   generate-mapping-graph --version
+
+  <tileset-or-layer-file>   If tileset file is given, will create one dir per layer
+                            in the output directory.
+  <compare-path>            If set, compares generated graphs with graphs that already
+                            exist at this location, and exit with non-zero code
+                            if they are not the same.
+
 Options:
-  --help               Show this screen.
-  --version            Show version.
+  -k --keep             If set, do not delete generated .dot file
+  -f --format <format>  Specify which format(s) to output.  [default: png]
+  --help                Show this screen.
+  --version             Show version.
 """
+
 from docopt import docopt
+
 import openmaptiles
-from openmaptiles.tileset import Layer
-from openmaptiles.diagram import generate_table_mapping_diagram
+from openmaptiles.diagram import MappingGraph
+
+
+def main(args):
+    exit(MappingGraph(
+        args['<tileset-or-layer-file>'],
+        args['<output-path>'],
+        args['<compare-path>'],
+        not args['--keep'],
+        args['--format'],
+    ).run())
 
 
 if __name__ == '__main__':
-    args = docopt(__doc__, version=openmaptiles.__version__)
-    layer = Layer.parse(args['<layer-definition>'])
-    mapping_config = layer.imposm_mappings[0]
-    graph = generate_table_mapping_diagram(mapping_config)
-    graph.render(filename=args['<filename>'])
+    main(docopt(__doc__, version=openmaptiles.__version__))
