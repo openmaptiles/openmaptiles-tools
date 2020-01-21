@@ -1,6 +1,7 @@
 VERSION      ?= $(shell grep __version__ ./openmaptiles/__init__.py | sed -E 's/^(.*"([^"]+)".*|.*)$$/\2/')
 IMAGE_NAME   ?= openmaptiles/openmaptiles-tools
 DOCKER_IMAGE ?= $(IMAGE_NAME):$(VERSION)
+POSTGIS_IMAGE?= openmaptiles/postgis:latest
 BUILD_DIR    ?= build
 
 # Options to run with docker - ensure the container is destroyed on exit,
@@ -38,16 +39,25 @@ rebuild-expected: clean build-tests
 	mkdir -p "$(EXPECTED_DIR)"
 	mv "$(BUILD_DIR)"/* "$(EXPECTED_DIR)/"
 
+# Create build dir, and allow modification from within docker under non-root user
 .PHONY: prepare
-prepare: build-docker
+prepare:
 	mkdir -p "$(BUILD_DIR)"
+	chmod 777 "$(BUILD_DIR)"
 
 .PHONY: build-docker
 build-docker:
 	docker build --pull --file Dockerfile --tag $(DOCKER_IMAGE) .
 
-.PHONY: build-tests
-build-tests: prepare
+.PHONY: build-sql-tests
+build-sql-tests: prepare
+	# postgis image for now requires to run under root
+	# Run a custom entrypoint, expecting it to raise an error which we ignore
+	# The entrypoint will add an extra startup script, which will do all the testing
+	docker run -i --rm -v "$(WORKDIR):/omt" --entrypoint /omt/test-sql/test-sql-entrypoint.sh "$(POSTGIS_IMAGE)" postgres || echo "PostgreSQL test run is finished"
+
+.PHONY: build-bin-tests
+build-bin-tests: prepare build-docker
 	$(RUN_CMD) sh -c 'export BUILD="/tileset/$(BUILD_DIR)" \
 && generate-tm2source testdata/testlayers/testmaptiles.yaml --host="pghost" --port=5432 --database="pgdb" --user="pguser" --password="pgpswd" > $$BUILD/tm2source.yml \
 && generate-imposm3  testdata/testlayers/testmaptiles.yaml                                      > $$BUILD/imposm3.yaml \
@@ -74,3 +84,6 @@ build-tests: prepare
 && generate-mapping-graph testdata/testlayers/testmaptiles.yaml $$BUILD/devdoc --keep -f png -f svg \
 && generate-mapping-graph testdata/testlayers/housenumber/housenumber.yaml $$BUILD/devdoc/mapping_diagram --keep -f png -f svg \
 '
+
+.PHONY: build-tests
+build-tests: build-bin-tests build-sql-tests
