@@ -32,7 +32,7 @@ test: clean build-tests
 .PHONY: clean
 clean:
 	rm -rf "$(BUILD_DIR)"
-	rm $(WORKDIR)/sql/*pre_tests.sql
+	rm -rf $(WORKDIR)/sql/*pre_tests.sql
 
 # Delete dir with the expected test results and rebuild them
 .PHONY: rebuild-expected
