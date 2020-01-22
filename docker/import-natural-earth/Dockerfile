@@ -11,7 +11,7 @@ RUN wget --quiet http://naciscdn.org/naturalearth/packages/natural_earth_vector.
 
 
 FROM osgeo/gdal:alpine-normal-3.0.2
-MAINTAINER "Yuri Astrakhan <YuriAstrakhan@gmail.com>"
+LABEL maintainer="YuriAstrakhan@gmail.com"
 
 ENV IMPORT_DATA_DIR=/import \
     NATURAL_EARTH_DB=/import/natural_earth_vector.sqlite
