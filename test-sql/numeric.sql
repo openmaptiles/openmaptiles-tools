@@ -1,0 +1,11 @@
+SELECT omt_as_numeric(null) AS fail;
+SELECT omt_as_numeric('.') AS fail;
+SELECT omt_as_numeric('a123') AS fail;
+SELECT omt_as_numeric('123a') AS fail;
+SELECT omt_as_numeric('foobar') AS fail;
+SELECT omt_as_numeric('9999999999') AS ok;
+SELECT omt_as_numeric('-9999999999') AS ok;
+SELECT omt_as_numeric('123') AS ok;
+SELECT omt_as_numeric('123.456') AS ok;
+SELECT omt_as_numeric('  123.456  ') AS ok;
+SELECT omt_as_numeric('456.789e2') AS ok;

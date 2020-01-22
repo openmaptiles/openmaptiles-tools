@@ -3,6 +3,7 @@ IMAGE_NAME   ?= openmaptiles/openmaptiles-tools
 DOCKER_IMAGE ?= $(IMAGE_NAME):$(VERSION)
 POSTGIS_IMAGE?= openmaptiles/postgis:latest
 BUILD_DIR    ?= build
+VT_UTIL_URL  ?= https://raw.githubusercontent.com/mapbox/postgis-vt-util/v1.0.0/postgis-vt-util.sql
 
 # Options to run with docker - ensure the container is destroyed on exit,
 # runs as the current user rather than root (so that created files are not root-owned)
@@ -31,6 +32,7 @@ test: clean build-tests
 .PHONY: clean
 clean:
 	rm -rf "$(BUILD_DIR)"
+	rm $(WORKDIR)/sql/*pre_tests.sql
 
 # Delete dir with the expected test results and rebuild them
 .PHONY: rebuild-expected
@@ -51,6 +53,8 @@ build-docker:
 
 .PHONY: build-sql-tests
 build-sql-tests: prepare
+	# Download postgis-vt-util into SQL folder ensuring itś executed first
+	curl -sL -o  $(WORKDIR)/sql/000_pre_tests.sql $(VT_UTIL_URL)
 	# postgis image for now requires to run under root
 	# Run a custom entrypoint, expecting it to raise an error which we ignore
 	# The entrypoint will add an extra startup script, which will do all the testing
