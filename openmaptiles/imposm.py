@@ -3,12 +3,12 @@ from .tileset import Tileset
 
 
 def zres(pixel_scale, zoom):
-    # See https://github.com/mapbox/postgis-vt-util/blob/master/src/ZRes.sql
+    # See https://github.com/openmaptiles/postgis-vt-util/blob/master/src/ZRes.sql
     return 40075016.6855785 / ((1.0 * pixel_scale) * 2 ** zoom)
 
 
 def call_zres(pixel_scale, match):
-    # See https://github.com/mapbox/postgis-vt-util/blob/master/src/ZRes.sql
+    # See https://github.com/openmaptiles/postgis-vt-util/blob/master/src/ZRes.sql
     return str(zres(float(pixel_scale), float(match.group(0)[4:6])))
 
 
