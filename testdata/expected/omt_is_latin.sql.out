@@ -1,0 +1,40 @@
+ empty_str 
+-----------
+ t
+(1 row)
+
+ space 
+-------
+ t
+(1 row)
+
+ abc_xyz 
+---------
+ t
+(1 row)
+
+ abc_xyz 
+---------
+ t
+(1 row)
+
+ digits 
+--------
+ t
+(1 row)
+
+ ext_latin 
+-----------
+ t
+(1 row)
+
+ russian_lc 
+------------
+ f
+(1 row)
+
+ russian_uc 
+------------
+ f
+(1 row)
+
