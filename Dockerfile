@@ -57,9 +57,9 @@ COPY ./requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
-RUN curl -OL https://raw.githubusercontent.com/mapbox/postgis-vt-util/v1.0.0/postgis-vt-util.sql && \
+RUN curl -OL https://raw.githubusercontent.com/openmaptiles/postgis-vt-util/master/postgis-vt-util.sql && \
     mkdir -p "${VT_UTIL_DIR?}" && \
-    mv postgis-vt-util.sql ${VT_UTIL_DIR?}/ && \
+    mv postgis-vt-util.sql "${VT_UTIL_DIR?}/" && \
     mv bin/* . && \
     rm -rf bin && \
     rm requirements.txt
