@@ -378,7 +378,7 @@ The `import-sql` script can execute a single SQL file in Postgres when the file 
 
 If ran without any arguments, `import-sql` executes all of the following:
 * SQL files from `$OMT_UTIL_DIR`  -  by default contains the [sql/language.sql](./sql/language.sql) script.
-* SQL files from `$VT_UTIL_DIR`  - by default contains Mapbox's [postgis-vt-util.sql](https://raw.githubusercontent.com/openmaptiles/postgis-vt-util/master/postgis-vt-util.sql) helper functions.
+* SQL files from `$VT_UTIL_DIR`  - by default contains Mapbox's [postgis-vt-util.sql](https://github.com/openmaptiles/postgis-vt-util/blob/master/postgis-vt-util.sql) helper functions.
 * SQL files from `$SQL_DIR`  - defaults to `/sql` -- this volume is empty initially, but should contain build results of running other generation scripts. If this directory contains `parallel/` subdirectory, `import-sql` will assume the parallel/*.sql files are safe to execute in parallel, up to `MAX_PARALLEL_PSQL` at a time (defaults to 5). The script will also execute `run_first.sql` before, and `run_last.sql` after the files in `parallel/` dir (if they exist).
 
 Generating and importing SQL could be done in a single step with `&&`, e.g.
