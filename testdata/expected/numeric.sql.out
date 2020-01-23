@@ -1,54 +1,54 @@
- fail_null
+ fail_null 
 -----------
         -1
 (1 row)
 
- fail_dot
+ fail_dot 
 ----------
        -1
 (1 row)
 
- fail_prefixed_letter
+ fail_prefixed_letter 
 ----------------------
                    -1
 (1 row)
 
- fail_postfixed_letter
+ fail_postfixed_letter 
 -----------------------
                     -1
 (1 row)
 
- fail_text
+ fail_text 
 -----------
         -1
 (1 row)
 
- ok_big_positive
+ ok_big_positive 
 -----------------
       9999999999
 (1 row)
 
- ok_big_negative
+ ok_big_negative 
 -----------------
      -9999999999
 (1 row)
 
- ok_integer
+ ok_integer 
 ------------
         123
 (1 row)
 
- ok_float
+ ok_float 
 ----------
   123.456
 (1 row)
 
- ok_float_trim
+ ok_float_trim 
 ---------------
        123.456
 (1 row)
 
- ok_e_notation
+ ok_e_notation 
 ---------------
        45678.9
 (1 row)

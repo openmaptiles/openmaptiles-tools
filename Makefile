@@ -3,7 +3,7 @@ IMAGE_NAME   ?= openmaptiles/openmaptiles-tools
 DOCKER_IMAGE ?= $(IMAGE_NAME):$(VERSION)
 POSTGIS_IMAGE?= openmaptiles/postgis:latest
 BUILD_DIR    ?= build
-VT_UTIL_URL  ?= https://raw.githubusercontent.com/mapbox/postgis-vt-util/v1.0.0/postgis-vt-util.sql
+VT_UTIL_URL  ?= https://raw.githubusercontent.com/openmaptiles/postgis-vt-util/v2.0.0/postgis-vt-util.sql
 
 # Options to run with docker - ensure the container is destroyed on exit,
 # runs as the current user rather than root (so that created files are not root-owned)
