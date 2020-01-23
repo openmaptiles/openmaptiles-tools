@@ -36,7 +36,7 @@ from collections import defaultdict
 
 import asyncpg
 from asyncpg import Connection
-from docopt import docopt
+from docopt import docopt, DocoptExit
 from typing import Iterable, List
 
 import requests
@@ -50,7 +50,15 @@ async def main(args):
     verbose = args['--verbose']
     storage_table = args['--storage']
     tileset_path = args['<tileset>']
-    tables = find_tables(tileset_path) if tileset_path else args['--table']
+    if tileset_path:
+        tables = find_tables(tileset_path)
+        if not tables:
+            print(f"Unable to find any tables with wikidata fields in {tileset_path}")
+            return
+    elif not args['--table']:
+        raise DocoptExit('--table parameter must specify the table to process')
+    else:
+        tables = args['--table']
 
     pghost, pgport, dbname, user, password = parse_pg_args(args)
     conn = await asyncpg.connect(
@@ -89,12 +97,19 @@ def find_tables(tileset_path, table_prefix='osm_'):
     for layer in tileset.layers:
         for mapping in layer.imposm_mappings:
             for table_name, table_def in mapping['tables'].items():
-                if 'fields' not in table_def or (
+                if (
+                    'fields' not in table_def and
+                    'columns' not in table_def
+                ) or (
                     '_resolve_wikidata' in table_def and
                     not table_def['_resolve_wikidata']
                 ):
                     continue
-                fields = table_def['fields']
+                # legacy support - imposm3 used to use "fields" instead of "columns"
+                if 'fields' in table_def:
+                    fields = table_def['fields']
+                else:
+                    fields = table_def['columns']
                 if any((v for v in fields
                         if v['name'] == 'tags' and v['type'] == 'hstore_tags')):
                     tables.add(table_prefix + table_name)
