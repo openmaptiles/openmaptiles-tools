@@ -1,9 +1,7 @@
 VERSION      ?= $(shell grep __version__ ./openmaptiles/__init__.py | sed -E 's/^(.*"([^"]+)".*|.*)$$/\2/')
 IMAGE_NAME   ?= openmaptiles/openmaptiles-tools
 DOCKER_IMAGE ?= $(IMAGE_NAME):$(VERSION)
-POSTGIS_IMAGE?= openmaptiles/postgis:latest
 BUILD_DIR    ?= build
-VT_UTIL_URL  ?= https://raw.githubusercontent.com/openmaptiles/postgis-vt-util/v2.0.0/postgis-vt-util.sql
 
 # Options to run with docker - ensure the container is destroyed on exit,
 # runs as the current user rather than root (so that created files are not root-owned)
@@ -15,6 +13,9 @@ RUN_CMD := docker run ${DOCKER_OPTS} -v "$(WORKDIR):/tileset" "$(DOCKER_IMAGE)"
 
 DIFF_CMD := diff --brief --recursive --new-file
 EXPECTED_DIR := testdata/expected
+
+# Exports
+export DOCKER_IMAGE
 
 
 .PHONY: test
@@ -32,7 +33,6 @@ test: clean build-tests
 .PHONY: clean
 clean:
 	rm -rf "$(BUILD_DIR)"
-	rm -rf $(WORKDIR)/sql/*pre_tests.sql
 
 # Delete dir with the expected test results and rebuild them
 .PHONY: rebuild-expected
@@ -52,13 +52,12 @@ build-docker:
 	docker build --pull --file Dockerfile --tag $(DOCKER_IMAGE) .
 
 .PHONY: build-sql-tests
-build-sql-tests: prepare
-	# Download postgis-vt-util into SQL folder ensuring itś executed first
-	curl -sL -o  $(WORKDIR)/sql/000_pre_tests.sql $(VT_UTIL_URL)
-	# postgis image for now requires to run under root
-	# Run a custom entrypoint, expecting it to raise an error which we ignore
-	# The entrypoint will add an extra startup script, which will do all the testing
-	docker run -i --rm -v "$(WORKDIR):/omt" --entrypoint /omt/test-sql/test-sql-entrypoint.sh "$(POSTGIS_IMAGE)" postgres || echo "PostgreSQL test run is finished"
+build-sql-tests: prepare build-docker
+	# Run postgis (latest) image, import all SQL tools/languages code, and run the tests
+	# Make sure to cleanup before and after to make sure no volume stays behind
+	docker-compose --file test-sql/docker-compose.yml rm -f && \
+	timeout 60 docker-compose --file test-sql/docker-compose.yml up --abort-on-container-exit && \
+	docker-compose --file test-sql/docker-compose.yml rm -f
 
 .PHONY: build-bin-tests
 build-bin-tests: prepare build-docker

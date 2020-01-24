@@ -1,0 +1,18 @@
+version: '3.1'
+
+services:
+  postgres:
+    image: openmaptiles/postgis:latest
+    ports:
+      - "5432"
+    env_file: test.env
+
+  tests:
+    image: "$DOCKER_IMAGE"
+    working_dir: /omt
+    command: /omt/test-sql/test-sql.sh
+    env_file: test.env
+    volumes:
+    - ../:/omt
+    depends_on:
+      - postgres
