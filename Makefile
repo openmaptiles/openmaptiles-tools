@@ -1,7 +1,6 @@
 VERSION      ?= $(shell grep __version__ ./openmaptiles/__init__.py | sed -E 's/^(.*"([^"]+)".*|.*)$$/\2/')
 IMAGE_NAME   ?= openmaptiles/openmaptiles-tools
 DOCKER_IMAGE ?= $(IMAGE_NAME):$(VERSION)
-POSTGIS_IMAGE?= openmaptiles/postgis:latest
 BUILD_DIR    ?= build
 
 # Options to run with docker - ensure the container is destroyed on exit,
@@ -14,6 +13,9 @@ RUN_CMD := docker run ${DOCKER_OPTS} -v "$(WORKDIR):/tileset" "$(DOCKER_IMAGE)"
 
 DIFF_CMD := diff --brief --recursive --new-file
 EXPECTED_DIR := testdata/expected
+
+# Exports
+export DOCKER_IMAGE
 
 
 .PHONY: test
@@ -50,11 +52,12 @@ build-docker:
 	docker build --pull --file Dockerfile --tag $(DOCKER_IMAGE) .
 
 .PHONY: build-sql-tests
-build-sql-tests: prepare
-	# postgis image for now requires to run under root
-	# Run a custom entrypoint, expecting it to raise an error which we ignore
-	# The entrypoint will add an extra startup script, which will do all the testing
-	docker run -i --rm -v "$(WORKDIR):/omt" --entrypoint /omt/test-sql/test-sql-entrypoint.sh "$(POSTGIS_IMAGE)" postgres || echo "PostgreSQL test run is finished"
+build-sql-tests: prepare build-docker
+	# Run postgis (latest) image, import all SQL tools/languages code, and run the tests
+	# Make sure to cleanup before and after to make sure no volume stays behind
+	docker-compose --file test-sql/docker-compose.yml rm -f && \
+	timeout 60 docker-compose --file test-sql/docker-compose.yml up --abort-on-container-exit && \
+	docker-compose --file test-sql/docker-compose.yml rm -f
 
 .PHONY: build-bin-tests
 build-bin-tests: prepare build-docker
