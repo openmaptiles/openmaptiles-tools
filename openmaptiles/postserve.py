@@ -1,6 +1,6 @@
 import logging
 from functools import partial
-from typing import Union, List
+from typing import Union, List, Any, Dict
 
 from asyncpg import Connection, ConnectionDoesNotExistError, PostgresLogMessage, \
     create_pool
@@ -8,9 +8,9 @@ from asyncpg.pool import Pool
 # noinspection PyUnresolvedReferences
 from tornado.ioloop import IOLoop
 # noinspection PyUnresolvedReferences
-from tornado.web import Application, RequestHandler
-# noinspection PyUnresolvedReferences
 from tornado.log import access_log
+# noinspection PyUnresolvedReferences
+from tornado.web import Application, RequestHandler
 
 from openmaptiles.pgutils import show_settings, get_postgis_version, PgWarnings
 from openmaptiles.sqltomvt import MvtGenerator
@@ -155,7 +155,7 @@ class Postserve:
 
         self.tileset = Tileset.parse(self.tileset_path)
 
-        self.metadata = dict(
+        self.metadata: Dict[str, Any] = dict(
             format="pbf",
             name=self.tileset.name,
             id=self.tileset.id,
@@ -169,7 +169,7 @@ class Postserve:
             pixel_scale=self.tileset.pixel_scale,
             tilejson="2.0.0",
             tiles=[f"{self.url}" + "/tiles/{z}/{x}/{y}.pbf"],
-            vector_layers=[]
+            vector_layers=[],
         )
 
     async def init_connection(self):
@@ -191,8 +191,8 @@ class Postserve:
             for layer_id, layer in self.mvt.get_layers():
                 fields = await self.mvt.validate_layer_fields(conn, layer_id, layer)
                 unknown = {
-                    name: oid for name, oid in fields.items()
-                    if oid not in pg_types and name != layer.geometry_field
+                    name: oid
+                    for name, oid in fields.items() if oid not in pg_types
                 }
                 if unknown:
                     print(f"Ignoring fields with unknown SQL types (OIDs): "

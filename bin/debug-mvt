@@ -103,12 +103,16 @@ async def main(args):
         if test_geometry:
             extra_columns += f', ST_IsValid({geom_fld}) AS is_valid_geom'
 
+        if not show_names and layer_def.has_localized_names:
+            # Alter stored query to hide localized names
+            layer_def.definition['layer']['datasource']['query'] = \
+                layer_def.raw_query.format(name_languages='NULL as _hidden_names_')
+
         query = mvt.layer_to_query(
             layer_def,
             to_mvt_geometry=show_mvt_geometry,
             mvt_geometry_wrapper=mvt_wrapper,
             extra_columns=extra_columns,
-            languages_sql=None if show_names else f'NULL as _hidden_names_',
         )
         layer_sql = mvt.generate_layer(layer_def)
         if verbose:

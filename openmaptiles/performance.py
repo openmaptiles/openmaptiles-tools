@@ -129,8 +129,8 @@ class PerfTester:
         )
         self.results.layer_fields = {}
         for layer_id, layer_def in self.mvt.get_layers():
-            fields = await self.mvt.validate_layer_fields(conn, layer_id, layer_def)
-            self.results.layer_fields[layer_id] = list(fields.keys())
+            await self.mvt.validate_layer_fields(conn, layer_id, layer_def)
+            self.results.layer_fields[layer_id] = layer_def.get_fields()
         self.test_cases = []
         old_tests = self.old_run.tests if self.old_run else None
         for layer in (self.layers if self.per_layer else [None]):
@@ -147,7 +147,7 @@ class PerfTester:
         print(f"\n\n================ SUMMARY ================")
         self.print_summary_graphs('test_summary', lambda t: t.id,
                                   lambda t: f"in test {t.id}", 'Per-test')
-        self.print_summary_graphs('zoom_summary', lambda tc: str(tc.zoom),
+        self.print_summary_graphs('zoom_summary', lambda v: str(v.zoom),
                                   lambda t: f"at z{t.zoom}", 'Per-zoom')
         if self.per_layer:
             self.print_summary_graphs('layer_summary', lambda t: t.layers_id,

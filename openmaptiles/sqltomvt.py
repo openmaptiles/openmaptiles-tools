@@ -6,7 +6,6 @@ from asyncpg import Connection
 from docopt import DocoptExit
 
 from openmaptiles.consts import PIXEL_SCALE
-from openmaptiles.language import language_codes_to_names, languages_to_sql
 from openmaptiles.tileset import Tileset, Layer
 from openmaptiles.utils import find_duplicates
 
@@ -38,7 +37,7 @@ class MvtGenerator:
         m = re.match(r'^(?P<major>\d+)\.(?P<minor>\d+)(\.(?P<patch>\d+))?',
                      postgis_ver)
         if not m:
-            raise ValueError(f"Unparsable postgis version string '{postgis_ver}'")
+            raise ValueError(f"Unparseable PostGIS version string '{postgis_ver}'")
         self.postgis_ver = (int(m['major']), int(m['minor']),
                             int(m['patch']) if m['patch'] else None)
 
@@ -75,7 +74,7 @@ $$ LANGUAGE SQL STABLE RETURNS NULL ON NULL INPUT;"""
 
     def generate_sqltomvt_preparer(self, fname):
         """
-        Creates a SQL prepared statement that returns 0 or 1 row with a single mvt column.
+        Creates a SQL prepared statement returning 0 or 1 row with a single mvt column.
         """
         return f"""\
 -- Delete prepared statement if it already exists
@@ -169,16 +168,10 @@ as mvtl{extras} FROM {query}"""
                        layer: Layer,
                        to_mvt_geometry=True,
                        mvt_geometry_wrapper: Callable[[str], str] = None,
-                       extra_columns: str = None,
-                       languages_sql: str = None) -> str:
+                       extra_columns: str = None) -> str:
         query = layer.query
         if self.zoom is not None:
             query = self.substitute_sql(query, layer, self.zoom, self.x, self.y)
-        has_languages = '{name_languages}' in query
-        if has_languages:
-            if languages_sql is None:
-                languages_sql = languages_to_sql(self.tileset.languages)
-            query = query.format(name_languages=languages_sql)
 
         replacement = ''
         if to_mvt_geometry:
@@ -241,19 +234,20 @@ as mvtl{extras} FROM {query}"""
     ) -> Dict[str, str]:
         """Validate that fields in the layer definition match the ones
         returned by the dummy (0-length) SQL query.
-        Returns field names => SQL types (oid)."""
-        query_field_map, languages = await self.get_sql_fields(connection, layer)
-        query_fields = set(query_field_map.keys())
-        layer_fields = layer.get_fields()
-        if languages:
-            layer_fields += language_codes_to_names(languages)
-        layer_fields = set(layer_fields)
+        Returns field names => SQL types (oid) excluding the geometry field"""
+        query_field_map = await self.get_sql_fields(connection, layer)
+        layer_fields = set(layer.get_fields())
+
+        # Make sure query returns expected geometry field
         geom_fld = layer.geometry_field
-        if geom_fld not in query_fields:
+        if geom_fld not in query_field_map:
             raise ValueError(
                 f"Layer '{layer_id}' query does not generate expected '{geom_fld}'"
                 f"{' (geometry)' if geom_fld != 'geometry' else ''} field")
-        query_fields.remove(geom_fld)
+        del query_field_map[geom_fld]
+
+        # compare query result fields with declared ones
+        query_fields = set(query_field_map.keys())
         if layer_fields != query_fields:
             same = layer_fields.intersection(query_fields)
             layer_fields -= same
@@ -267,22 +261,16 @@ as mvtl{extras} FROM {query}"""
                 error += f"  These fields were returned by the query, " \
                          f"but not declared: {', '.join(query_fields)}"
             raise ValueError(error)
+
         return query_field_map
 
     async def get_sql_fields(
         self, connection: Connection, layer: Layer
-    ) -> Tuple[Dict[str, str], Iterable[str]]:
+    ) -> Dict[str, str]:
         """Get field names => SQL types (oid) by executing a dummy query"""
-        query = layer.query
-        if '{name_languages}' in query:
-            languages = self.tileset.languages
-            query = query.format(name_languages=languages_to_sql(languages))
-        else:
-            languages = False
-        query = self.substitute_sql(query, layer, 0, 0, 0)
+        query = self.substitute_sql(layer.query, layer, 0, 0, 0)
         st = await connection.prepare(f"SELECT * FROM {query} WHERE false LIMIT 0")
-        query_field_map = {fld.name: fld.type.oid for fld in st.get_attributes()}
-        return query_field_map, languages
+        return {fld.name: fld.type.oid for fld in st.get_attributes()}
 
     def get_layers(self) -> Iterable[Tuple[str, Layer]]:
         all_layers = [(v.id, v) for v in self.tileset.layers]
