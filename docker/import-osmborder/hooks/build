@@ -1,8 +1,0 @@
-#!/usr/bin/env sh
-
-docker build \
-  --build-arg "BASE_TAG=${DOCKER_TAG?}" \
-  --build-arg "RELEASE_VERSION=${SOURCE_BRANCH?}" \
-  -t "${IMAGE_NAME?}" \
-  -f "${DOCKERFILE_PATH?}" \
-  .
