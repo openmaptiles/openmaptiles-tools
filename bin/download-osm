@@ -42,6 +42,7 @@ Use  --split  or  -s  parameter to override that number.
 import asyncio
 import re
 import subprocess
+from asyncio import sleep
 from collections import defaultdict
 from dataclasses import dataclass
 from datetime import datetime
@@ -81,6 +82,8 @@ class Catalog:
         and pick the most recent file that is widely available.
         Returns a list of urls and the expected md5 hash.
         """
+        print("Retrieving available files...")
+        await sleep(0.01)  # Make sure the above print statement prints first
         sources_by_hash: Dict[str, List[Source]] = defaultdict(list)
         await asyncio.wait([v.init(session, verbose) for v in self.sites])
         for site in self.sites:
@@ -104,7 +107,8 @@ class Catalog:
                     src.hash = len_to_hash[src.file_len]
                     sources_by_hash[src.hash].append(src)
                 else:
-                    print(f"Source {src} has unrecognized file length={src.file_len}")
+                    print(f"WARN: Source {src} has unrecognized file "
+                          f"length={src.file_len:,}")
         else:
             print(f"Unable to use sources - unable to match 'latest' without date/md5:")
             for s in no_hash_sources:
@@ -112,20 +116,29 @@ class Catalog:
 
         # Pick the best hash to download - should have the largest timestamp,
         # but if the count is too low, use the second most common timestamp.
-        stats = [(v[0].timestamp, len(v), v[0].hash)
+        for hsh in sources_by_hash:
+            # Some sources just have "latest", so for each hash try to get a real date
+            # by sorting real dates before the None timestamp,
+            # and with the non-None file sizes first.
+            sources_by_hash[hsh].sort(
+                key=lambda v: (v.timestamp or datetime.max, v.file_len or (1 << 63)))
+        # Treat "latest" (None) timestamp as largest value (otherwise sort breaks)
+        stats = [(v[0].timestamp or datetime.max, len(v), v[0])
                  for v in sources_by_hash.values()]
         stats.sort(reverse=True)
 
-        print("Latest files available:")
-        info = [dict(date=f"{s[0]:%Y-%m-%d}", number_of_sites=s[1], md5=s[2])
+        print("\nLatest available files:\n")
+        info = [dict(date=f"{s[0]:%Y-%m-%d}" if s[0] < datetime.max else "Unknown",
+                     number_of_sites=s[1], md5=s[2].hash,
+                     size=s[2].size_str())
                 for s in stats]
         print(tabulate(info, headers="keys") + '\n')
 
         if not force_latest and len(stats) > 1 and stats[0][1] * 1.5 < stats[1][1]:
-            hash_to_download = stats[1][2]
+            hash_to_download = stats[1][2].hash
             info = f" because the latest {stats[0][0]:%Y-%m-%d} is not widespread yet"
         else:
-            hash_to_download = stats[0][2]
+            hash_to_download = stats[0][2].hash
             info = ""
 
         src_list = sources_by_hash[hash_to_download]
@@ -134,9 +147,10 @@ class Catalog:
 
         if len(src_list) > 2 and not use_primary:
             src_list = [v for v in src_list if not v.site.avoid_by_default]
+            info = ' (will not use primary)' + info
 
         print(f"Will download planet published on {ts}, "
-              f"size={src_list[0].size_mb()}, md5={src_list[0].hash}, "
+              f"size={src_list[0].size_str()}, md5={src_list[0].hash}, "
               f"using {len(src_list)} sources{info}")
         if verbose:
             print(tabulate([dict(country=s.site.country, url=s.url) for s in src_list],
@@ -186,7 +200,6 @@ class Site:
                 verbose)
             await asyncio.wait([v.load_hash(session, verbose) for v in sources] +
                                [v.load_metadata(session, verbose) for v in sources])
-            sources = [s for s in sources if s.is_valid]
             if not sources:
                 raise ValueError(f"No sources found")
             if len(sources) > 1 and sources[0].hash == sources[1].hash:
@@ -203,7 +216,7 @@ class Site:
             m = self.re_name.match(name)
             if not m:
                 if verbose:
-                    print(f"Unexpected name '{name}' from {self.url}")
+                    print(f"Ignoring unexpected name '{name}' from {self.url}")
                 continue
             try:
                 url = href if '/' in href else (self.url + href)
@@ -219,7 +232,7 @@ class Site:
                         raise ValueError(f"md5 file exists, but data file does not")
                     all_sources[date].url_hash = url
             except Exception as ex:
-                print_err(f'Error: {ex}, while parsing {name} from {self.url}')
+                print_err(f'WARN: {ex}, while parsing {name} from {self.url}')
 
         # get the last 2 sources that have dates in the name, as well as the "latest"
         latest = all_sources.pop('latest', None)
@@ -239,7 +252,6 @@ class Source:
     url_hash: str = None
     hash: str = None
     file_len: int = None
-    is_valid: bool = False
 
     def __str__(self):
         res = f"{self.name} from {self.url}"
@@ -268,13 +280,13 @@ class Source:
                     raise ValueError(f"Status={resp.status} for HEAD request")
                 if 'Content-Length' in resp.headers:
                     self.file_len = int(resp.headers['Content-Length'])
-                    self.is_valid = True
         except Exception as ex:
             print_err(f"Unable to load metadata for {self}: {ex}")
 
-    def size_mb(self):
-        return ("Unknown" if self.file_len is None
-                else f"{self.file_len / 1024.0 / 1024:,.1f} MB")
+    def size_str(self):
+        if self.file_len is None:
+            return "Unknown"
+        return f"{self.file_len / 1024.0 / 1024:,.1f} MB ({self.file_len:,})"
 
 
 async def fetch(session: ClientSession, url: str):
@@ -314,12 +326,9 @@ async def main(args):
             src = Source(name, url, url_hash=url + '.md5')
             await asyncio.wait([src.load_hash(session, args.verbose),
                                 src.load_metadata(session, args.verbose)])
-            if not src.is_valid:
-                print_err(f"Unable to load {src.name} metadata, aborting.")
-                exit(1)
             urls = [src.url]
             md5 = src.hash
-            print(f"Will download {src.url} (size={src.size_mb()}, md5={src.hash})")
+            print(f"Will download {src.url} (size={src.size_str()}, md5={src.hash})")
 
     params = ['aria2c']
     if md5:
@@ -330,12 +339,12 @@ async def main(args):
     params.extend(aria2c_args)
     params.extend(urls)
 
-    print(f"  {subprocess.list2cmdline(params)}\n")
+    print(f"\n  {subprocess.list2cmdline(params)}\n")
     if not dry_run:
         res = subprocess.run(params)
         exit(res.returncode)
     else:
-        print("Data is not downloaded (used with --dry-run)")
+        print("Data is not downloaded because of the --dry-run parameter")
 
 
 if __name__ == '__main__':
