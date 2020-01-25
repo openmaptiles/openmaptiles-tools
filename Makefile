@@ -86,6 +86,7 @@ build-bin-tests: prepare build-docker
 && generate-etlgraph testdata/testlayers/housenumber/housenumber.yaml $$BUILD/devdoc --keep -f png -f svg \
 && generate-mapping-graph testdata/testlayers/testmaptiles.yaml $$BUILD/devdoc --keep -f png -f svg \
 && generate-mapping-graph testdata/testlayers/housenumber/housenumber.yaml $$BUILD/devdoc/mapping_diagram --keep -f png -f svg \
+&& download-osm planet --dry-run \
 '
 
 .PHONY: build-tests
