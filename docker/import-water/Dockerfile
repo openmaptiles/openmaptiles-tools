@@ -1,7 +1,5 @@
 # Use a separate docker for downloading to minimize final docker image
-# BASE_TAG will be injected by the dockerhub auto-build environment
-ARG BASE_TAG=latest
-FROM openmaptiles/openmaptiles-tools:${BASE_TAG} as downloader
+FROM bash as downloader
 
 ENV IMPORT_DATA_DIR=/import
 RUN mkdir -p /import \
@@ -11,12 +9,11 @@ RUN mkdir -p /import \
     && rm water-polygons-split-3857.zip
 
 
-FROM osgeo/gdal:alpine-normal-3.0.2
+FROM osgeo/gdal:alpine-normal-3.0.3
 LABEL maintainer="YuriAstrakhan@gmail.com"
 
-ENV IMPORT_DATA_DIR=/import \
-    WATER_POLYGONS_FILE="${IMPORT_DATA_DIR}/water_polygons.shp"
-
+ENV IMPORT_DATA_DIR=/import
+ENV WATER_POLYGONS_FILE="${IMPORT_DATA_DIR}/water_polygons.shp"
 
 COPY --from=downloader "$IMPORT_DATA_DIR"/* ${IMPORT_DATA_DIR}/
 
