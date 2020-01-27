@@ -31,11 +31,10 @@ def generate_tm2source(tileset_filename, db_params):
 def generate_layer(layer: Layer, db_params):
     key_field = layer.key_field or ''
     if key_field == '':
-        #      column number 4 is out of range 0..3
-        # /usr/local/lib/node_modules/tilelive/bin/tilelive-copy:100
-        # Error: basic_string::_S_construct null not valid
-        #     at Error (native)
-        kf_as_attr = ''  # weird Mapnik expectation, throws an error otherwise
+        # weird Mapnik expectation. Use '', otherwise Mapnik throws an error:
+        #   column number 4 is out of range 0..3
+        #   Error: basic_string::_S_construct null not valid
+        kf_as_attr = ''
     else:
         kf_as_attr = layer.key_field_as_attribute
     return {
