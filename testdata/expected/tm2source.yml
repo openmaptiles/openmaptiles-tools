@@ -9,7 +9,7 @@ Layer:
     geometry_field: geometry
     host: pghost
     key_field: ''
-    key_field_as_attribute: false
+    key_field_as_attribute: ''
     max_size: 512
     password: pgpswd
     port: 5432
