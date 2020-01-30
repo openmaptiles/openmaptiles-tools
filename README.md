@@ -250,8 +250,11 @@ download-osm planet
 # download to the target dir by passing -d ... param to aria2c
 download-osm planet -- -d ./downloads
 
-# download New Zealand extract from Geofabrik
-download geofabrik australia-oceania/new-zealand
+# download New Zealand extract from Geofabrik, together with the state file
+download-osm geofabrik new-zealand --state state.txt
+
+# List all extracts available from Geofabrik 
+download-osm list geofabrik
 ```
 
 ### Generate SQL code to create MVT tiles directly by PostGIS

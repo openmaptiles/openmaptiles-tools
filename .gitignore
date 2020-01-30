@@ -6,6 +6,9 @@
 #
 #
 
+# Downloaded catalog data will be stored here
+bin/cache
+
 # Test dirs
 testbuild/
 
