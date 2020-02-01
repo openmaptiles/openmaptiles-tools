@@ -61,6 +61,8 @@ class EtlGraph(GraphGenerator):
     def get_graph(self, layer: Layer, is_tileset: bool) -> Tuple[Digraph, Path]:
         body = self.parse_files(layer.imposm_mapping_files, self.re_mapping) + \
                self.parse_files(layer.schemas, self.re_schema)
+        # Remove duplicates preserving order (TBD: maybe we should sort it too?)
+        body = list(dict.fromkeys(body))
         if is_tileset:
             path = self.output_dir / layer.id / 'etl_diagram'
         else:
@@ -68,14 +70,17 @@ class EtlGraph(GraphGenerator):
         return Digraph('G', graph_attr=dict(rankdir='LR'), body=body), path
 
     @staticmethod
-    def parse_files(content_list: list, matcher: re):
+    def parse_files(content_list: list, matcher: re) -> List[str]:
         result = []
         for item in content_list:
             content = item.read_text('utf-8') if isinstance(item, Path) else item
             for line in content.splitlines():
                 m = matcher.match(line)
                 if m:
-                    result.append(m.group(1).strip(' \t\n\r'))
+                    value = m.group(1).strip(' \t\n\r')
+                    # replace multiple consequent space/tabs with a single space
+                    value = re.sub(r'\s+', ' ', value)
+                    result.append(value)
         return result
 
 
