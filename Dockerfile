@@ -62,7 +62,8 @@ RUN curl -OL https://raw.githubusercontent.com/openmaptiles/postgis-vt-util/v2.0
     mv postgis-vt-util.sql "${VT_UTIL_DIR?}/" && \
     mv bin/* . && \
     rm -rf bin && \
-    rm requirements.txt
+    rm requirements.txt && \
+    ./download-osm list geofabrik
 
 WORKDIR /tileset
 VOLUME /tileset

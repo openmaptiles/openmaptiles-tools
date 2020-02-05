@@ -3,9 +3,10 @@
 Usage:
   download-osm planet [-l] [-p] [-n] [-v] [--] [<arguments>...]
   download-osm url       <url>  [-n] [-v] [--] [<arguments>...]
-  download-osm geofabrik <id>   [-n] [-v] [--] [<arguments>...]
-  download-osm bbbike    <id>   [-n] [-v] [--] [<arguments>...]
-  download-osm osmfr     <id>   [-n] [-v] [--] [<arguments>...]
+  download-osm list <service> [-l] [-c]
+  download-osm geofabrik <id> [-l] [-c] [-n] [-v] [-s <file>] [--] [<arguments>...]
+  download-osm osmfr     <id>           [-n] [-v] [-s <file>] [--] [<arguments>...]
+  download-osm bbbike    <id>           [-n] [-v]             [--] [<arguments>...]
   download-osm --help
   download-osm --version
 
@@ -13,8 +14,9 @@ Download types:
   planet           Loads latest planet file (50+ GB) from all known mirrors
   url <url>        Loads file from the specific <url>.
                    If <url>.md5 is available, download-osm will use it to validate.
-  geofabrik <id>   Loads file from Geofabrik by ID, where the ID is part of the URL, e.g.
-                   "australia-oceania/new-zealand". Download will add '-latest.osm.pbf'.
+  list <service>   Show available areas for a service. For now only 'geofabrik'.
+  geofabrik <id>   Loads file from Geofabrik by ID, where the ID is either
+                   "australia-oceania/new-zealand" or just "new-zealand".
                    See https://download.geofabrik.de/
   bbbike <id>      Loads file from BBBike by extract ID, for example "Austin".
                    See https://download.bbbike.org/osm/
@@ -23,11 +25,15 @@ Download types:
                    See https://download.openstreetmap.fr/extracts
 
 Options:
-  -l --force-latest     Always download the very latest available planet file,
-                        even if there are too few mirrors that have it.
   -p --include-primary  If set, will download from the main osm.org (please avoid
                         using this parameter to reduce the load on the primary server)
+  -l --force-latest     Always download the very latest available planet file,
+                        even if there are too few mirrors that have it.
+                        For Geofabrik, forces catalog re-download.
+  -c --no-cache         Do not cache downloaded list of extracts
+  -s --state <file>     Download state file and save it to the <file>
   -n --dry-run          If set, do all the steps except the actual data download.
+                        State file will still be downloaded if --state is set.
   -v --verbose          Print additional debugging information
   --help                Show this screen.
   --version             Show version.
@@ -40,13 +46,17 @@ Use  --split  or  -s  parameter to override that number.
 """
 
 import asyncio
+import html
+import json
 import re
 import subprocess
 from asyncio import sleep
 from collections import defaultdict
 from dataclasses import dataclass
 from datetime import datetime
+from pathlib import Path
 from typing import List, Dict, Tuple
+import gzip
 
 import aiohttp
 from aiohttp import ClientSession
@@ -293,7 +303,61 @@ async def fetch(session: ClientSession, url: str):
     async with session.get(url) as resp:
         if resp.status >= 400:
             raise ValueError(f"Received status={resp.status}")
+        if resp.content_type == 'application/x-gzip':
+            return gzip.decompress(await resp.read()).decode("utf-8")
         return await resp.text()
+
+
+async def get_geofabrik_list(session: ClientSession, force_latest, no_cache) -> dict:
+    list_path = Path(__file__).parent / 'cache' / 'geofabrik.json'
+    list_path.parent.mkdir(exist_ok=True)
+    data = None
+    if not force_latest:
+        try:
+            data = list_path.read_text(encoding="utf-8")
+        except FileNotFoundError:
+            pass
+    if data is None:
+        print(f"Downloading the list of available Geofabrik areas...")
+        data = await fetch(session, "http://download.geofabrik.de/index.json.gz")
+        if not no_cache:
+            list_path.write_text(data, encoding='utf-8')
+    entries = {v["properties"]["id"]: v["properties"]
+               for v in json.loads(data)["features"]}
+    # resolve URL - expect a single URL to match; html-decode names
+    for entry in entries.values():
+        url, = [v for v in entry["urls"] if v.endswith("-latest.osm.pbf")]
+        entry["url"] = url
+        del entry["urls"]
+        entry["name"] = html.unescape(entry["name"])
+    # resolve parents until no more changes are made
+    while True:
+        resolved = 0
+        for entry in entries.values():
+            if "parent" in entry:
+                pid = entry["parent"]
+                # There seems to be a bug in the data -- US state IDs have no prefix
+                parent = entries[pid] if pid in entries else entries[f"us/{pid}"]
+                if "parent" not in parent:
+                    # parent of this entry has already been resolved (or is a root)
+                    entry["full_id"] = f"{parent['full_id']}/{entry['id']}"
+                    entry["full_name"] = f"{parent['full_name']} / {entry['name']}"
+                    del entry["parent"]
+                    resolved += 1
+            elif "full_id" not in entry:
+                entry["full_id"] = entry["id"]
+                entry["full_name"] = entry["name"]
+        if resolved == 0:
+            break
+    return {v["full_id"]: v
+            for v in sorted(entries.values(), key=lambda v: v["full_id"])}
+
+
+async def save_state_file(session, state_url, state_file):
+    state_file = Path(state_file).resolve()
+    print(f"Downloading state file {state_url} to {state_file}")
+    data = await fetch(session, state_url)
+    state_file.write_text(data, encoding="utf-8")
 
 
 async def main(args):
@@ -306,21 +370,53 @@ async def main(args):
     }) as session:
         if args.planet:
             use_primary = args['--include-primary']
-            force_latest = args['--force-latest']
             urls, md5 = await Catalog().init(session, args.verbose, use_primary,
-                                             force_latest)
+                                             args['--force-latest'])
+        elif args.list:
+            if args.service != "geofabrik":
+                raise SystemExit('List only supports geofabrik service for now')
+            catalog = await get_geofabrik_list(session, args['--force-latest'],
+                                               args['--no-cache'])
+            info = [dict(id=v["full_id"], name=v["full_name"]) for v in
+                    catalog.values()]
+            print(tabulate(info, headers="keys") + '\n')
+            return  # not downloading, so stop early
         else:
             name = args.id if args.id else 'raw url'
             if args.url:
                 url = args.url
             elif args.geofabrik:
-                url = f"https://download.geofabrik.de/{args.id}-latest.osm.pbf"
+                catalog = await get_geofabrik_list(session, args["--force-latest"],
+                                                   args['--no-cache'])
+                if args.id in catalog:
+                    url = catalog[args.id]["url"]
+                else:
+                    # If there is no exact match, search by suffix
+                    p = "/" + args.id.lstrip("/")
+                    urls = [(k, v["url"]) for k, v in catalog.items() if k.endswith(p)]
+                    if not urls:
+                        raise SystemExit(
+                            f"Error: ID '{args.id}' was not found in Geofabrik.\n"
+                            "Use 'list geofabrik' to see available extract, "
+                            "or try --force-latest to refresh the list of extracts.")
+                    elif len(urls) > 1:
+                        variants = "\n".join((f"  * {v[0]}" for v in urls))
+                        raise SystemExit(
+                            f"More than one ID '{args.id}' was found in "
+                            f"Geofabrik, use longer ID:\n{variants}")
+                    url = urls[0][1]
+                    if args.state:
+                        state_url = url.replace("-latest.osm.pbf", "-updates/state.txt")
+                        await save_state_file(session, state_url, args.state)
             elif args.bbbike:
                 url = f"https://download.bbbike.org/" \
                       f"osm/bbbike/{args.id}/{args.id}.osm.pbf"
             elif args.osmfr:
                 url = f"http://download.openstreetmap.fr/" \
                       f"extracts/{args.id}-latest.osm.pbf"
+                if args.state:
+                    state_url = url.replace("-latest.osm.pbf", ".state.txt")
+                    await save_state_file(session, state_url, args.state)
             else:
                 raise DocoptExit()
             src = Source(name, url, url_hash=url + '.md5')
@@ -333,7 +429,9 @@ async def main(args):
     params = ['aria2c']
     if md5:
         params.append(f'--checksum=md5={md5}')
-    if not any((v for v in aria2c_args if v == '-s' or v.startswith('--split'))):
+    if len(urls) > 1 and not any(
+        (v for v in aria2c_args if v == '-s' or v.startswith('--split'))
+    ):
         # user has not passed -s or --split, so use as many streams as urls
         params.append(f'--split={len(urls)}')
     params.extend(aria2c_args)
