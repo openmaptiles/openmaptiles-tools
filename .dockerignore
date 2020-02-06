@@ -8,9 +8,7 @@ docs/
 docker/
 Makefile
 setup.py
-test/
-test-sql/
-testdata/
+tests/
 
 #
 #
