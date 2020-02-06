@@ -7,7 +7,7 @@ Check out the [OpenMapTiles project](https://github.com/openmaptiles/openmaptile
 
 ## Usage
 
-You need either just Docker or Python 3 installed on your system. You also need Docker-compose for testing.  If running without Docker, some of the scripts require `graphviz` and `sqlite3` dependencies.
+You need either just Docker or Python 3 installed on your system. You also need Docker-compose for testing.  If running without Docker, see below for the list of additional tools and libraries.
 
 #### Usage with Docker
 

@@ -10,9 +10,9 @@ services:
   tests:
     image: "$DOCKER_IMAGE"
     working_dir: /omt
-    command: /omt/test-sql/test-sql.sh
+    command: /omt/tests/sql/test-sql.sh
     env_file: test.env
     volumes:
-    - ../:/omt
+    - ../../:/omt
     depends_on:
       - postgres
