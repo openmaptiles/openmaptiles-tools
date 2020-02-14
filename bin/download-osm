@@ -184,7 +184,7 @@ class Catalog:
                           f"hashes:")
                     print(f"* {source}, {attr_desc}={attr}, hash={source.hash}")
                     src = sources_by_hash[attr_to_hash[attr]][0]
-                    print(f"* {src}, {attr_desc}={(getattr(src, attr_name))}, "
+                    print(f"* {src}, {attr_desc}={getattr(src, attr_name)}, "
                           f"hash={src.hash}")
                     return None
         return attr_to_hash
