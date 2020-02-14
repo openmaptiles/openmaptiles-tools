@@ -1,6 +1,8 @@
 
 tables:
 
+  # --- test that duplicate items are removed
+  # 	etldoc: imposm3  ->	 osm_housenumber_point
   # etldoc: imposm3 -> osm_housenumber_point
   housenumber_point:
     type: geometry

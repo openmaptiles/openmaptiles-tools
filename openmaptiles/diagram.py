@@ -59,23 +59,42 @@ class EtlGraph(GraphGenerator):
     re_schema = re.compile(r'^\s*--\s*etldoc\s*:(.*)$')
 
     def get_graph(self, layer: Layer, is_tileset: bool) -> Tuple[Digraph, Path]:
-        body = self.parse_files(layer.imposm_mapping_files, self.re_mapping) + \
-               self.parse_files(layer.schemas, self.re_schema)
+        raw_lines = self.parse_files(layer.imposm_mapping_files, self.re_mapping) + \
+                    self.parse_files(layer.schemas, self.re_schema)
+        # Combine etldoc lines that are broken up into multiple:
+        # if a line has unclosed "[", concatenate it with subsequent ones until closed
+        lines = []
+        count = 0
+        for line in raw_lines:
+            open_count = line.count('[')
+            close_count = line.count(']')
+            if count == 0:
+                lines.append(line)
+            else:
+                lines[-1] += ' ' + line
+            count += open_count - close_count
+        if count != 0:
+            raise ValueError(f"Etldoc in layer {layer.id} has unmatched '[' and ']'")
+        # Remove duplicates preserving order
+        lines = list(dict.fromkeys(lines))
         if is_tileset:
             path = self.output_dir / layer.id / 'etl_diagram'
         else:
             path = self.output_dir / f'etl_{layer.id}'
-        return Digraph('G', graph_attr=dict(rankdir='LR'), body=body), path
+        return Digraph('G', graph_attr=dict(rankdir='LR'), body=lines), path
 
     @staticmethod
-    def parse_files(content_list: list, matcher: re):
+    def parse_files(content_list: list, matcher: re) -> List[str]:
         result = []
         for item in content_list:
             content = item.read_text('utf-8') if isinstance(item, Path) else item
             for line in content.splitlines():
                 m = matcher.match(line)
                 if m:
-                    result.append(m.group(1).strip(' \t\n\r'))
+                    value = m.group(1).strip(' \t\n\r')
+                    # replace multiple consequent space/tabs with a single space
+                    value = re.sub(r'\s+', ' ', value)
+                    result.append(value)
         return result
 
 
