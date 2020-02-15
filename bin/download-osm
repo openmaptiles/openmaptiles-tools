@@ -1,12 +1,13 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 """
 Usage:
-  download-osm planet [-l] [-p] [-n] [-v] [--] [<arguments>...]
-  download-osm url       <url>  [-n] [-v] [--] [<arguments>...]
   download-osm list <service> [-l] [-c]
-  download-osm geofabrik <id> [-l] [-c] [-n] [-v] [-s <file>] [--] [<arguments>...]
-  download-osm osmfr     <id>           [-n] [-v] [-s <file>] [--] [<arguments>...]
-  download-osm bbbike    <id>           [-n] [-v]             [--] [<arguments>...]
+  download-osm planet [-l] [-p] [-n] [-v] [-d <file> [-i <z>] [-a <z>]] [--] [<args>...]
+  download-osm url       <url>  [-n] [-v] [-d <file> [-i <z>] [-a <z>]] [--] [<args>...]
+  download-osm geofabrik <id> [-l] [-c] [-n] [-v] [-s <file>] [-d <file> [-i <z>] [-a <z>]] [--] [<args>...]
+  download-osm osmfr     <id>           [-n] [-v] [-s <file>] [-d <file> [-i <z>] [-a <z>]] [--] [<args>...]
+  download-osm bbbike    <id>           [-n] [-v]             [-d <file> [-i <z>] [-a <z>]] [--] [<args>...]
+  download-osm make-dc <pbf-file> -d <file> [-i <z>] [-a <z>] [--id <id>]
   download-osm --help
   download-osm --version
 
@@ -23,6 +24,9 @@ Download types:
   osmfr <id>       Loads file from openstreetmap.fr by extract ID, for example
                    "central-america/costa_rica".  Download will add '-latest.osm.pbf'.
                    See https://download.openstreetmap.fr/extracts
+  make-dc          Analyze area data pbf file and generate Docker-Compose file with
+                   metadata, e.g. bounding box.  This action can be combined with
+                   the area downloads by setting the -d <file> parameter.
 
 Options:
   -p --include-primary  If set, will download from the main osm.org (please avoid
@@ -32,24 +36,39 @@ Options:
                         For Geofabrik, forces catalog re-download.
   -c --no-cache         Do not cache downloaded list of extracts
   -s --state <file>     Download state file and save it to the <file>
+  -d --make-dc <file>   Create a docker-compose file with the area metadata. If
+  -i --minzoom=<min>    Set minimum zoom when making docker compose file.
+                        By default will be 0 unless MIN_ZOOM env var is set.
+  -a --maxzoom=<min>    Set maximum zoom when making docker compose file.
+                        By default will be 7 unless MAX_ZOOM env var is set.
+  --id=<area_id>        Name of the area. If not set, will use filename.
+                        By default will be pbf file unless OSM_AREA_NAME env var is set.
   -n --dry-run          If set, do all the steps except the actual data download.
                         State file will still be downloaded if --state is set.
   -v --verbose          Print additional debugging information
   --help                Show this screen.
   --version             Show version.
 
-Any aria2c parameters can be set after the '--' string. For example, set download dir:
-    download-osm planet -- -d ./download
+Any parameters after empty ' -- ' param will be passed to aria2c. For example,
+this sets the number of maximum concurrent downloads:
+    download-osm planet -- --max-concurrent-downloads=2
+See https://aria2.github.io/manual/en/html/aria2c.html#options for more options.
 By default, aria2c is executed with --checksum (md5 hash) and --split parameters.
 Split is used to download with as many streams, as download-osm finds.
-Use  --split  or  -s  parameter to override that number.
+Use  --split  or  -s  parameter to override that number. Use --dry-run
+to see all parameters downloader will use with aria2c without downloading.
+
+Internal callback mode:  If DOWNLOAD_OSM_DC_FILE env var is set, expects 3 parameters,
+where the 3rd parameter is the name of the PDF file. Will run make-dc command.
 """
 
 import asyncio
 import html
 import json
+import os
 import re
 import subprocess
+import sys
 from asyncio import sleep
 from collections import defaultdict
 from dataclasses import dataclass
@@ -59,6 +78,7 @@ from typing import List, Dict, Tuple
 import gzip
 
 import aiohttp
+import yaml
 from aiohttp import ClientSession
 from bs4 import BeautifulSoup
 # noinspection PyProtectedMember
@@ -67,6 +87,9 @@ from tabulate import tabulate
 
 import openmaptiles
 from openmaptiles.utils import print_err
+
+USER_AGENT = f'OpenMapTiles download-osm {openmaptiles.__version__} ' \
+             '(https://github.com/openmaptiles/openmaptiles-tools)'
 
 
 class Catalog:
@@ -360,14 +383,104 @@ async def save_state_file(session, state_url, state_file):
     state_file.write_text(data, encoding="utf-8")
 
 
-async def main(args):
-    dry_run = args['--dry-run']
-    aria2c_args = args.arguments
+async def prepare_area_download(args, session):
+    area_id = args['<id>'].strip() if args['<id>'] else False
+    if args.url:
+        url = args['<url>']
+    elif args.bbbike:
+        url = f"https://download.bbbike.org/" \
+              f"osm/bbbike/{area_id}/{area_id}.osm.pbf"
+    elif args.osmfr:
+        url = f"http://download.openstreetmap.fr/" \
+              f"extracts/{area_id}-latest.osm.pbf"
+        if args.state:
+            state_url = url.replace("-latest.osm.pbf", ".state.txt")
+            await save_state_file(session, state_url, args.state)
+    elif args.geofabrik:
+        catalog = await get_geofabrik_list(session, args["--force-latest"],
+                                           args['--no-cache'])
+        if area_id in catalog:
+            url = catalog[area_id]["url"]
+        else:
+            # If there is no exact match, find anything that ends with key
+            reg = re.compile(".*" + re.escape("/" + area_id.lstrip("/")) + "$",
+                             re.IGNORECASE)
 
-    async with aiohttp.ClientSession(headers={
-        'User-Agent': f'OpenMapTiles download-osm {openmaptiles.__version__}'
-                      '(https://github.com/openmaptiles/openmaptiles-tools)'
-    }) as session:
+            def matches(key):
+                return bool(reg.match(key))
+
+            area_urls = [(k, v["url"]) for k, v in catalog.items() if matches(k)]
+            if not area_urls:
+                raise SystemExit(
+                    f"Error: ID '{area_id}' was not found in Geofabrik.\n"
+                    "Use 'list geofabrik' to see available extract, "
+                    "or try --force-latest to refresh the list of extracts.")
+            elif len(area_urls) > 1:
+                variants = "\n".join((f"  * {v[0]}" for v in area_urls))
+                raise SystemExit(
+                    f"More than one ID '{area_id}' was found in "
+                    f"Geofabrik, use longer ID:\n{variants}")
+            url = area_urls[0][1]
+            if args.state:
+                state_url = url.replace("-latest.osm.pbf", "-updates/state.txt")
+                await save_state_file(session, state_url, args.state)
+    else:
+        raise DocoptExit()
+    src = Source(area_id or 'raw url', url, url_hash=url + '.md5')
+    await asyncio.wait([src.load_hash(session, args.verbose),
+                        src.load_metadata(session, args.verbose)])
+    print(f"Will download {src.url} (size={src.size_str()}, md5={src.hash})")
+    return [src.url], src.hash
+
+
+def make_docker_compose_file(pbf_file: Path, dc_file: Path,
+                             min_zoom=None, max_zoom=None, area=None):
+    min_zoom = int(os.environ.get("MIN_ZOOM", 0) if min_zoom is None else min_zoom)
+    max_zoom = int(os.environ.get("MAX_ZOOM", 7) if max_zoom is None else max_zoom)
+    area = os.environ.get("OSM_AREA_NAME") if area is None else area
+
+    print(f"Extracting metadata from {pbf_file} using osmconvert", flush=True)
+    params = ["osmconvert", "--out-statistics", str(pbf_file)]
+    res = subprocess.run(params, capture_output=True)
+    exit_code = res.returncode
+    if exit_code == 0:
+        res_text = res.stdout.decode('utf-8')
+        # Convert output to a dictionary with non-empty values
+        res = {v[0]: v[1] for v in
+               [[vv.strip() for vv in v.split(':', 1)] for v in res_text.split('\n')]
+               if len(v) == 2 and all(v)}
+        lon_min = res["lon min"]
+        lon_max = res["lon max"]
+        lat_min = res["lat min"]
+        lat_max = res["lat max"]
+        timestamp_max = res["timestamp max"]
+        dc_data = {
+            "version": "2",
+            "services": {
+                "generate-vectortiles": {
+                    "environment": {
+                        "BBOX": f"{lon_min},{lat_min},{lon_max},{lat_max}",
+                        "OSM_MAX_TIMESTAMP": timestamp_max,
+                        "OSM_AREA_NAME": area or pbf_file.name.split('.', 1)[0],
+                        "MIN_ZOOM": min_zoom,
+                        "MAX_ZOOM": max_zoom,
+                    }}}}
+        print(f"Saving metadata to {dc_file}...")
+        with dc_file.open('w') as yaml_file:
+            yaml.dump(dc_data, yaml_file, sort_keys=False)
+        print_data = dc_data["services"]["generate-vectortiles"]["environment"].items()
+        print(tabulate(print_data))
+
+    return exit_code
+
+
+async def main_async(args):
+    dry_run = args['--dry-run']
+    aria2c_args = args.args
+    urls, md5 = None, None
+    exit_code = 0
+
+    async with aiohttp.ClientSession(headers={'User-Agent': USER_AGENT}) as session:
         if args.planet:
             use_primary = args['--include-primary']
             urls, md5 = await Catalog().init(session, args.verbose, use_primary,
@@ -380,52 +493,22 @@ async def main(args):
             info = [dict(id=v["full_id"], name=v["full_name"]) for v in
                     catalog.values()]
             print(tabulate(info, headers="keys") + '\n')
-            return  # not downloading, so stop early
+        elif args["make-dc"]:
+            exit_code = make_docker_compose_file(
+                Path(args["<pbf-file>"]), Path(args["--make-dc"]),
+                args['--minzoom'], args['--maxzoom'], args['--id'])
         else:
-            name = args.id if args.id else 'raw url'
-            if args.url:
-                url = args.url
-            elif args.geofabrik:
-                catalog = await get_geofabrik_list(session, args["--force-latest"],
-                                                   args['--no-cache'])
-                if args.id in catalog:
-                    url = catalog[args.id]["url"]
-                else:
-                    # If there is no exact match, search by suffix
-                    p = "/" + args.id.lstrip("/")
-                    urls = [(k, v["url"]) for k, v in catalog.items() if k.endswith(p)]
-                    if not urls:
-                        raise SystemExit(
-                            f"Error: ID '{args.id}' was not found in Geofabrik.\n"
-                            "Use 'list geofabrik' to see available extract, "
-                            "or try --force-latest to refresh the list of extracts.")
-                    elif len(urls) > 1:
-                        variants = "\n".join((f"  * {v[0]}" for v in urls))
-                        raise SystemExit(
-                            f"More than one ID '{args.id}' was found in "
-                            f"Geofabrik, use longer ID:\n{variants}")
-                    url = urls[0][1]
-                    if args.state:
-                        state_url = url.replace("-latest.osm.pbf", "-updates/state.txt")
-                        await save_state_file(session, state_url, args.state)
-            elif args.bbbike:
-                url = f"https://download.bbbike.org/" \
-                      f"osm/bbbike/{args.id}/{args.id}.osm.pbf"
-            elif args.osmfr:
-                url = f"http://download.openstreetmap.fr/" \
-                      f"extracts/{args.id}-latest.osm.pbf"
-                if args.state:
-                    state_url = url.replace("-latest.osm.pbf", ".state.txt")
-                    await save_state_file(session, state_url, args.state)
-            else:
-                raise DocoptExit()
-            src = Source(name, url, url_hash=url + '.md5')
-            await asyncio.wait([src.load_hash(session, args.verbose),
-                                src.load_metadata(session, args.verbose)])
-            urls = [src.url]
-            md5 = src.hash
-            print(f"Will download {src.url} (size={src.size_str()}, md5={src.hash})")
+            urls, md5 = await prepare_area_download(args, session)
 
+    if urls:
+        exit_code = await run_aria2c(aria2c_args, dry_run, md5, urls, args['--make-dc'])
+        if dry_run and args['--make-dc']:
+            print("docker-compose file generation was skipped in the dry-run mode")
+
+    return exit_code
+
+
+async def run_aria2c(aria2c_args, dry_run, md5, urls, dc_file):
     params = ['aria2c']
     if md5:
         params.append(f'--checksum=md5={md5}')
@@ -434,18 +517,52 @@ async def main(args):
     ):
         # user has not passed -s or --split, so use as many streams as urls
         params.append(f'--split={len(urls)}')
+    if not any((v for v in aria2c_args if v.startswith('--http-accept-gzip'))):
+        # user has not passed --http-accept-gzip, so always specify we accept gzip
+        params.append('--http-accept-gzip')
+    if not any((v for v in aria2c_args if v == '-U' or v.startswith('--user-agent'))):
+        # user has not set a custom user agent, set one
+        params.append(f'--user-agent={USER_AGENT}')
+
+    env = None
+    if dc_file:
+        for flag in ('--on-download-complete', ):
+            if any((v for v in aria2c_args if v.startswith(flag))):
+                raise ValueError("Unable to use --make-dc together with "
+                                 f"the {flag} aria2c parameter")
+        dc_file = Path(dc_file)
+        env = os.environ.copy()
+        env["DOWNLOAD_OSM_DC_FILE"] = str(dc_file)
+        params.append("--on-download-complete")
+        params.append(__file__)
+
     params.extend(aria2c_args)
     params.extend(urls)
-
-    print(f"\n  {subprocess.list2cmdline(params)}\n")
+    print(f"\n  {subprocess.list2cmdline(params)}")
+    if dc_file:
+        print(f"  Environment var: DOWNLOAD_OSM_DC_FILE={dc_file}")
+    # Make sure to print/flush everything to STDOUT before running subprocess
+    print("", flush=True)
     if not dry_run:
-        res = subprocess.run(params)
-        exit(res.returncode)
+        # Use capture_output to ensure that callback finishes before run() returns
+        res = subprocess.run(params, env=env, capture_output=True)
+        stdout = res.stdout.decode('utf-8')
+        if stdout:
+            print(stdout)
+        stderr = res.stderr.decode('utf-8')
+        if stderr:
+            print_err(stderr)
+        ret = res.returncode
+        # Callbacks do not report errors, so detect it
+        if ret == 0 and stderr and "Traceback (most recent call last)" in stderr:
+            ret = 1
+        return ret
     else:
         print("Data is not downloaded because of the --dry-run parameter")
+        return 0
 
 
-if __name__ == '__main__':
+def main():
     if 'magic' not in docopt_funcs:
         print("""
 Found invalid version of docopt. Must use docopt_ng instead. Uninstall it with
@@ -454,4 +571,14 @@ and re-install all required dependencies with
   $ python3 -m pip install -r requirements.txt
 """)
         exit(1)
-    asyncio.run(main(docopt(__doc__, version=openmaptiles.__version__)))
+
+    dc_file = os.environ.get("DOWNLOAD_OSM_DC_FILE")
+    if dc_file and len(sys.argv) == 4:
+        print()  # Skip a line after aria2c output
+        exit(make_docker_compose_file(Path(sys.argv[3]), Path(dc_file)))
+
+    exit(asyncio.run(main_async(docopt(__doc__, version=openmaptiles.__version__))))
+
+
+if __name__ == '__main__':
+    main()

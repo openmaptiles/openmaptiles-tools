@@ -5,6 +5,7 @@ set -o pipefail
 set -o nounset  # -u
 
 TESTLAYERS="tests/testlayers"
+HTTPDIR="tests/http"
 DEVDOC=${BUILD?}/devdoc
 mkdir -p "${DEVDOC}"
 
@@ -42,3 +43,13 @@ generate-mapping-graph "$TESTLAYERS/housenumber/housenumber.yaml" "$DEVDOC/mappi
 
 download-osm planet --dry-run
 download-osm geofabrik michigan --dry-run
+
+
+# Run background http server, and stop it when this script exits
+python -m http.server 8555 -d "$HTTPDIR" &
+# the $! should be expanded right away, not when the trap occurs, so on exit it stops http service
+# shellcheck disable=SC2064
+trap "kill $!" EXIT
+
+download-osm url http://localhost:8555/monaco-20150428.osm.pbf --verbose \
+  --make-dc "$BUILD/monaco-dc.yml" --minzoom 0 --maxzoom 10 -- --dir /tmp
