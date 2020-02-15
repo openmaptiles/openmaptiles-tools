@@ -37,9 +37,9 @@ Options:
   -c --no-cache         Do not cache downloaded list of extracts
   -s --state <file>     Download state file and save it to the <file>
   -d --make-dc <file>   Create a docker-compose file with the area metadata. If
-  -i --minzoom=<min>    Set minimum zoom when making docker compose file.
+  -i --minzoom=<zoom>   Set minimum zoom when making docker compose file.
                         By default will be 0 unless MIN_ZOOM env var is set.
-  -a --maxzoom=<min>    Set maximum zoom when making docker compose file.
+  -a --maxzoom=<zoom>   Set maximum zoom when making docker compose file.
                         By default will be 7 unless MAX_ZOOM env var is set.
   --id=<area_id>        Name of the area. If not set, will use filename.
                         By default will be pbf file unless OSM_AREA_NAME env var is set.
