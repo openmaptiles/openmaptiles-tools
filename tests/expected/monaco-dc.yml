@@ -1,0 +1,9 @@
+version: '2'
+services:
+  generate-vectortiles:
+    environment:
+      BBOX: 7.3830115,43.5163330,7.5003330,43.7543525
+      OSM_MAX_TIMESTAMP: '2015-04-27T19:32:23Z'
+      OSM_AREA_NAME: monaco-20150428
+      MIN_ZOOM: 0
+      MAX_ZOOM: 7

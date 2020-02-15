@@ -23,6 +23,7 @@ RUN curl https://www.postgresql.org/media/keys/ACCC4CF8.asc | apt-key add - \
         graphviz  `# used by layer mapping graphs` \
         sqlite3   `# mbtiles file manipulations`   \
         gdal-bin  `# installs ogr2ogr` \
+        osmctools `# osmconvert and other OSM tools` \
         postgresql-client-${PG_MAJOR?} \
         \
         `# tools to build osmborder` \
