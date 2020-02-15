@@ -65,18 +65,19 @@ RUN set -eux ;\
 FROM python:3.8
 ARG PG_MAJOR=12
 ARG VT_UTIL_VERSION=v2.0.0
+ARG TOOLS_DIR=/usr/src/app
 
-WORKDIR /usr/src/app
+WORKDIR ${TOOLS_DIR}
 
 # Using VT_UTIL_DIR and OMT_UTIL_DIR vars allow users to provide custom util files:
 # postgis-vt-util.sql and language.sql
 # See README
 ENV VT_UTIL_DIR=/opt/postgis-vt-util \
-    OMT_UTIL_DIR=/usr/src/app/sql \
+    OMT_UTIL_DIR=${TOOLS_DIR}/sql \
     SQL_DIR=/sql \
     PGFUTTER_VERSION="v1.2" \
     WGET="wget --quiet --progress=bar:force:noscroll --show-progress" \
-    PATH="/usr/src/app:${PATH}"
+    PATH="${TOOLS_DIR}:${PATH}"
 
 
 
@@ -150,12 +151,13 @@ RUN set -eux ;\
 ########################################
 ########################################
 
-ENV IMPORT_DIR=/import \
+ENV TOOLS_DIR="$TOOLS_DIR" \
+    IMPORT_DIR=/import \
     IMPOSM_CACHE_DIR=/cache \
     MAPPING_YAML=/mapping/mapping.yaml \
     DIFF_DIR=/import \
     TILES_DIR=/import \
-    CONFIG_JSON=config.json
+    CONFIG_JSON=${TOOLS_DIR}/config/repl_config.json
 
 
 
@@ -169,4 +171,4 @@ CMD echo "*******************************************************************" ;
     echo "  Use script name with --help to get more information." ;\
     echo "  Use 'bash' to start a shell inside the tools container." ;\
     echo "*******************************************************************" ;\
-    find /usr/src/app -maxdepth 1 -executable -type f -printf " * %f\n" | sort
+    find "${TOOLS_DIR}" -maxdepth 1 -executable -type f -printf " * %f\n" | sort
