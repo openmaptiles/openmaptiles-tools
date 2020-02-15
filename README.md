@@ -23,6 +23,12 @@ docker run -it --rm -u $(id -u ${USER}):$(id -g ${USER}) \
 
 Where the `<script-name>` could be any of the scripts in the [bin/](./bin) directory, e.g. `generate-imposm3 openmaptiles.yaml`.
 
+##### Docker Volumes
+ - Mount your PBFs into the `/import` folder
+ - Mount your `mapping.yaml` into the `/mapping` folder
+ - If you want to use diff mode mount a persistent location to the `/cache` folder for later reuse
+
+
 #### Using without Docker
 
 ```bash
