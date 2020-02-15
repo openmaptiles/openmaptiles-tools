@@ -15,7 +15,10 @@ ENV PATH="/usr/src/app:${PATH}" \
 
 ARG PG_MAJOR=12
 
-RUN curl https://www.postgresql.org/media/keys/ACCC4CF8.asc | apt-key add - \
+
+RUN ( \
+    sh -c 'echo "\n\n##### Building osmborder -- https://github.com/pnorman/osmborder"' \
+    && curl https://www.postgresql.org/media/keys/ACCC4CF8.asc | apt-key add - \
     && /bin/bash -c 'source /etc/os-release && echo "deb http://apt.postgresql.org/pub/repos/apt/ ${VERSION_CODENAME?}-pgdg main ${PG_MAJOR?}" > /etc/apt/sources.list.d/pgdg.list' \
     && DEBIAN_FRONTEND=noninteractive apt-get update \
     && DEBIAN_FRONTEND=noninteractive apt-get install  -y --no-install-recommends \
@@ -35,23 +38,90 @@ RUN curl https://www.postgresql.org/media/keys/ACCC4CF8.asc | apt-key add - \
         wget \
         zlib1g-dev \
         \
-    && rm -rf /var/lib/apt/lists/ \
-    && (  `# Build osmborder` \
-        git clone https://github.com/pnorman/osmborder.git /usr/src/osmborder \
-        && cd /usr/src/osmborder \
-        && git checkout ${OSMBORDER_REV?} \
-        && mkdir -p /usr/src/osmborder/build \
-        && cd /usr/src/osmborder/build \
-        && cmake .. \
-        && make \
-        && make install \
-        && rm -rf /usr/src/osmborder \
-       ) \
-    && (  `# Set up pgfutter` \
-        $WGET -O /usr/local/bin/pgfutter \
-           "https://github.com/lukasmartinelli/pgfutter/releases/download/${PGFUTTER_VERSION}/pgfutter_linux_amd64" \
-        && chmod +x /usr/local/bin/pgfutter \
-       )
+) && ( \
+    sh -c 'echo "\n\n##### Building osmborder -- https://github.com/pnorman/osmborder"' \
+    && git clone https://github.com/pnorman/osmborder.git /usr/src/osmborder \
+    && cd /usr/src/osmborder \
+    && git checkout ${OSMBORDER_REV?} \
+    && mkdir -p /usr/src/osmborder/build \
+    && cd /usr/src/osmborder/build \
+    && cmake .. \
+    && make \
+    && make install \
+    && rm -rf /usr/src/osmborder \
+) && ( \
+    sh -c 'echo "\n\n##### Installing pgfutter -- https://github.com/lukasmartinelli/pgfutter"' \
+    && $WGET -O /usr/local/bin/pgfutter \
+       "https://github.com/lukasmartinelli/pgfutter/releases/download/${PGFUTTER_VERSION}/pgfutter_linux_amd64" \
+    && chmod +x /usr/local/bin/pgfutter \
+)
+
+
+RUN \
+sh -c 'echo "\n\n##### continuing ..."' \
+&& ( \
+    sh -c 'echo "\n\n##### Installing packages"' \
+    && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+          libgeos-dev \
+          libleveldb-dev \
+          libprotobuf-dev \
+          osmctools     `# osmconvert and other OSM tools` \
+          osmosis       `# (TBD if needed) https://wiki.openstreetmap.org/wiki/Osmosis` \
+)
+
+
+RUN set -eux; \
+    sh -c 'echo "\n\n##### Installing go-lang"'; \
+    $WGET -O go.tgz "https://dl.google.com/go/go1.13.7.linux-amd64.tar.gz"; \
+    tar -C /usr/local -xzf go.tgz; \
+    rm go.tgz; \
+    export PATH="/usr/local/go/bin:$PATH"; \
+    go version
+
+ENV GOPATH /go
+ENV PATH $GOPATH/bin:/usr/local/go/bin:$PATH
+RUN mkdir -p "$GOPATH/src" "$GOPATH/bin" && chmod -R 777 "$GOPATH"
+
+
+
+#RUN \
+#sh -c 'echo "\n\n##### continuing2 ..."' \
+#&& ( \
+#    sh -c 'echo "\n\n##### Install download-geofabrik -- https://github.com/julien-noblet/download-geofabrik"' \
+#    && go get github.com/julien-noblet/download-geofabrik \
+#    && go install github.com/julien-noblet/download-geofabrik \
+#    && download-geofabrik generate \
+#)
+
+
+ARG IMPOSM_REPO="https://github.com/omniscale/imposm3.git"
+ARG IMPOSM_VERSION="v0.10.0"
+
+
+RUN \
+sh -c 'echo "\n\n##### continuing3 ..."' \
+&& ( \
+    sh -c 'echo "\n\n##### Install imposm3 -- https://github.com/osm2vectortiles/imposm3"' \
+    && mkdir -p $GOPATH/src/github.com/omniscale/imposm3 \
+    && cd  $GOPATH/src/github.com/omniscale/imposm3 \
+    && go get github.com/tools/godep \
+    #
+    # get and build specific version of imposm
+    && git clone --quiet --depth 1 $IMPOSM_REPO -b $IMPOSM_VERSION \
+        $GOPATH/src/github.com/omniscale/imposm3 \
+    && make build \
+    #
+    # Support legacy imposm3 as well as the newer imposm app name
+    && ( [ -f imposm ] && mv imposm /usr/bin/imposm || mv imposm3 /usr/bin/imposm ) \
+    && ln -s /usr/bin/imposm /usr/bin/imposm3 \
+) && ( \
+     sh -c 'echo "\n\n##### Cleaning up"' \
+     && rm -rf /var/lib/apt/lists/*  \
+     && rm -rf $GOPATH/bin/godep \
+     && rm -rf $GOPATH/src/ \
+     && rm -rf $GOPATH/pkg/ \
+)
+
 
 # Copy requirements.txt first to avoid pip install on every code change
 COPY ./requirements.txt .
