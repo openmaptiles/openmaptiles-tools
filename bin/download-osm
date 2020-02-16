@@ -3,7 +3,7 @@
 Usage:
   download-osm list <service> [-l] [-c]
   download-osm planet [-l] [-p] [-n] [-v] [-d <file> [-i <z>] [-a <z>]] [--] [<args>...]
-  download-osm url       <url>  [-n] [-v] [-d <file> [-i <z>] [-a <z>]] [--] [<args>...]
+  download-osm url       <url>  [-n] [-v] [-d <file> [-i <z>] [-a <z>] [--id <id>]] [--] [<args>...]
   download-osm geofabrik <id> [-l] [-c] [-n] [-v] [-s <file>] [-d <file> [-i <z>] [-a <z>]] [--] [<args>...]
   download-osm osmfr     <id>           [-n] [-v] [-s <file>] [-d <file> [-i <z>] [-a <z>]] [--] [<args>...]
   download-osm bbbike    <id>           [-n] [-v]             [-d <file> [-i <z>] [-a <z>]] [--] [<args>...]
@@ -429,16 +429,13 @@ async def prepare_area_download(args, session):
     src = Source(area_id or 'raw url', url, url_hash=url + '.md5')
     await asyncio.wait([src.load_hash(session, args.verbose),
                         src.load_metadata(session, args.verbose)])
-    print(f"Will download {src.url} (size={src.size_str()}, md5={src.hash})")
+    print(f"Downloading {src.url} (size={src.size_str()}, md5={src.hash})", flush=True)
     return [src.url], src.hash
 
 
 def make_docker_compose_file(pbf_file: Path, dc_file: Path,
                              min_zoom=None, max_zoom=None, area=None):
-    min_zoom = int(os.environ.get("MIN_ZOOM", 0) if min_zoom is None else min_zoom)
-    max_zoom = int(os.environ.get("MAX_ZOOM", 7) if max_zoom is None else max_zoom)
-    area = os.environ.get("OSM_AREA_NAME") if area is None else area
-
+    area, min_zoom, max_zoom = normalize_make_dc(area, min_zoom, max_zoom)
     print(f"Extracting metadata from {pbf_file} using osmconvert", flush=True)
     params = ["osmconvert", "--out-statistics", str(pbf_file)]
     res = subprocess.run(params, capture_output=True)
@@ -474,6 +471,13 @@ def make_docker_compose_file(pbf_file: Path, dc_file: Path,
     return exit_code
 
 
+def normalize_make_dc(area, min_zoom, max_zoom):
+    area = os.environ.get("OSM_AREA_NAME", "Unknown") if area is None else area
+    min_zoom = int(os.environ.get("MIN_ZOOM", 0) if min_zoom is None else min_zoom)
+    max_zoom = int(os.environ.get("MAX_ZOOM", 7) if max_zoom is None else max_zoom)
+    return area, min_zoom, max_zoom
+
+
 async def main_async(args):
     dry_run = args['--dry-run']
     aria2c_args = args.args
@@ -501,14 +505,14 @@ async def main_async(args):
             urls, md5 = await prepare_area_download(args, session)
 
     if urls:
-        exit_code = await run_aria2c(aria2c_args, dry_run, md5, urls, args['--make-dc'])
+        exit_code = await run_aria2c(aria2c_args, dry_run, md5, urls, args)
         if dry_run and args['--make-dc']:
             print("docker-compose file generation was skipped in the dry-run mode")
 
     return exit_code
 
 
-async def run_aria2c(aria2c_args, dry_run, md5, urls, dc_file):
+async def run_aria2c(aria2c_args, dry_run, md5, urls, args):
     params = ['aria2c']
     if md5:
         params.append(f'--checksum=md5={md5}')
@@ -524,38 +528,64 @@ async def run_aria2c(aria2c_args, dry_run, md5, urls, dc_file):
         # user has not set a custom user agent, set one
         params.append(f'--user-agent={USER_AGENT}')
 
-    env = None
-    if dc_file:
-        for flag in ('--on-download-complete', ):
+    extra_env = None
+    if args['--make-dc']:
+        for flag in ('--on-download-complete',):
             if any((v for v in aria2c_args if v.startswith(flag))):
                 raise ValueError("Unable to use --make-dc together with "
                                  f"the {flag} aria2c parameter")
-        dc_file = Path(dc_file)
-        env = os.environ.copy()
-        env["DOWNLOAD_OSM_DC_FILE"] = str(dc_file)
+        area, min_zoom, max_zoom = normalize_make_dc(args['--id'], args['--minzoom'],
+                                                     args['--maxzoom'])
+        extra_env = {
+            "DOWNLOAD_OSM_DC_FILE": str(Path(args['--make-dc'])),
+            "OSM_AREA_NAME": str(area),
+            "MIN_ZOOM": str(min_zoom),
+            "MAX_ZOOM": str(max_zoom)
+        }
         params.append("--on-download-complete")
         params.append(__file__)
 
     params.extend(aria2c_args)
     params.extend(urls)
     print(f"\n  {subprocess.list2cmdline(params)}")
-    if dc_file:
-        print(f"  Environment var: DOWNLOAD_OSM_DC_FILE={dc_file}")
+    if args.verbose and extra_env:
+        env_str = ', '.join((f'{k}={v}' for k, v in extra_env.items()))
+        print(f"  Setting environment vars: {env_str}")
+    capture_output = False
+    for flag in ('--on-bt-download-complete', '--on-download-pause',
+                 '--on-download-complete', '--on-download-start',
+                 '--on-download-error', '--on-download-stop'):
+        if any((v for v in params if v.startswith(flag))):
+            capture_output = True
+            break
+    if args.verbose:
+        if capture_output:
+            print("  capturing stdout/stderr to wait for subprocess exit")
+        else:
+            print("  aria2c output will be printed directly to terminal")
     # Make sure to print/flush everything to STDOUT before running subprocess
     print("", flush=True)
+
     if not dry_run:
         # Use capture_output to ensure that callback finishes before run() returns
-        res = subprocess.run(params, env=env, capture_output=True)
-        stdout = res.stdout.decode('utf-8')
-        if stdout:
-            print(stdout)
-        stderr = res.stderr.decode('utf-8')
-        if stderr:
-            print_err(stderr)
+        # This is only needed if any callbacks are used
+        if extra_env:
+            env = os.environ.copy()
+            env.update(extra_env)
+        else:
+            env = None
+        res = subprocess.run(params, env=env, capture_output=capture_output)
         ret = res.returncode
-        # Callbacks do not report errors, so detect it
-        if ret == 0 and stderr and "Traceback (most recent call last)" in stderr:
-            ret = 1
+        if capture_output:
+            stdout = res.stdout.decode('utf-8')
+            if stdout:
+                print(stdout)
+            stderr = res.stderr.decode('utf-8')
+            if stderr:
+                print_err(stderr)
+            # Callbacks do not report errors, so detect it
+            if ret == 0 and stderr and "Traceback (most recent call last)" in stderr:
+                ret = 1
         return ret
     else:
         print("Data is not downloaded because of the --dry-run parameter")
@@ -574,7 +604,8 @@ and re-install all required dependencies with
 
     dc_file = os.environ.get("DOWNLOAD_OSM_DC_FILE")
     if dc_file and len(sys.argv) == 4:
-        print()  # Skip a line after aria2c output
+        # Skip a line after aria2c output
+        print("\nRunning download-osm in aria2c callback mode...", flush=True)
         exit(make_docker_compose_file(Path(sys.argv[3]), Path(dc_file)))
 
     exit(asyncio.run(main_async(docopt(__doc__, version=openmaptiles.__version__))))
