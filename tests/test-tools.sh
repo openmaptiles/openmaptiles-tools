@@ -28,6 +28,11 @@ generate-sqltomvt "$TESTLAYERS/testmaptiles.yaml" --query --gzip                
 generate-sqltomvt "$TESTLAYERS/testmaptiles.yaml" --query --gzip 9                > "$BUILD/mvttile_query_gzip9.sql"
 generate-sqltomvt "$TESTLAYERS/testmaptiles.yaml" --query --no-feature-ids        > "$BUILD/mvttile_query_no_feat_ids.sql"
 generate-sqltomvt "$TESTLAYERS/testmaptiles.yaml" --query --postgis-ver 2.4.0dev  > "$BUILD/mvttile_query_v2.4.0dev.sql"
+generate-sqltomvt "$TESTLAYERS/testmaptiles.yaml" --query \
+                      --postgis-ver 'ABC="" POSTGIS="2.4.0dev r15415" PGSQL="96"' > "$BUILD/mvttile_query_v2.4.0dev-a.sql"
+generate-sqltomvt "$TESTLAYERS/testmaptiles.yaml" --query --postgis-ver 2.4.8     > "$BUILD/mvttile_query_v2.4.8.sql"
+generate-sqltomvt "$TESTLAYERS/testmaptiles.yaml" --query \
+                      --postgis-ver 'ABC="" POSTGIS="2.4.8 r17696" PGSQL="96"'    > "$BUILD/mvttile_query_v2.4.8-a.sql"
 generate-sqltomvt "$TESTLAYERS/testmaptiles.yaml" --query --postgis-ver 2.5       > "$BUILD/mvttile_query_v2.5.sql"
 generate-sqltomvt "$TESTLAYERS/testmaptiles.yaml" --query --postgis-ver 3.0       > "$BUILD/mvttile_query_v3.0.sql"
 generate-sqltomvt "$TESTLAYERS/testmaptiles.yaml" --query --test-geometry         > "$BUILD/mvttile_query_test_geom.sql"
