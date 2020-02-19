@@ -118,12 +118,10 @@ class PerfTester:
 
     async def _run(self, conn: Connection):
         self.results.pg_settings = await show_settings(conn)
-        postgis_ver = await get_postgis_version(conn)
-        print(f"\nDetected PostGIS v{'.'.join(map(str, postgis_ver))}")
-        print("Validating SQL fields in all layers of the tileset")
+        print("\nValidating SQL fields in all layers of the tileset")
         self.mvt = MvtGenerator(
             self.tileset,
-            postgis_ver=postgis_ver,
+            postgis_ver=await get_postgis_version(conn),
             zoom='$1', x='xval.x', y='yval.y',
             use_feature_id=False if self.disable_feature_ids else None,
             gzip=self.gzip,

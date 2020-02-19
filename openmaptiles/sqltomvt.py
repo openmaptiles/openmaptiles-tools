@@ -1,3 +1,5 @@
+import re
+
 from typing import Iterable, Tuple, Dict, Set, Union, List, Callable
 
 from asyncpg import Connection
@@ -13,7 +15,7 @@ class MvtGenerator:
     layer_ids: Set[str]
     exclude_layers: bool  # if True, inverses layer_ids to use all except them
 
-    def __init__(self, tileset: Union[str, Tileset], postgis_ver: Tuple[int, int, int],
+    def __init__(self, tileset: Union[str, Tileset], postgis_ver: str,
                  zoom: Union[str, int], x: Union[str, int], y: Union[str, int],
                  layer_ids: List[str] = None, exclude_layers=False,
                  key_column=False, gzip: Union[int, bool] = False,
@@ -22,7 +24,6 @@ class MvtGenerator:
             self.tileset = Tileset.parse(tileset)
         else:
             self.tileset = tileset
-        self.postgis_ver = postgis_ver
         self.extent = extent
         self.pixel_width = PIXEL_SCALE
         self.pixel_height = PIXEL_SCALE
@@ -33,6 +34,21 @@ class MvtGenerator:
         self.zoom = zoom
         self.x = x
         self.y = y
+
+        # extract the actual version number
+        # ...POSTGIS="2.4.8 r17696"...
+        m = re.match(r'POSTGIS="([^"]+)"', postgis_ver)
+        ver = m[1] if m else postgis_ver
+        m = re.match(r'^(?P<major>\d+)\.(?P<minor>\d+)'
+                     r'(\.(?P<patch>\d+)(?P<suffix>[^ ]*)?)?', ver)
+        if not m:
+            raise ValueError(f"Unparseable PostGIS version string '{postgis_ver}'")
+        major = int(m['major'])
+        minor = int(m['minor'])
+        patch = int(m['patch']) if m['patch'] else 0
+        if m['suffix'] != '':
+            patch -= 1
+        self.postgis_ver = (major, minor, patch)
 
         if self.postgis_ver < (3, 0):
             if use_feature_id:
