@@ -51,5 +51,5 @@ python -m http.server 8555 -d "$HTTPDIR" &
 # shellcheck disable=SC2064
 trap "kill $!" EXIT
 
-download-osm url http://localhost:8555/monaco-20150428.osm.pbf --verbose \
-  --make-dc "$BUILD/monaco-dc.yml" --minzoom 0 --maxzoom 10 -- --dir /tmp
+download-osm url http://localhost:8555/monaco-20150428.osm.pbf \
+  --verbose --make-dc "$BUILD/monaco-dc.yml" --id monaco-test --minzoom 0 --maxzoom 10 -- --dir /tmp
