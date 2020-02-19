@@ -1,4 +1,3 @@
-import re
 from typing import Iterable, Tuple, Dict, Set, Union, List, Callable
 
 from asyncpg import Connection
@@ -14,7 +13,7 @@ class MvtGenerator:
     layer_ids: Set[str]
     exclude_layers: bool  # if True, inverses layer_ids to use all except them
 
-    def __init__(self, tileset: Union[str, Tileset], postgis_ver: str,
+    def __init__(self, tileset: Union[str, Tileset], postgis_ver: Tuple[int, int, int],
                  zoom: Union[str, int], x: Union[str, int], y: Union[str, int],
                  layer_ids: List[str] = None, exclude_layers=False,
                  key_column=False, gzip: Union[int, bool] = False,
@@ -23,6 +22,7 @@ class MvtGenerator:
             self.tileset = Tileset.parse(tileset)
         else:
             self.tileset = tileset
+        self.postgis_ver = postgis_ver
         self.extent = extent
         self.pixel_width = PIXEL_SCALE
         self.pixel_height = PIXEL_SCALE
@@ -33,13 +33,6 @@ class MvtGenerator:
         self.zoom = zoom
         self.x = x
         self.y = y
-
-        m = re.match(r'^(?P<major>\d+)\.(?P<minor>\d+)(\.(?P<patch>\d+))?',
-                     postgis_ver)
-        if not m:
-            raise ValueError(f"Unparseable PostGIS version string '{postgis_ver}'")
-        self.postgis_ver = (int(m['major']), int(m['minor']),
-                            int(m['patch']) if m['patch'] else None)
 
         if self.postgis_ver < (3, 0):
             if use_feature_id:
@@ -145,11 +138,12 @@ SELECT {concatenate_layers} AS mvt{extras} FROM (
 
         # Combine all layer's features into a single MVT blob representing one layer
         as_mvt_params = f"'{layer.id}', {self.extent}, 'mvtgeometry'"
-        if self.postgis_ver < (2, 5):
-            # Postgis for a long time used a dev PostGIS version with legacy param order
-            # ST_AsMVT(text, integer, text, anyelement)
+        if self.postgis_ver < (2, 4, 0):
+            # OMT for a long time used PostGIS 2.4.0dev r15415 with legacy param order
+            # ST_AsMVT(text name, integer extent, text geom_name, anyelement row)
             as_mvt_params = f"{as_mvt_params}, t"
         else:
+            # ST_AsMVT(anyelement row, text name, integer extent, text geom_name)
             as_mvt_params = f"t, {as_mvt_params}"
 
         query = f"""\

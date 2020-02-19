@@ -9,11 +9,24 @@ from openmaptiles.perfutils import COLOR
 from openmaptiles.utils import coalesce, print_err
 
 
-async def get_postgis_version(conn: Connection) -> Union[str, None]:
+async def get_postgis_version(conn: Connection) -> Tuple[int, int, int]:
     try:
-        return await conn.fetchval("SELECT postgis_version()")
+        ver = await conn.fetchval("SELECT postgis_full_version()")
+        # ...POSTGIS="2.4.8 r17696"...
+        m = re.match(r'POSTGIS="(?P<major>\d+)\.(?P<minor>\d+)'
+                     r'(\.(?P<patch>\d+)(?P<suffix>[^ "]*)?)?',
+                     ver)
+        if not m:
+            raise ValueError(f"Unparseable PostGIS version string '{ver}'")
+        major = int(m['major'])
+        minor = int(m['minor'])
+        patch = int(m['patch']) if m['patch'] else 0
+        if m['suffix'] != '':
+            patch -= 1
+        return major, minor, patch
     except (UndefinedFunctionError, UndefinedObjectError) as ex:
-        return None
+        raise ValueError("postgis_full_version() does not exist, "
+                         "probably because PostGIS is not installed")
 
 
 async def show_settings(conn: Connection, verbose=True) -> Dict[str, str]:
