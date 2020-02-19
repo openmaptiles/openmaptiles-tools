@@ -37,7 +37,7 @@ class MvtGenerator:
 
         # extract the actual version number
         # ...POSTGIS="2.4.8 r17696"...
-        m = re.match(r'POSTGIS="([^"]+)"', postgis_ver)
+        m = re.search(r'POSTGIS="([^"]+)"', postgis_ver)
         ver = m[1] if m else postgis_ver
         m = re.match(r'^(?P<major>\d+)\.(?P<minor>\d+)'
                      r'(\.(?P<patch>\d+)(?P<suffix>[^ ]*)?)?', ver)
