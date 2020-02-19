@@ -1,4 +1,5 @@
 import re
+
 from typing import Iterable, Tuple, Dict, Set, Union, List, Callable
 
 from asyncpg import Connection
@@ -34,12 +35,20 @@ class MvtGenerator:
         self.x = x
         self.y = y
 
-        m = re.match(r'^(?P<major>\d+)\.(?P<minor>\d+)(\.(?P<patch>\d+))?',
-                     postgis_ver)
+        # extract the actual version number
+        # ...POSTGIS="2.4.8 r17696"...
+        m = re.match(r'POSTGIS="([^"]+)"', postgis_ver)
+        ver = m[1] if m else postgis_ver
+        m = re.match(r'^(?P<major>\d+)\.(?P<minor>\d+)'
+                     r'(\.(?P<patch>\d+)(?P<suffix>[^ ]*)?)?', ver)
         if not m:
             raise ValueError(f"Unparseable PostGIS version string '{postgis_ver}'")
-        self.postgis_ver = (int(m['major']), int(m['minor']),
-                            int(m['patch']) if m['patch'] else None)
+        major = int(m['major'])
+        minor = int(m['minor'])
+        patch = int(m['patch']) if m['patch'] else 0
+        if m['suffix'] != '':
+            patch -= 1
+        self.postgis_ver = (major, minor, patch)
 
         if self.postgis_ver < (3, 0):
             if use_feature_id:
@@ -145,11 +154,12 @@ SELECT {concatenate_layers} AS mvt{extras} FROM (
 
         # Combine all layer's features into a single MVT blob representing one layer
         as_mvt_params = f"'{layer.id}', {self.extent}, 'mvtgeometry'"
-        if self.postgis_ver < (2, 5):
-            # Postgis for a long time used a dev PostGIS version with legacy param order
-            # ST_AsMVT(text, integer, text, anyelement)
+        if self.postgis_ver < (2, 4, 0):
+            # OMT for a long time used PostGIS 2.4.0dev r15415 with legacy param order
+            # ST_AsMVT(text name, integer extent, text geom_name, anyelement row)
             as_mvt_params = f"{as_mvt_params}, t"
         else:
+            # ST_AsMVT(anyelement row, text name, integer extent, text geom_name)
             as_mvt_params = f"t, {as_mvt_params}"
 
         query = f"""\

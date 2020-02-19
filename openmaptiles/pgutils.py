@@ -9,11 +9,12 @@ from openmaptiles.perfutils import COLOR
 from openmaptiles.utils import coalesce, print_err
 
 
-async def get_postgis_version(conn: Connection) -> Union[str, None]:
+async def get_postgis_version(conn: Connection) -> Tuple[int, int, int]:
     try:
-        return await conn.fetchval("SELECT postgis_version()")
+        return await conn.fetchval("SELECT postgis_full_version()")
     except (UndefinedFunctionError, UndefinedObjectError) as ex:
-        return None
+        raise ValueError("postgis_full_version() does not exist, "
+                         "probably because PostGIS is not installed")
 
 
 async def show_settings(conn: Connection, verbose=True) -> Dict[str, str]:
