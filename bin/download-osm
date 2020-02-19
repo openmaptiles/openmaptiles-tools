@@ -75,7 +75,6 @@ from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 from typing import List, Dict, Tuple
-import gzip
 
 import aiohttp
 import yaml
@@ -326,8 +325,6 @@ async def fetch(session: ClientSession, url: str):
     async with session.get(url) as resp:
         if resp.status >= 400:
             raise ValueError(f"Received status={resp.status}")
-        if resp.content_type == 'application/x-gzip':
-            return gzip.decompress(await resp.read()).decode("utf-8")
         return await resp.text()
 
 
@@ -342,36 +339,30 @@ async def get_geofabrik_list(session: ClientSession, force_latest, no_cache) -> 
             pass
     if data is None:
         print(f"Downloading the list of available Geofabrik areas...")
-        data = await fetch(session, "http://download.geofabrik.de/index.json.gz")
+        data = await fetch(session,
+                           "https://download.geofabrik.de/index-v1-nogeom.json")
         if not no_cache:
             list_path.write_text(data, encoding='utf-8')
     entries = {v["properties"]["id"]: v["properties"]
                for v in json.loads(data)["features"]}
-    # resolve URL - expect a single URL to match; html-decode names
-    for entry in entries.values():
-        url, = [v for v in entry["urls"] if v.endswith("-latest.osm.pbf")]
-        entry["url"] = url
-        del entry["urls"]
-        entry["name"] = html.unescape(entry["name"])
     # resolve parents until no more changes are made
-    while True:
-        resolved = 0
-        for entry in entries.values():
-            if "parent" in entry:
-                pid = entry["parent"]
-                # There seems to be a bug in the data -- US state IDs have no prefix
-                parent = entries[pid] if pid in entries else entries[f"us/{pid}"]
-                if "parent" not in parent:
-                    # parent of this entry has already been resolved (or is a root)
-                    entry["full_id"] = f"{parent['full_id']}/{entry['id']}"
-                    entry["full_name"] = f"{parent['full_name']} / {entry['name']}"
-                    del entry["parent"]
-                    resolved += 1
-            elif "full_id" not in entry:
-                entry["full_id"] = entry["id"]
-                entry["full_name"] = entry["name"]
-        if resolved == 0:
-            break
+    for entry in entries.values():
+        full_id = entry["id"]
+        full_name = entry["name"]
+        current = entry
+        for idx in range(10):  # avoids infinite recursion
+            if "parent" in current:
+                current = entries[current["parent"]]
+                full_id = f"{current['id']}/{full_id}"
+                full_name = f"{current['name']} / {full_name}"
+            else:
+                break
+        else:
+            raise ValueError(f"Geofabrik data '{entry['id']}' has infinite parent loop")
+        entry["full_id"] = full_id
+        entry["full_name"] = full_name
+        entry["url"] = entry["urls"]["pbf"]
+
     return {v["full_id"]: v
             for v in sorted(entries.values(), key=lambda v: v["full_id"])}
 
