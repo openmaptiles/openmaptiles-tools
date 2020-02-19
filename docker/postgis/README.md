@@ -1,7 +1,7 @@
-# PostgreSQL with GEOS 3.6.0 and PostGIS 2.4dev
+# PostgreSQL with GEOS 3.6.4 and PostGIS 2.4.8
 [![](https://images.microbadger.com/badges/image/openmaptiles/postgis.svg)](https://microbadger.com/images/openmaptiles/postgis "Get your own image badge on microbadger.com") [![Docker Automated buil](https://img.shields.io/docker/automated/openmaptiles/postgis.svg)]()
 
-A custom PostgreSQL Docker image based off GEOS 3.6.0 and PostGIS 2.3.1.
+A custom PostgreSQL Docker image based off GEOS 3.6.4 and PostGIS 2.4.8.
 
 ## Usage
 

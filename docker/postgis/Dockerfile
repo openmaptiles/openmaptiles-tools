@@ -1,8 +1,8 @@
 FROM postgres:9.6
 MAINTAINER "Lukas Martinelli <me@lukasmartinelli.ch>"
-ENV POSTGIS_MAJOR=2.4dev \
-    POSTGIS_VERSION=2.4dev \
-    GEOS_VERSION=3.6.0
+ENV POSTGIS_MAJOR=2.4 \
+    POSTGIS_VERSION=2.4.8 \
+    GEOS_VERSION=3.6.4
 
 RUN apt-get -qq -y update \
  && apt-get -qq -y --no-install-recommends install \
@@ -62,9 +62,9 @@ RUN apt-get -qq -y update \
  && cd /opt/ \
  && git clone https://github.com/postgis/postgis.git \
  && cd postgis \
- && git reset --hard ff0a844e606622f45841fc25221bbaa136ed1001 \
+ && git reset --hard $POSTGIS_VERSION \
  && ./autogen.sh \
- && ./configure CFLAGS="-O0 -Wall" \
+ && ./configure CFLAGS="-Wall" \
  && make \
  && make install \
  && ldconfig \
