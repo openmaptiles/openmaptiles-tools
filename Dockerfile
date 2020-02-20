@@ -2,19 +2,17 @@ FROM golang:1.13 as go-builder
 ARG IMPOSM_REPO="https://github.com/omniscale/imposm3.git"
 ARG IMPOSM_VERSION="v0.10.0"
 
+# Build imposm
 RUN set -eux ;\
     go version ;\
     go get github.com/tools/godep ;\
     mkdir /build-bin ;\
-    :
-
-RUN set -eux ;\
+    \
     DEBIAN_FRONTEND=noninteractive apt-get update ;\
     DEBIAN_FRONTEND=noninteractive apt-get install  -y --no-install-recommends \
         `# installing imposm dependencies` \
         libgeos-dev \
         libleveldb-dev \
-#        libprotobuf-dev \
         ;\
     /bin/bash -c 'echo ""; echo ""; echo "##### Build imposm3 -- https://github.com/osm2vectortiles/imposm3"' >&2 ;\
     #
@@ -23,18 +21,16 @@ RUN set -eux ;\
         $GOPATH/src/github.com/omniscale/imposm3 ;\
     cd $GOPATH/src/github.com/omniscale/imposm3 ;\
     make build ;\
-    # Support legacy imposm3 as well as the newer imposm app name
-    ( [ -f imposm ] && mv imposm /build-bin/imposm || mv imposm3 /build-bin/imposm ) ;\
-    :
+    # Older imposm executable was called imposm3 - rename it to the common name "imposm"
+    ( [ -f imposm ] && mv imposm /build-bin/imposm || mv imposm3 /build-bin/imposm )
 
+
+# Build osmborder
 FROM python:3.8 as c-builder
 ARG OSMBORDER_REV=e3ae8f7a2dcdcd6dc80abab4679cb5edb7dc6fa5
 
 RUN set -eux ;\
     mkdir /build-bin ;\
-    :
-
-RUN set -eux ;\
     DEBIAN_FRONTEND=noninteractive apt-get update ;\
     DEBIAN_FRONTEND=noninteractive apt-get install  -y --no-install-recommends \
         `# installing osmborder dependencies` \
@@ -43,7 +39,6 @@ RUN set -eux ;\
         cmake \
         git \
         libosmium2-dev \
-        wget \
         zlib1g-dev \
         ;\
     /bin/bash -c 'echo ""; echo ""; echo "##### Building osmborder -- https://github.com/pnorman/osmborder"' >&2 ;\
@@ -55,17 +50,16 @@ RUN set -eux ;\
     cmake .. ;\
     make ;\
     make install ;\
-    :
-
-RUN set -eux ;\
     mv /usr/src/osmborder/build/src/osmborder /build-bin ;\
     mv /usr/src/osmborder/build/src/osmborder_filter /build-bin
 
 
+# Primary image
 FROM python:3.8
 ARG PG_MAJOR=12
 ARG VT_UTIL_VERSION=v2.0.0
 ARG TOOLS_DIR=/usr/src/app
+ARG PGFUTTER_VERSION=v1.2
 
 WORKDIR ${TOOLS_DIR}
 
@@ -73,11 +67,17 @@ WORKDIR ${TOOLS_DIR}
 # postgis-vt-util.sql and language.sql
 # See README
 ENV VT_UTIL_DIR=/opt/postgis-vt-util \
-    OMT_UTIL_DIR=${TOOLS_DIR}/sql \
+    OMT_UTIL_DIR="${TOOLS_DIR}/sql" \
+    TOOLS_DIR="$TOOLS_DIR" \
     SQL_DIR=/sql \
-    PGFUTTER_VERSION="v1.2" \
     WGET="wget --quiet --progress=bar:force:noscroll --show-progress" \
-    PATH="${TOOLS_DIR}:${PATH}"
+    PATH="${TOOLS_DIR}:${PATH}" \
+    IMPORT_DIR=/import \
+    IMPOSM_CACHE_DIR=/cache \
+    MAPPING_YAML=/mapping/mapping.yaml \
+    DIFF_DIR=/import \
+    TILES_DIR=/import \
+    CONFIG_JSON=${TOOLS_DIR}/config/repl_config.json
 
 
 
@@ -93,9 +93,9 @@ RUN set -eux ;\
         gdal-bin  `# installs ogr2ogr` \
         osmctools `# osmconvert and other OSM tools` \
         osmosis   `# (TBD if needed) https://wiki.openstreetmap.org/wiki/Osmosis` \
-        postgresql-client-${PG_MAJOR?} \
+        postgresql-client-${PG_MAJOR?}  `# psql` \
         \
-        `# tools to build osmborder` \
+        `# common tools` \
         ca-certificates \
         git \
         wget \
@@ -103,25 +103,15 @@ RUN set -eux ;\
         `# imposm dependencies` \
         libgeos-dev \
         libleveldb-dev \
-#        libprotobuf-dev \
         ;\
     \
-    \
-    :
-
-RUN set -eux ;\
     /bin/bash -c 'echo ""; echo ""; echo "##### Installing pgfutter -- https://github.com/lukasmartinelli/pgfutter"' >&2 ;\
     $WGET -O /usr/local/bin/pgfutter \
        "https://github.com/lukasmartinelli/pgfutter/releases/download/${PGFUTTER_VERSION}/pgfutter_linux_amd64" ;\
     chmod +x /usr/local/bin/pgfutter ;\
     \
-    \
-    :
-
-RUN set -eux ;\
     /bin/bash -c 'echo ""; echo ""; echo "##### Cleaning up"' >&2 ;\
-    rm -rf /var/lib/apt/lists/*  ;\
-    :
+    rm -rf /var/lib/apt/lists/*
 
 # Copy requirements.txt first to avoid pip install on every code change
 COPY ./requirements.txt .
@@ -130,9 +120,9 @@ RUN set -eux ;\
     pip install --no-cache-dir -r requirements.txt ;\
     mkdir -p "${VT_UTIL_DIR?}" ;\
     $WGET -O "${VT_UTIL_DIR}/postgis-vt-util.sql" \
-       https://raw.githubusercontent.com/openmaptiles/postgis-vt-util/${VT_UTIL_VERSION}/postgis-vt-util.sql ;\
-    :
+       https://raw.githubusercontent.com/openmaptiles/postgis-vt-util/${VT_UTIL_VERSION}/postgis-vt-util.sql
 
+# Copy tools, imposm, and osmborder into the app dir
 COPY . .
 COPY --from=go-builder /build-bin/* ./
 COPY --from=c-builder /build-bin/* ./
@@ -142,24 +132,6 @@ RUN set -eux ;\
     rm -rf bin ;\
     rm requirements.txt ;\
     ./download-osm list geofabrik
-
-########################################
-########################################
-########################################
-########################################
-########################################
-########################################
-########################################
-
-ENV TOOLS_DIR="$TOOLS_DIR" \
-    IMPORT_DIR=/import \
-    IMPOSM_CACHE_DIR=/cache \
-    MAPPING_YAML=/mapping/mapping.yaml \
-    DIFF_DIR=/import \
-    TILES_DIR=/import \
-    CONFIG_JSON=${TOOLS_DIR}/config/repl_config.json
-
-
 
 WORKDIR /tileset
 VOLUME /tileset
