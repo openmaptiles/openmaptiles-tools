@@ -4,12 +4,12 @@ from .tileset import Tileset
 
 def zres(pixel_scale, zoom):
     # See https://github.com/openmaptiles/postgis-vt-util/blob/master/src/ZRes.sql
-    return 40075016.6855785 / ((1.0 * pixel_scale) * 2 ** zoom)
+    return 40075016.6855785 / ((1.0 * float(pixel_scale)) * 2 ** float(zoom))
 
 
 def call_zres(pixel_scale, match):
     # See https://github.com/openmaptiles/postgis-vt-util/blob/master/src/ZRes.sql
-    return str(zres(float(pixel_scale), float(match.group(0)[4:6])))
+    return str(zres(pixel_scale, match.group(0)[4:6]))
 
 
 def create_imposm3_mapping(tileset_filename):
@@ -38,11 +38,11 @@ def create_imposm3_mapping(tileset_filename):
                     except ValueError:
                         if re.match(r"^ZRES\d{1,2}$", definition['tolerance']):
                             zoom = definition['tolerance'][4:6]
-                            definition['tolerance'] = zres(float(pixel_scale), float(
-                                zoom))  # Convert to distance
+                            # Convert to distance
+                            definition['tolerance'] = zres(pixel_scale, zoom)
                         else:
-                            raise SyntaxError('Unrecognized tolerance ' + str(
-                                definition['tolerance']))
+                            raise SyntaxError(
+                                f"Unrecognized tolerance '{definition['tolerance']}'")
                 if 'sql_filter' in definition:
                     definition['sql_filter'] = re.sub(
                         r"ZRES\d{1,2}",
