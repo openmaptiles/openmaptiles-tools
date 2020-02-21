@@ -22,12 +22,12 @@ tables:
 tags:
   include:
   - access
-  - name:en
-  - name:de
-  - name:cs
   - int_name
   - loc_name
   - name
+  - name:cs
+  - name:de
+  - name:en
   - wikidata
   - wikipedia
 
