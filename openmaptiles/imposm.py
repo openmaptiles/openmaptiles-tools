@@ -25,6 +25,7 @@ def create_imposm3_mapping(tileset_filename):
     include_tags.append('name')
     include_tags.append('wikidata')
     include_tags.append('wikipedia')
+    include_tags = set(include_tags)
 
     generalized_tables = {}
     tables = {}
@@ -55,7 +56,12 @@ def create_imposm3_mapping(tileset_filename):
                 definition.pop('_resolve_wikidata', None)
                 tables[table_name] = definition
             for tag_name, definition in mapping.get('tags', {}).items():
-                tags[tag_name] = definition
+                if tag_name == 'include':
+                    tags[tag_name] |= set(definition)
+                else:
+                    raise Exception('Layer should only define "include" under "tags"')
+
+    include_tags = sorted(list(include_tags))
 
     return {
         'tags': tags,
