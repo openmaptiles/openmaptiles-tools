@@ -53,8 +53,8 @@ build-all-dockers: build-docker
 	( \
 		cd $$dir && \
 		echo "\n\n*****************************************************" && \
-		echo "Building $${dir#docker/}:$(VERSION) in $$dir..." && \
-		docker build --file Dockerfile --tag $${dir#docker/}:$(VERSION) . \
+		echo "Building openmaptiles/$${dir#docker/}:$(VERSION) in $$dir..." && \
+		docker build --file Dockerfile --tag openmaptiles/$${dir#docker/}:$(VERSION) . \
 	) ;\
 	done
 
