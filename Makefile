@@ -47,6 +47,17 @@ prepare:
 build-docker:
 	docker build --file Dockerfile --tag $(DOCKER_IMAGE) .
 
+.PHONY: build-all-dockers
+build-all-dockers: build-docker
+	@for dir in docker/postgis $(wildcard docker/generate-*) $(wildcard docker/import-*); do \
+	( \
+		cd $$dir && \
+		echo "\n\n*****************************************************" && \
+		echo "Building $${dir#docker/}:$(VERSION) in $$dir..." && \
+		docker build --file Dockerfile --tag $${dir#docker/}:$(VERSION) . \
+	) ;\
+	done
+
 .PHONY: run-python-tests
 run-python-tests: build-docker
 	@echo ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"
