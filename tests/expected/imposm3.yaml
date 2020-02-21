@@ -21,6 +21,7 @@ tables:
         - __any__
 tags:
   include:
+  - access
   - name:en
   - name:de
   - name:cs
