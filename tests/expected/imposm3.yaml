@@ -21,12 +21,13 @@ tables:
         - __any__
 tags:
   include:
-  - name:en
-  - name:de
-  - name:cs
+  - access
   - int_name
   - loc_name
   - name
+  - name:cs
+  - name:de
+  - name:en
   - wikidata
   - wikipedia
 
