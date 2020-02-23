@@ -53,8 +53,8 @@ def change(old, new, is_speed=False, color=False):
         return value
 
 
-@dataclass
 @dataclass_json
+@dataclass
 class PerfSummary:
     duration: timedelta = field(
         default=None,
@@ -101,8 +101,8 @@ class PerfSummary:
             return msg, value
 
 
-@dataclass
 @dataclass_json
+@dataclass
 class PerfBucket:
     smallest_id: str = None
     smallest_size: int = None
@@ -131,8 +131,8 @@ class PerfBucket:
             return msg, self.tile_avg_size
 
 
-@dataclass
 @dataclass_json
+@dataclass
 class PerfTestSummary(PerfSummary):
     id: str = None
     layers: str = None
@@ -140,8 +140,8 @@ class PerfTestSummary(PerfSummary):
     buckets: List[PerfBucket] = field(default_factory=list)
 
 
-@dataclass
 @dataclass_json
+@dataclass
 class PerfRoot:
     created: str = None
     tileset: str = None

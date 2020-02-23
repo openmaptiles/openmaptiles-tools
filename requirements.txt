@@ -4,8 +4,7 @@ aiohttp==3.6.2
 ascii_graph==1.5.1
 asyncpg==0.20.1
 beautifulsoup4==4.8.2
-# DO NOT UPGRADE: version 0.3.7 introduced backward incompatible changes
-dataclasses-json==0.3.6
+dataclasses-json==0.3.8
 deprecated==1.2.7
 docopt-ng==0.7.2
 graphviz==0.13.2
