@@ -49,12 +49,15 @@ build-docker:
 
 .PHONY: build-all-dockers
 build-all-dockers: build-docker
-	@for dir in docker/postgis $(wildcard docker/generate-*) $(wildcard docker/import-*); do \
+	# Docker-build all subdirectories in docker/*
+	# For each dir, remove trailing slash, cd into it, and do a docker build & tag with version
+	@for dir in docker/*/; do \
 	( \
-		cd $$dir && \
+		dir2=$${dir%*/} && \
+		cd $$dir2 && \
 		echo "\n\n*****************************************************" && \
-		echo "Building openmaptiles/$${dir#docker/}:$(VERSION) in $$dir..." && \
-		docker build --file Dockerfile --tag openmaptiles/$${dir#docker/}:$(VERSION) . \
+		echo "Building openmaptiles/$${dir2#docker/}:$(VERSION) in $$dir2..." && \
+		docker build --file Dockerfile --tag openmaptiles/$${dir2#docker/}:$(VERSION) . \
 	) ;\
 	done
 
@@ -82,7 +85,9 @@ build-bin-tests: prepare build-docker
 	@echo ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"
 	@echo "   Running tools integration tests"
 	@echo ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"
-	$(RUN_CMD) -e "BUILD=/tileset/$(BUILD_DIR)" $(DOCKER_IMAGE) tests/test-tools.sh
+	$(RUN_CMD) -e "BUILD=/tileset/$(BUILD_DIR)" \
+		-v "$(WORKDIR)/tests/cache:/usr/src/app/cache" \
+		$(DOCKER_IMAGE) tests/test-tools.sh
 
 .PHONY: build-tests
 build-tests: build-bin-tests build-sql-tests

@@ -63,7 +63,6 @@ where the 3rd parameter is the name of the PDF file. Will run make-dc command.
 """
 
 import asyncio
-import html
 import json
 import os
 import re
@@ -375,7 +374,8 @@ async def save_state_file(session, state_url, state_file):
 
 
 async def prepare_area_download(args, session):
-    area_id = args['<id>'].strip() if args['<id>'] else False
+    area_id = (args['<id>'] or args['--id'] or "").strip()
+    area_id = area_id if area_id else None
     if args.url:
         url = args['<url>']
     elif args.bbbike:
@@ -421,7 +421,7 @@ async def prepare_area_download(args, session):
     await asyncio.wait([src.load_hash(session, args.verbose),
                         src.load_metadata(session, args.verbose)])
     print(f"Downloading {src.url} (size={src.size_str()}, md5={src.hash})", flush=True)
-    return [src.url], src.hash
+    return [src.url], src.hash, area_id
 
 
 def make_docker_compose_file(pbf_file: Path, dc_file: Path,
@@ -463,24 +463,21 @@ def make_docker_compose_file(pbf_file: Path, dc_file: Path,
 
 
 def normalize_make_dc(area, min_zoom, max_zoom):
-    area = os.environ.get("OSM_AREA_NAME", "Unknown") if area is None else area
+    area = os.environ.get("OSM_AREA_NAME", "Unknown") if not area else area
     min_zoom = int(os.environ.get("MIN_ZOOM", 0) if min_zoom is None else min_zoom)
     max_zoom = int(os.environ.get("MAX_ZOOM", 7) if max_zoom is None else max_zoom)
     return area, min_zoom, max_zoom
 
 
 async def main_async(args):
-    dry_run = args['--dry-run']
-    aria2c_args = args.args
-    urls, md5 = None, None
-    exit_code = 0
+    if args["make-dc"]:
+        return make_docker_compose_file(
+            Path(args["<pbf-file>"]), Path(args["--make-dc"]),
+            args['--minzoom'], args['--maxzoom'], args["--id"])
 
+    urls, md5 = None, None
     async with aiohttp.ClientSession(headers={'User-Agent': USER_AGENT}) as session:
-        if args.planet:
-            use_primary = args['--include-primary']
-            urls, md5 = await Catalog().init(session, args.verbose, use_primary,
-                                             args['--force-latest'])
-        elif args.list:
+        if args.list:
             if args.service != "geofabrik":
                 raise SystemExit('List only supports geofabrik service for now')
             catalog = await get_geofabrik_list(session, args['--force-latest'],
@@ -488,22 +485,20 @@ async def main_async(args):
             info = [dict(id=v["full_id"], name=v["full_name"]) for v in
                     catalog.values()]
             print(tabulate(info, headers="keys") + '\n')
-        elif args["make-dc"]:
-            exit_code = make_docker_compose_file(
-                Path(args["<pbf-file>"]), Path(args["--make-dc"]),
-                args['--minzoom'], args['--maxzoom'], args['--id'])
+        elif args.planet:
+            use_primary = args['--include-primary']
+            urls, md5 = await Catalog().init(session, args.verbose, use_primary,
+                                             args['--force-latest'])
+            area_id = "planet"
         else:
-            urls, md5 = await prepare_area_download(args, session)
+            urls, md5, area_id = await prepare_area_download(args, session)
 
     if urls:
-        exit_code = await run_aria2c(aria2c_args, dry_run, md5, urls, args)
-        if dry_run and args['--make-dc']:
-            print("docker-compose file generation was skipped in the dry-run mode")
-
-    return exit_code
+        return await run_aria2c(args.args, args['--dry-run'], md5, urls, args, area_id)
+    return 0
 
 
-async def run_aria2c(aria2c_args, dry_run, md5, urls, args):
+async def run_aria2c(aria2c_args, dry_run, md5, urls, args, area_id):
     params = ['aria2c']
     if md5:
         params.append(f'--checksum=md5={md5}')
@@ -525,11 +520,11 @@ async def run_aria2c(aria2c_args, dry_run, md5, urls, args):
             if any((v for v in aria2c_args if v.startswith(flag))):
                 raise ValueError("Unable to use --make-dc together with "
                                  f"the {flag} aria2c parameter")
-        area, min_zoom, max_zoom = normalize_make_dc(args['--id'], args['--minzoom'],
-                                                     args['--maxzoom'])
+        area_id, min_zoom, max_zoom = normalize_make_dc(
+            area_id, args['--minzoom'], args['--maxzoom'])
         extra_env = {
             "DOWNLOAD_OSM_DC_FILE": str(Path(args['--make-dc'])),
-            "OSM_AREA_NAME": str(area),
+            "OSM_AREA_NAME": str(area_id),
             "MIN_ZOOM": str(min_zoom),
             "MAX_ZOOM": str(max_zoom)
         }
@@ -580,6 +575,8 @@ async def run_aria2c(aria2c_args, dry_run, md5, urls, args):
         return ret
     else:
         print("Data is not downloaded because of the --dry-run parameter")
+        if args['--make-dc']:
+            print("docker-compose file generation was skipped")
         return 0
 
 
