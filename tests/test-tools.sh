@@ -4,8 +4,9 @@ set -o errexit  # -e
 set -o pipefail
 set -o nounset  # -u
 
-TESTLAYERS="tests/testlayers"
-HTTPDIR="tests/http"
+TESTS=tests
+TESTLAYERS="$TESTS/testlayers"
+HTTPDIR="$TESTS/http"
 DEVDOC=${BUILD?}/devdoc
 mkdir -p "${DEVDOC}"
 
@@ -57,4 +58,16 @@ python -m http.server 8555 -d "$HTTPDIR" &
 trap "kill $!" EXIT
 
 download-osm url http://localhost:8555/monaco-20150428.osm.pbf \
-  --verbose --make-dc "$BUILD/monaco-dc.yml" --id monaco-test --minzoom 0 --maxzoom 10 -- --dir /tmp
+  --verbose --make-dc "$BUILD/monaco-dc.yml" --id raw-url --minzoom 0 --maxzoom 10 -- --dir /tmp
+
+# Test downloader support for env vars
+export OSM_AREA_NAME=monaco-test2
+export MIN_ZOOM=3
+export MAX_ZOOM=5
+download-osm url http://localhost:8555/monaco-20150428.osm.pbf \
+  --verbose --make-dc "$BUILD/monaco-dc2.yml" -- --dir /tmp
+unset OSM_AREA_NAME MIN_ZOOM MAX_ZOOM
+
+# Using a fake cache/geofabrik.json so that downloader wouldn't need to download the real one from Geofabrik site
+download-osm geofabrik monaco-test \
+  --verbose --make-dc "$BUILD/monaco-dc3.yml" --minzoom 5 --maxzoom 6 -- --dir /tmp
