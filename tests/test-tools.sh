@@ -64,10 +64,11 @@ download-osm url http://localhost:8555/monaco-20150428.osm.pbf \
 export OSM_AREA_NAME=monaco-test2
 export MIN_ZOOM=3
 export MAX_ZOOM=5
+export MAKE_DC_VERSION=2.2
 download-osm url http://localhost:8555/monaco-20150428.osm.pbf \
   --verbose --make-dc "$BUILD/monaco-dc2.yml" -- --dir /tmp
-unset OSM_AREA_NAME MIN_ZOOM MAX_ZOOM
+unset OSM_AREA_NAME MIN_ZOOM MAX_ZOOM MAKE_DC_VERSION
 
 # Using a fake cache/geofabrik.json so that downloader wouldn't need to download the real one from Geofabrik site
 download-osm geofabrik monaco-test \
-  --verbose --make-dc "$BUILD/monaco-dc3.yml" --minzoom 5 --maxzoom 6 -- --dir /tmp
+  --verbose --make-dc "$BUILD/monaco-dc3.yml" --minzoom 5 --maxzoom 6 --dc-ver 2.1 -- --dir /tmp

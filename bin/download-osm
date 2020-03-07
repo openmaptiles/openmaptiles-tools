@@ -2,12 +2,12 @@
 """
 Usage:
   download-osm list <service> [-l] [-c]
-  download-osm planet [-l] [-p] [-n] [-v] [-d <file> [-i <z>] [-a <z>]] [--] [<args>...]
-  download-osm url       <url>  [-n] [-v] [-d <file> [-i <z>] [-a <z>] [--id <id>]] [--] [<args>...]
-  download-osm geofabrik <id> [-l] [-c] [-n] [-v] [-s <file>] [-d <file> [-i <z>] [-a <z>]] [--] [<args>...]
-  download-osm osmfr     <id>           [-n] [-v] [-s <file>] [-d <file> [-i <z>] [-a <z>]] [--] [<args>...]
-  download-osm bbbike    <id>           [-n] [-v]             [-d <file> [-i <z>] [-a <z>]] [--] [<args>...]
-  download-osm make-dc <pbf-file> -d <file> [-i <z>] [-a <z>] [--id <id>]
+  download-osm planet [-l] [-p] [-n] [-v] [-d <file> [-i <z>] [-a <z>] [-x <v>]] [--] [<args>...]
+  download-osm url       <url>  [-n] [-v] [-d <file> [-i <z>] [-a <z>] [-x <v>] [--id <id>]] [--] [<args>...]
+  download-osm geofabrik <id> [-l] [-c] [-n] [-v] [-s <file>] [-d <file> [-i <z>] [-a <z>] [-x <v>]] [--] [<args>...]
+  download-osm osmfr     <id>           [-n] [-v] [-s <file>] [-d <file> [-i <z>] [-a <z>] [-x <v>]] [--] [<args>...]
+  download-osm bbbike    <id>           [-n] [-v]             [-d <file> [-i <z>] [-a <z>] [-x <v>]] [--] [<args>...]
+  download-osm make-dc <pbf-file> -d <file> [-i <z>] [-a <z>] [-x <v>] [--id <id>]
   download-osm --help
   download-osm --version
 
@@ -36,7 +36,9 @@ Options:
                         For Geofabrik, forces catalog re-download.
   -c --no-cache         Do not cache downloaded list of extracts
   -s --state <file>     Download state file and save it to the <file>
-  -d --make-dc <file>   Create a docker-compose file with the area metadata. If
+  -d --make-dc <file>   Create a docker-compose file with the area metadata.
+  -x --dc-ver <ver>     Set docker-compose file version to this value.
+                        By default will be 2 unless MAKE_DC_VERSION env var is set.
   -i --minzoom=<zoom>   Set minimum zoom when making docker compose file.
                         By default will be 0 unless MIN_ZOOM env var is set.
   -a --maxzoom=<zoom>   Set maximum zoom when making docker compose file.
@@ -425,8 +427,8 @@ async def prepare_area_download(args, session):
 
 
 def make_docker_compose_file(pbf_file: Path, dc_file: Path,
-                             min_zoom=None, max_zoom=None, area=None):
-    area, min_zoom, max_zoom = normalize_make_dc(area, min_zoom, max_zoom)
+                             min_zoom=None, max_zoom=None, area=None, ver=None):
+    area, min_zoom, max_zoom, dc_ver = normalize_make_dc(area, min_zoom, max_zoom, ver)
     print(f"Extracting metadata from {pbf_file} using osmconvert", flush=True)
     params = ["osmconvert", "--out-statistics", str(pbf_file)]
     res = subprocess.run(params, capture_output=True)
@@ -443,7 +445,7 @@ def make_docker_compose_file(pbf_file: Path, dc_file: Path,
         lat_max = res["lat max"]
         timestamp_max = res["timestamp max"]
         dc_data = {
-            "version": "2",
+            "version": str(dc_ver),
             "services": {
                 "generate-vectortiles": {
                     "environment": {
@@ -462,18 +464,19 @@ def make_docker_compose_file(pbf_file: Path, dc_file: Path,
     return exit_code
 
 
-def normalize_make_dc(area, min_zoom, max_zoom):
+def normalize_make_dc(area, min_zoom, max_zoom, ver):
     area = os.environ.get("OSM_AREA_NAME", "Unknown") if not area else area
     min_zoom = int(os.environ.get("MIN_ZOOM", 0) if min_zoom is None else min_zoom)
     max_zoom = int(os.environ.get("MAX_ZOOM", 7) if max_zoom is None else max_zoom)
-    return area, min_zoom, max_zoom
+    ver = float(os.environ.get("MAKE_DC_VERSION", 2) if ver is None else ver)
+    return area, min_zoom, max_zoom, ver
 
 
 async def main_async(args):
     if args["make-dc"]:
         return make_docker_compose_file(
             Path(args["<pbf-file>"]), Path(args["--make-dc"]),
-            args['--minzoom'], args['--maxzoom'], args["--id"])
+            args['--minzoom'], args['--maxzoom'], args["--id"], args["--dc-ver"])
 
     urls, md5 = None, None
     async with aiohttp.ClientSession(headers={'User-Agent': USER_AGENT}) as session:
@@ -520,13 +523,14 @@ async def run_aria2c(aria2c_args, dry_run, md5, urls, args, area_id):
             if any((v for v in aria2c_args if v.startswith(flag))):
                 raise ValueError("Unable to use --make-dc together with "
                                  f"the {flag} aria2c parameter")
-        area_id, min_zoom, max_zoom = normalize_make_dc(
-            area_id, args['--minzoom'], args['--maxzoom'])
+        area_id, min_zoom, max_zoom, dc_ver = normalize_make_dc(
+            area_id, args['--minzoom'], args['--maxzoom'], args['--dc-ver'])
         extra_env = {
             "DOWNLOAD_OSM_DC_FILE": str(Path(args['--make-dc'])),
             "OSM_AREA_NAME": str(area_id),
             "MIN_ZOOM": str(min_zoom),
-            "MAX_ZOOM": str(max_zoom)
+            "MAX_ZOOM": str(max_zoom),
+            "MAKE_DC_VERSION": str(dc_ver),
         }
         params.append("--on-download-complete")
         params.append(__file__)
