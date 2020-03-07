@@ -58,6 +58,16 @@ Each subdir here creates a docker image that either generates some data, or is b
 [![](https://img.shields.io/docker/stars/openmaptiles/postgis?label=stars)](https://hub.docker.com/r/openmaptiles/postgis)
 <br><small>Migrated from [postgis](https://github.com/openmaptiles/postgis) repo (archived)</small>
 
+## [postgis-preloaded](postgis-preloaded)
+[![](https://img.shields.io/docker/cloud/build/openmaptiles/postgis-preloaded?&logo=OpenStreetMap&label=build)](https://hub.docker.com/r/openmaptiles/postgis-preloaded)
+[![](https://img.shields.io/docker/automated/openmaptiles/postgis-preloaded?label=build)](https://hub.docker.com/r/openmaptiles/postgis-preloaded/builds)
+[![](https://img.shields.io/microbadger/layers/openmaptiles/postgis-preloaded)](https://hub.docker.com/r/openmaptiles/postgis-preloaded)
+[![](https://img.shields.io/microbadger/image-size/openmaptiles/postgis-preloaded?label=size)](https://hub.docker.com/r/openmaptiles/postgis-preloaded)
+[![](https://img.shields.io/docker/pulls/openmaptiles/postgis-preloaded?label=downloads)](https://hub.docker.com/r/openmaptiles/postgis-preloaded)
+[![](https://img.shields.io/docker/stars/openmaptiles/postgis-preloaded?label=stars)](https://hub.docker.com/r/openmaptiles/postgis-preloaded)
+
+A data-preloaded database image used mostly for testing. The image is based on the `postgis` image above, initialized with the `openmaptiles` database (user=openmaptiles, password=openmaptiles), preloaded with water, lakelines, and natural-earth data.
+
 # Deprecated Legacy Tools
 
 These Docker images are no longer maintained or published, and should not be used.
