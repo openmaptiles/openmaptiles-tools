@@ -4,18 +4,23 @@ set -o nounset
 
 LAKE_CENTERLINE_TABLE="${LAKE_CENTERLINE_TABLE:-lake_centerline}"
 
-# For backward compatibility, allow both PG* and POSTGRES_* forms,
-# with the non-standard POSTGRES_* form taking precedence.
-# An error will be raised if neither form is given, except for the PGPORT
-PGHOST="${POSTGRES_HOST:-${PGHOST?}}"
-PGDATABASE="${POSTGRES_DB:-${PGDATABASE?}}"
-PGUSER="${POSTGRES_USER:-${PGUSER?}}"
-PGPASSWORD="${POSTGRES_PASSWORD:-${PGPASSWORD?}}"
-PGPORT="${POSTGRES_PORT:-${PGPORT:-5432}}"
+if [ -z ${PGCONN+x} ]; then
+  # For backward compatibility, allow both PG* and POSTGRES_* forms,
+  # with the non-standard POSTGRES_* form taking precedence.
+  # An error will be raised if neither form is given, except for the PGPORT
+  PGHOST="${POSTGRES_HOST:-${PGHOST?}}"
+  PGDATABASE="${POSTGRES_DB:-${PGDATABASE?}}"
+  PGUSER="${POSTGRES_USER:-${PGUSER?}}"
+  PGPASSWORD="${POSTGRES_PASSWORD:-${PGPASSWORD?}}"
+  PGPORT="${POSTGRES_PORT:-${PGPORT:-5432}}"
 
-PGCONN="${PGCONN:-dbname=$PGDATABASE user=$PGUSER host=$PGHOST password=$PGPASSWORD port=$PGPORT}"
+  PGCONN="dbname=$PGDATABASE user=$PGUSER host=$PGHOST password=$PGPASSWORD port=$PGPORT"
+  echo "Importing lake lines into $PGHOST:$PGPORT/$PGDATABASE as table $LAKE_CENTERLINE_TABLE..."
+else
+  echo "Importing lake lines as table $LAKE_CENTERLINE_TABLE using custom PGCONN env variable..."
+fi
 
-echo "Importing lake lines into PostgreSQL"
+
 PGCLIENTENCODING=UTF8 ogr2ogr \
   -progress \
   -f Postgresql \
@@ -24,5 +29,5 @@ PGCLIENTENCODING=UTF8 ogr2ogr \
   PG:"${PGCONN?}" \
   -lco OVERWRITE=YES \
   -overwrite \
-  -nln "${LAKE_CENTERLINE_TABLE?}" \
+  -nln "${LAKE_CENTERLINE_TABLE}" \
   "$IMPORT_DIR/lake_centerline.geojson"
