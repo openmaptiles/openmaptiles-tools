@@ -27,7 +27,7 @@ RUN DIR=/downloads/lake_centerline \
  && wget --quiet https://github.com/lukasmartinelli/osm-lakelines/releases/download/v0.9/lake_centerline.geojson
 
 
-FROM osgeo/gdal:alpine-normal-3.0.4
+FROM osgeo/gdal:alpine-normal-3.0.2
 LABEL maintainer="YuriAstrakhan@gmail.com"
 
 ENV IMPORT_DIR=/import
