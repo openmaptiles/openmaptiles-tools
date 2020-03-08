@@ -51,13 +51,18 @@ build-docker:
 build-all-dockers: build-docker
 	# Docker-build all subdirectories in docker/*
 	# For each dir, remove trailing slash, cd into it, and do a docker build & tag with version
+	# The build-arg OMT_TOOLS_VERSION is not needed by most of the builds, so it will show a warning
 	@for dir in docker/*/; do \
 	( \
 		dir2=$${dir%*/} && \
 		cd $$dir2 && \
 		echo "\n\n*****************************************************" && \
 		echo "Building openmaptiles/$${dir2#docker/}:$(VERSION) in $$dir2..." && \
-		docker build --file Dockerfile --tag openmaptiles/$${dir2#docker/}:$(VERSION) . \
+		docker build \
+			--file Dockerfile \
+			--build-arg OMT_TOOLS_VERSION=$(VERSION) \
+			--tag openmaptiles/$${dir2#docker/}:$(VERSION) \
+			. \
 	) ;\
 	done
 

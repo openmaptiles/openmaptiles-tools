@@ -38,6 +38,14 @@ Each subdir here creates a docker image that either generates some data, or is b
 [![](https://img.shields.io/docker/stars/openmaptiles/import-water?label=stars)](https://hub.docker.com/r/openmaptiles/import-water)
 <br><small>Migrated from [import-water](https://github.com/openmaptiles/import-water) repo (archived)</small>
 
+## [import-data](import-data)
+[![](https://img.shields.io/docker/cloud/build/openmaptiles/import-data?&logo=OpenStreetMap&label=build)](https://hub.docker.com/r/openmaptiles/import-data)
+[![](https://img.shields.io/docker/automated/openmaptiles/import-data?label=build)](https://hub.docker.com/r/openmaptiles/import-data/builds)
+[![](https://img.shields.io/microbadger/layers/openmaptiles/import-data)](https://hub.docker.com/r/openmaptiles/import-data)
+[![](https://img.shields.io/microbadger/image-size/openmaptiles/import-data?label=size)](https://hub.docker.com/r/openmaptiles/import-data)
+[![](https://img.shields.io/docker/pulls/openmaptiles/import-data?label=downloads)](https://hub.docker.com/r/openmaptiles/import-data)
+[![](https://img.shields.io/docker/stars/openmaptiles/import-data?label=stars)](https://hub.docker.com/r/openmaptiles/import-data)
+
 # Tools
 
 ## [generate-vectortiles](generate-vectortiles)
