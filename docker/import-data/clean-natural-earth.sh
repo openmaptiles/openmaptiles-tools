@@ -23,110 +23,56 @@ function drop_table() {
 }
 
 
-echo "Cleaning up $NATURAL_EARTH_DB"
+echo "Cleaning up $NATURAL_EARTH_DB - removing all unneeded tables. Initial size $(du -h "$NATURAL_EARTH_DB" | cut -f1)"
 
-drop_table 'ne_10m_admin_0_antarctic_claim_limit_lines'
-drop_table 'ne_10m_admin_0_antarctic_claims'
-drop_table 'ne_10m_admin_0_map_subunits'
-drop_table 'ne_10m_admin_0_map_units'
-drop_table 'ne_10m_admin_0_pacific_groupings'
-drop_table 'ne_10m_admin_0_scale_rank'
-drop_table 'ne_10m_admin_0_scale_rank_minor_islands'
-drop_table 'ne_10m_admin_0_countries_lakes'
-drop_table 'ne_10m_admin_1_label_points'
-drop_table 'ne_10m_admin_1_label_points_details'
-drop_table 'ne_10m_admin_1_states_provinces_scale_rank'
-drop_table 'ne_10m_admin_1_states_provinces_scale_rank_minor_islands'
-drop_table 'ne_10m_airports'
-drop_table 'ne_10m_geography_regions_elevation_points'
-drop_table 'ne_10m_geography_regions_points'
-drop_table 'ne_10m_geography_regions_polys'
-drop_table 'ne_10m_admin_0_boundary_lines_map_units'
-drop_table 'ne_10m_admin_0_boundary_lines_maritime_indicator'
-drop_table 'ne_10m_admin_0_label_points'
-drop_table 'ne_10m_antarctic_ice_shelves_lines'
-drop_table 'ne_10m_coastline'
-drop_table 'ne_10m_geographic_lines'
-drop_table 'ne_10m_lakes_europe'
-drop_table 'ne_10m_lakes_historic'
-drop_table 'ne_10m_lakes_north_america'
-drop_table 'ne_10m_lakes_pluvial'
-drop_table 'ne_10m_land_ocean_label_points'
-drop_table 'ne_10m_land_ocean_seams'
-drop_table 'ne_10m_land_scale_rank'
-drop_table 'ne_10m_minor_islands'
-drop_table 'ne_10m_minor_islands_coastline'
-drop_table 'ne_10m_minor_islands_label_points'
-drop_table 'ne_10m_parks_and_protected_lands_area'
-drop_table 'ne_10m_parks_and_protected_lands_line'
-drop_table 'ne_10m_parks_and_protected_lands_point'
-drop_table 'ne_10m_parks_and_protected_lands_scale_rank'
-drop_table 'ne_10m_playas'
-drop_table 'ne_10m_populated_places_simple'
-drop_table 'ne_10m_ports'
-drop_table 'ne_10m_railroads'
-drop_table 'ne_10m_railroads_north_america'
-drop_table 'ne_10m_reefs'
-drop_table 'ne_10m_rivers_lake_centerlines_scale_rank'
-drop_table 'ne_10m_time_zones'
-drop_table 'ne_10m_urban_areas_landscan'
-drop_table 'ne_10m_admin_1_states_provinces_lakes'
-drop_table 'ne_50m_admin_0_boundary_lines_disputed_areas'
-drop_table 'ne_50m_admin_0_countries_lakes'
-drop_table 'ne_50m_admin_0_map_subunits'
-drop_table 'ne_50m_admin_0_map_units'
-drop_table 'ne_50m_admin_0_pacific_groupings'
-drop_table 'ne_50m_admin_0_scale_rank'
-drop_table 'ne_50m_admin_0_sovereignty'
-drop_table 'ne_50m_admin_0_tiny_countries'
-drop_table 'ne_50m_admin_0_tiny_countries_scale_rank'
-drop_table 'ne_50m_geography_marine_polys'
-drop_table 'ne_50m_geography_regions_elevation_points'
-drop_table 'ne_50m_geography_regions_points'
-drop_table 'ne_50m_geography_regions_polys'
-drop_table 'ne_50m_admin_0_boundary_map_units'
-drop_table 'ne_50m_admin_0_breakaway_disputed_areas'
-drop_table 'ne_50m_admin_0_countries'
-drop_table 'ne_50m_antarctic_ice_shelves_lines'
-drop_table 'ne_50m_coastline'
-drop_table 'ne_50m_geographic_lines'
-drop_table 'ne_110m_admin_0_countries_lakes'
-drop_table 'ne_110m_geography_marine_polys'
-drop_table 'ne_110m_geography_regions_elevation_points'
-drop_table 'ne_110m_geography_regions_points'
-drop_table 'ne_110m_geography_regions_polys'
-drop_table 'ne_110m_admin_0_map_units'
-drop_table 'ne_110m_admin_0_pacific_groupings'
-drop_table 'ne_110m_admin_0_scale_rank'
-drop_table 'ne_10m_admin_0_disputed_areas'
-drop_table 'ne_10m_admin_0_disputed_areas_scale_rank_minor_islands'
-drop_table 'ne_10m_admin_0_seams'
-drop_table 'ne_10m_admin_0_sovereignty'
-drop_table 'ne_10m_admin_1_seams'
-drop_table 'ne_10m_land'
-drop_table 'ne_10m_ocean_scale_rank'
-drop_table 'ne_110m_admin_0_sovereignty'
-drop_table 'ne_110m_admin_0_tiny_countries'
-drop_table 'ne_110m_admin_1_states_provinces_lakes'
-drop_table 'ne_110m_coastline'
-drop_table 'ne_110m_geographic_lines'
-drop_table 'ne_110m_populated_places'
-drop_table 'ne_110m_populated_places_simple'
-drop_table 'ne_110m_admin_0_countries'
-drop_table 'ne_110m_admin_1_states_provinces_lines'
-drop_table 'ne_110m_admin_1_states_provinces'
-drop_table 'ne_110m_admin_1_states_provinces_scale_rank'
-drop_table 'ne_110m_land'
-drop_table 'ne_50m_admin_0_boundary_lines_maritime_indicator'
-drop_table 'ne_50m_admin_1_states_provinces_lakes'
-drop_table 'ne_50m_admin_1_states_provinces_scale_rank'
-drop_table 'ne_50m_airports'
-drop_table 'ne_50m_ports'
-drop_table 'ne_50m_lakes_historic'
-drop_table 'ne_50m_land'
-drop_table 'ne_50m_playas'
-drop_table 'ne_50m_populated_places'
-drop_table 'ne_50m_populated_places_simple'
-drop_table 'ne_50m_rivers_lake_centerlines_scale_rank'
+#
+# TODO: this list needs to be cleaned up, and maybe remove a few more tables
+# Previous version listed all tables to be dropped, so this list was created by listing
+# all available tables and removing the dropped ones
+#
+count=0
+for tbl in $(echo \
+  "select name from sqlite_master " \
+  "WHERE type='table' AND name like 'ne%' and name not in (" \
+    "'ne_10m_admin_0_boundary_lines_disputed_areas'," \
+    "'ne_10m_admin_0_boundary_lines_land'," \
+    "'ne_10m_admin_0_countries'," \
+    "'ne_10m_admin_1_states_provinces'," \
+    "'ne_10m_admin_1_states_provinces_lines'," \
+    "'ne_10m_antarctic_ice_shelves_polys'," \
+    "'ne_10m_geography_marine_polys'," \
+    "'ne_10m_glaciated_areas'," \
+    "'ne_10m_lakes'," \
+    "'ne_10m_ocean'," \
+    "'ne_10m_populated_places'," \
+    "'ne_10m_rivers_europe'," \
+    "'ne_10m_rivers_lake_centerlines'," \
+    "'ne_10m_rivers_north_america'," \
+    "'ne_10m_roads'," \
+    "'ne_10m_roads_north_america'," \
+    "'ne_10m_urban_areas'," \
+    "'ne_50m_admin_0_boundary_lines_land'," \
+    "'ne_50m_admin_0_breakaway_disputed_areas_scale_rank'," \
+    "'ne_50m_admin_1_states_provinces'," \
+    "'ne_50m_admin_1_states_provinces_lines'," \
+    "'ne_50m_antarctic_ice_shelves_polys'," \
+    "'ne_50m_glaciated_areas'," \
+    "'ne_50m_lakes'," \
+    "'ne_50m_ocean'," \
+    "'ne_50m_rivers_lake_centerlines'," \
+    "'ne_50m_urban_areas'," \
+    "'ne_110m_admin_0_boundary_lines_land'," \
+    "'ne_110m_glaciated_areas'," \
+    "'ne_110m_lakes'," \
+    "'ne_110m_ocean'," \
+    "'ne_110m_rivers_lake_centerlines'" \
+  ");" | sqlite3 "$NATURAL_EARTH_DB" ); do
 
+  drop_table "$tbl"
+  count=$((count+1))
+
+done
+
+echo "$count tables have been dropped from $NATURAL_EARTH_DB, vacuuming..."
 echo "VACUUM;" | sqlite3 "$NATURAL_EARTH_DB"
+echo "Done with $NATURAL_EARTH_DB -- final size $(du -h "$NATURAL_EARTH_DB" | cut -f1)"
