@@ -74,6 +74,8 @@ else
   usage
 fi
 
+fi
+
 
 if [[ "$task" != "parse" ]]; then
   # For backward compatibility, allow both PG* and POSTGRES_* forms,
