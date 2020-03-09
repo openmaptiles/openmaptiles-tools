@@ -36,16 +36,26 @@ else
 fi
 
 
-echo "Filtering $IMPORT_PBF_FILE into $BORDERS_PBF_FILE"
-mkdir -p "$(dirname "${BORDERS_PBF_FILE?}")"
-rm -rf "${BORDERS_PBF_FILE?}"
-osmborder_filter -o "$BORDERS_PBF_FILE" "$IMPORT_PBF_FILE"
+if [[ "$2" = "import-only" ]]; then
 
+  # In import-only mode, the first parameter is the CSV file to be imported
+  BORDERS_CSV_FILE="$1"
 
-echo "Creating a CSV borders file $BORDERS_CSV_FILE"
-mkdir -p "$(dirname "${BORDERS_CSV_FILE?}")"
-rm -rf "${BORDERS_CSV_FILE?}"
-osmborder -o "$BORDERS_CSV_FILE" "$BORDERS_PBF_FILE"
+else
+
+  # Parse PBF file to generate borders CSV file
+
+  echo "Filtering $IMPORT_PBF_FILE into $BORDERS_PBF_FILE"
+  mkdir -p "$(dirname "${BORDERS_PBF_FILE?}")"
+  rm -rf "${BORDERS_PBF_FILE?}"
+  osmborder_filter -o "$BORDERS_PBF_FILE" "$IMPORT_PBF_FILE"
+
+  echo "Creating a CSV borders file $BORDERS_CSV_FILE"
+  mkdir -p "$(dirname "${BORDERS_CSV_FILE?}")"
+  rm -rf "${BORDERS_CSV_FILE?}"
+  osmborder -o "$BORDERS_CSV_FILE" "$BORDERS_PBF_FILE"
+
+fi
 
 
 echo "Importing $BORDERS_CSV_FILE into $PGHOST:$PGPORT/$PGDATABASE as table $TABLE_NAME..."

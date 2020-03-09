@@ -6,11 +6,11 @@ Usage:
   import-wikidata <tileset> [--storage=<table>]
                   [--pghost=<host>] [--pgport=<port>] [--dbname=<db>]
                   [--user=<user>] [--password=<password>]
-                  [--verbose]
+                  [--cache <file> [--no-wdqs]] [--verbose]
   import-wikidata --table=<table>... [--storage=<table>]
                   [--pghost=<host>] [--pgport=<port>] [--dbname=<db>]
                   [--user=<user>] [--password=<password>]
-                  [--verbose]
+                  [--cache <file> [--no-wdqs]] [--verbose]
   import-wikidata --help
   import-wikidata --version
 
@@ -19,6 +19,8 @@ Usage:
 Options:
   -t --table=<table>    Process specific table(s) rather than auto-detecting it from tileset.
   -w --storage=<table>  Write results to this table.  [default: wd_names]
+  -c --cache <file>     Use a json cache file to store Wikidata labels.
+  -n --no-wdqs          Do not use Wikidata Query Service to get new labels, only cache.
   -v --verbose          Print additional debugging information
   --help                Show this screen.
   --version             Show version.
@@ -30,16 +32,17 @@ PostgreSQL Options:
   -U --user=<user>      Postgres user. By default uses POSTGRES_USER env or "openmaptiles" if not set.
   --password=<password> Postgres password. By default uses POSTGRES_PASSWORD env or "openmaptiles" if not set.
 """
-
-import asyncio
+import json
 from collections import defaultdict
 
+import asyncio
 import asyncpg
+import requests
 from asyncpg import Connection
 from docopt import docopt, DocoptExit
+from pathlib import Path
 from typing import Iterable, List
 
-import requests
 import openmaptiles
 from openmaptiles.pgutils import parse_pg_args, PgWarnings
 from openmaptiles.tileset import Tileset
@@ -67,27 +70,71 @@ async def main(args):
     PgWarnings(conn)
     await conn.set_builtin_type_codec('hstore', codec_name='pg_contrib.hstore')
 
+    if args['--cache']:
+        try:
+            with Path(args['--cache']).open('r', encoding='utf-8') as fp:
+                cache = json.load(fp)
+        except FileNotFoundError:
+            cache = {}
+    else:
+        cache = None
+
     print(f'Searching for Wikidata IDs in {len(tables)} tables...')
     ids = await find_needed_wd_ids(conn, tables, verbose)
-    print(f'Found {len(ids):,} Wikidata IDs to load.')
+    if cache:
+        # Do not query for the IDs we already have in cache
+        new_ids = set(ids).difference(cache.keys())
+        print(f'Found {len(ids):,} Wikidata IDs, {len(new_ids) - len(ids):,} in cache, '
+              f'{len(new_ids):,} new')
+    else:
+        new_ids = ids
+        print(f'Found {len(ids):,} Wikidata IDs to load.')
+
     print(f'Deleting any existing data in {storage_table}...')
     await conn.execute(f'TRUNCATE TABLE {storage_table}')
-    print(f'Inserting Wikidata IDs...')
-    for batch in batches(ids, 5000, lambda v: f'wd:Q{v}'):
-        records = defaultdict(dict)
-        query = f'''\
-SELECT ?id ?label WHERE {{
-  VALUES ?id {{ {' '.join(batch)} }}
-  ?id rdfs:label ?label.
-}}'''
-        if verbose:
-            print(f"----------\n{query}\n----------")
-        for row in wd_query(query):
-            lang = 'name:' + row['label']['xml:lang']
-            records[entity_id(row['id'])][lang] = row['label']['value']
+
+    if cache:
+        cached_ids = {k: cache[k] for k in cache.keys() if k in ids}
+        print(f'Copying {len(cached_ids):,} Wikidata IDs from cache...')
         await conn.copy_records_to_table(
-            storage_table, columns=['id', 'labels'], records=records.items())
-    print(f'Finished inserting {len(ids):,} Wikidata IDs.')
+            storage_table, columns=['id', 'labels'], records=cached_ids.items())
+        print(f'Finished inserting {len(cached_ids):,} Wikidata IDs from cache')
+
+    if not args['--no-wdqs']:
+        print(f'Query Wikidata Service for {len(new_ids):,} IDs...')
+        for batch in batches(new_ids, 5000, lambda v: f'wd:{v}'):
+            records = defaultdict(dict)
+            query = f'''\
+    SELECT ?id ?label WHERE {{
+      VALUES ?id {{ {' '.join(batch)} }}
+      ?id rdfs:label ?label.
+    }}'''
+            if verbose:
+                print(f"----------\n{query}\n----------")
+            for row in wd_query(query):
+                lang = 'name:' + row['label']['xml:lang']
+                qid = entity_id(row['id'])
+                label = row['label']['value']
+                records[qid][lang] = label
+                if cache is not None:
+                    try:
+                        labels = cache[qid]
+                    except KeyError:
+                        labels = {}
+                        cache[qid] = labels
+                    labels[lang] = label
+
+            await conn.copy_records_to_table(
+                storage_table, columns=['id', 'labels'], records=records.items())
+        print(f'Finished inserting {len(new_ids):,} Wikidata IDs from WDQS')
+    elif new_ids:
+        print(f'There were {len(new_ids):,} new Wikidata IDs found, but they were not '
+              f'retrieved from WDQS because of the --no-wdqs parameter')
+
+    if cache is not None and not args['--no-wdqs'] and new_ids:
+        # If using cache, and
+        with Path(args['--cache']).open('w', encoding='utf-8') as fp:
+            json.dump(cache, fp, ensure_ascii=False, sort_keys=True, indent=1)
 
 
 def find_tables(tileset_path, table_prefix='osm_'):
@@ -121,7 +168,7 @@ def find_tables(tileset_path, table_prefix='osm_'):
 
 
 async def find_needed_wd_ids(conn: Connection, tables: Iterable[str],
-                             verbose: bool) -> List[int]:
+                             verbose: bool) -> List[str]:
     ids = []
     part = [f"SELECT tags->'wikidata' AS id FROM {t} WHERE tags ? 'wikidata'"
             for t in tables]
@@ -132,7 +179,8 @@ WHERE id SIMILAR TO 'Q[1-9][0-9]{{0,18}}'"""
     if verbose:
         print(f"----------\n{query}\n----------")
     for row in await conn.fetch(query):
-        ids.append(int(row['id'][1:]))
+        # Validate that the ID is an integer, and convert it back to Q-number strings
+        ids.append(f"Q{int(row['id'][1:])}")
     ids.sort()
     return ids
 
