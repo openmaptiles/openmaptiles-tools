@@ -87,7 +87,7 @@ async def main(args):
     if cache:
         # Do not query for the IDs we already have in cache
         new_ids = set(ids).difference(cache.keys())
-        print(f'Found {len(ids):,} Wikidata IDs, {len(new_ids) - len(ids):,} in cache, '
+        print(f'Found {len(ids):,} Wikidata IDs, {abs(len(new_ids) - len(ids)):,} in cache, '
               f'{len(new_ids):,} new')
     else:
         new_ids = ids
