@@ -41,7 +41,7 @@ import requests
 from asyncpg import Connection
 from docopt import docopt, DocoptExit
 from pathlib import Path
-from typing import Iterable, List
+from typing import Iterable, List, Dict
 
 import openmaptiles
 from openmaptiles.pgutils import parse_pg_args, PgWarnings
@@ -87,7 +87,7 @@ async def main(args):
     if cache:
         # Do not query for the IDs we already have in cache
         new_ids = set(ids).difference(cache.keys())
-        print(f'Found {len(ids):,} Wikidata IDs, {abs(len(new_ids) - len(ids)):,} in cache, '
+        print(f'Found {len(ids):,} Wikidata IDs, {len(ids) - len(new_ids):,} in cache, '
               f'{len(new_ids):,} new')
     else:
         new_ids = ids
@@ -99,19 +99,27 @@ async def main(args):
     if cache:
         cached_ids = {k: {'name:' + kk: vv for kk, vv in cache[k].items()}
                       for k in cache.keys() if k in ids}
-        print(f'Copying {len(cached_ids):,} Wikidata IDs from cache...')
-        await conn.copy_records_to_table(
-            storage_table, columns=['id', 'labels'], records=cached_ids.items())
-        print(f'Finished inserting {len(cached_ids):,} Wikidata IDs from cache '
-              f'into {storage_table} table')
+        if cached_ids:
+            print(f'Copying {len(cached_ids):,} Wikidata IDs from cache...')
+            await conn.copy_records_to_table(
+                storage_table, columns=['id', 'labels'], records=cached_ids.items())
+            print(f'Finished inserting {len(cached_ids):,} Wikidata IDs from cache '
+                  f'into {storage_table} table')
 
-    if not args['--no-wdqs']:
-        await create_ids_from_wdqs(conn, new_ids, cache, storage_table, verbose)
+    use_wdqs = not args['--no-wdqs']
+    if new_ids and use_wdqs:
+        print(f'Query Wikidata Query Service for {len(new_ids):,} IDs...')
+        dups = await create_ids_from_wdqs(conn, new_ids, cache, storage_table, verbose)
+        if dups:
+            redirs = resolve_redirects(dups, verbose)
+            if redirs:
+                print(f'Querying Wikidata for {len(redirs):,} redirect IDs...')
+                await create_ids_from_wdqs(conn, redirs, cache, storage_table, verbose)
     elif new_ids:
         print(f'There were {len(new_ids):,} new Wikidata IDs found, but they were not '
               f'retrieved from WDQS because of the --no-wdqs parameter')
 
-    if cache is not None and not args['--no-wdqs'] and new_ids:
+    if cache is not None and use_wdqs and new_ids:
         # If using cache and there might have been changes, save them
         print(f"Saving {len(cache):,} items to cache {cache_file}")
         with cache_file.open('w', encoding='utf-8') as fp:
@@ -119,9 +127,22 @@ async def main(args):
 
 
 async def create_ids_from_wdqs(conn, ids, cache, storage_table, verbose):
-    print(f'Query Wikidata Service for {len(ids):,} IDs...')
+    is_redirects = isinstance(ids, dict)
+    missing = set(ids)
+
     for batch in batches(ids, 5000, lambda v: f'wd:{v}'):
         records = defaultdict(dict)
+
+        def add_item(_qid, _lang, _label):
+            records[_qid]['name:' + _lang] = _label
+            if cache is not None:
+                try:
+                    labels = cache[_qid]
+                except KeyError:
+                    labels = {}
+                    cache[_qid] = labels
+                labels[_lang] = _label
+
         query = f'''\
     SELECT ?id ?label WHERE {{
       VALUES ?id {{ {' '.join(batch)} }}
@@ -132,20 +153,44 @@ async def create_ids_from_wdqs(conn, ids, cache, storage_table, verbose):
         for row in wd_query(query):
             lang = row['label']['xml:lang']
             qid = entity_id(row['id'])
+            missing.remove(qid)
             label = row['label']['value']
-            records[qid]['name:' + lang] = label
-            if cache is not None:
-                try:
-                    labels = cache[qid]
-                except KeyError:
-                    labels = {}
-                    cache[qid] = labels
-                labels[lang] = label
+            if not is_redirects:
+                add_item(qid, lang, label)
+            else:
+                # For redirects, cache will contain original QID -> labels
+                # There could be more than one redirect to the same item,
+                # in which case cache will have duplicates.
+                for qid2 in ids[qid]:
+                    add_item(qid2, lang, label)
 
         await conn.copy_records_to_table(
             storage_table, columns=['id', 'labels'], records=records.items())
-    print(f'Finished inserting {len(ids):,} Wikidata IDs from WDQS '
+    print(f'Inserted {len(ids) - len(missing):,} Wikidata IDs from WDQS '
           f'into {storage_table} table')
+    return missing
+
+
+def resolve_redirects(ids, verbose) -> Dict[str, List[str]]:
+    missing = set(ids)
+    redirects = defaultdict(list)
+    print(f'Resolving {len(ids):,} possible Wikidata redirects...')
+    for batch in batches(ids, 1000, lambda v: f'wd:{v}'):
+        query = f'''\
+    SELECT ?id ?id2 WHERE {{
+      VALUES ?id {{ {' '.join(batch)} }}
+      ?id owl:sameAs+ ?id2.
+    }}'''
+        if verbose:
+            print(f"----------\n{query}\n----------")
+        for row in wd_query(query):
+            qid = entity_id(row['id'])
+            redirects[entity_id(row['id2'])].append(qid)
+            missing.remove(qid)
+    print(f'{len(redirects):,} out of {len(ids):,} Wikidata ID redirects were found')
+    if missing:
+        print(f"{len(missing):,} Wikidata IDs were not found: {', '.join(missing)}")
+    return redirects
 
 
 def find_tables(tileset_path, table_prefix='osm_'):

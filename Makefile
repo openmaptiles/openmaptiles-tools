@@ -50,20 +50,26 @@ build-docker:
 .PHONY: build-all-dockers
 build-all-dockers: build-docker
 	# Docker-build all subdirectories in docker/*
-	# For each dir, remove trailing slash, cd into it, and do a docker build & tag with version
+	# For each dir, cd into it and do a docker build + tag with version
 	# The build-arg OMT_TOOLS_VERSION is not needed by most of the builds, so it will show a warning
-	@for dir in docker/*/; do \
+	@for dir in $$(find docker/* -maxdepth 0 -type d | sort) ; do \
 	( \
-		dir2=$${dir%*/} && \
-		cd $$dir2 && \
-		echo "\n\n*****************************************************" && \
-		echo "Building openmaptiles/$${dir2#docker/}:$(VERSION) in $$dir2..." && \
-		docker build \
-			--file Dockerfile \
-			--build-arg OMT_TOOLS_VERSION=$(VERSION) \
-			--tag openmaptiles/$${dir2#docker/}:$(VERSION) \
-			. \
-	) ;\
+		cd $$dir ; \
+		echo "\n\n*****************************************************" ; \
+		echo "Building openmaptiles/$${dir#docker/}:$(VERSION) in $$dir..." ; \
+		if [ "$$dir" = "docker/postgis-preloaded" ]; then \
+			docker build \
+				--file Dockerfile \
+				--build-arg OMT_TOOLS_VERSION=$(VERSION) \
+				--tag openmaptiles/$${dir#docker/}:$(VERSION) \
+				. ; \
+		else \
+			docker build \
+				--file Dockerfile \
+				--tag openmaptiles/$${dir#docker/}:$(VERSION) \
+				. ; \
+		fi ; \
+	) ; \
 	done
 
 .PHONY: run-python-tests
