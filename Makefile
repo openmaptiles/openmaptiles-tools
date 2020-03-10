@@ -14,7 +14,7 @@ RUN_CMD := docker run ${DOCKER_OPTS} -v "$(WORKDIR):/tileset"
 DIFF_CMD := diff --brief --recursive --new-file
 EXPECTED_DIR := tests/expected
 
-# Exports
+# Export image name so that tests/sql/docker-compose.yml can use it
 export DOCKER_IMAGE
 
 

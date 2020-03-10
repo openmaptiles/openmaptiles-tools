@@ -372,9 +372,16 @@ generate-tm2source <tileset> --host="localhost" --port=5432 --database="osm" --u
 
 ### Import OSM Borders
 
-The **import-borders** script will take the first PBF file from the `/import` dir (by default), extract borders with [osmborder tool](https://github.com/pnorman/osmborder), and import resulting CSV file into the database as osm_border_linestring table (by default).
+The **import-borders** script will take the first PBF file from the `/import` dir (by default), extract borders with [osmborder tool](https://github.com/pnorman/osmborder), and import resulting CSV file into the database as osm_border_linestring table (by default). Example usages:
 
-This utility requires PostgreSQL's PG* environment variables.
+```bash
+import-borders                      # Parse and import first PBF file in IMPORT_DIR
+import-borders [import] planet.pbf  # Parse and import planet.pbf
+import-borders parse planet.pbf     # Parse planet.pbf into a CSV file, but do not import
+import-borders load borders.csv     # Load borders.csv into a table 
+```
+
+This utility requires PostgreSQL's PG* environment variables, and optionally uses `IMPORT_DIR, BORDERS_PBF_FILE, BORDERS_CSV_FILE, BORDERS_TABLE_NAME`.
 
 ## Importing into Postgres
 The `import-sql` script can execute a single SQL file in Postgres when the file is given as the first parameter.

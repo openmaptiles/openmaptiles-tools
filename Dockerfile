@@ -46,11 +46,6 @@ RUN curl https://www.postgresql.org/media/keys/ACCC4CF8.asc | apt-key add - \
         && make \
         && make install \
         && rm -rf /usr/src/osmborder \
-       ) \
-    && (  `# Set up pgfutter` \
-        $WGET -O /usr/local/bin/pgfutter \
-           "https://github.com/lukasmartinelli/pgfutter/releases/download/${PGFUTTER_VERSION}/pgfutter_linux_amd64" \
-        && chmod +x /usr/local/bin/pgfutter \
        )
 
 # Copy requirements.txt first to avoid pip install on every code change

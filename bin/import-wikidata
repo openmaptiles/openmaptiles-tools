@@ -70,12 +70,15 @@ async def main(args):
     PgWarnings(conn)
     await conn.set_builtin_type_codec('hstore', codec_name='pg_contrib.hstore')
 
-    if args['--cache']:
+    cache_file = Path(args['--cache']) if args['--cache'] else None
+    if cache_file:
         try:
-            with Path(args['--cache']).open('r', encoding='utf-8') as fp:
+            with cache_file.open('r', encoding='utf-8') as fp:
                 cache = json.load(fp)
+            print(f"Loaded {len(cache):,} items from cache {cache_file}")
         except FileNotFoundError:
             cache = {}
+            print(f"Cache file {cache_file} does not exist, will create")
     else:
         cache = None
 
@@ -94,47 +97,55 @@ async def main(args):
     await conn.execute(f'TRUNCATE TABLE {storage_table}')
 
     if cache:
-        cached_ids = {k: cache[k] for k in cache.keys() if k in ids}
+        cached_ids = {k: {'name:' + kk: vv for kk, vv in cache[k].items()}
+                      for k in cache.keys() if k in ids}
         print(f'Copying {len(cached_ids):,} Wikidata IDs from cache...')
         await conn.copy_records_to_table(
             storage_table, columns=['id', 'labels'], records=cached_ids.items())
-        print(f'Finished inserting {len(cached_ids):,} Wikidata IDs from cache')
+        print(f'Finished inserting {len(cached_ids):,} Wikidata IDs from cache '
+              f'into {storage_table} table')
 
     if not args['--no-wdqs']:
-        print(f'Query Wikidata Service for {len(new_ids):,} IDs...')
-        for batch in batches(new_ids, 5000, lambda v: f'wd:{v}'):
-            records = defaultdict(dict)
-            query = f'''\
-    SELECT ?id ?label WHERE {{
-      VALUES ?id {{ {' '.join(batch)} }}
-      ?id rdfs:label ?label.
-    }}'''
-            if verbose:
-                print(f"----------\n{query}\n----------")
-            for row in wd_query(query):
-                lang = 'name:' + row['label']['xml:lang']
-                qid = entity_id(row['id'])
-                label = row['label']['value']
-                records[qid][lang] = label
-                if cache is not None:
-                    try:
-                        labels = cache[qid]
-                    except KeyError:
-                        labels = {}
-                        cache[qid] = labels
-                    labels[lang] = label
-
-            await conn.copy_records_to_table(
-                storage_table, columns=['id', 'labels'], records=records.items())
-        print(f'Finished inserting {len(new_ids):,} Wikidata IDs from WDQS')
+        await create_ids_from_wdqs(conn, new_ids, cache, storage_table, verbose)
     elif new_ids:
         print(f'There were {len(new_ids):,} new Wikidata IDs found, but they were not '
               f'retrieved from WDQS because of the --no-wdqs parameter')
 
     if cache is not None and not args['--no-wdqs'] and new_ids:
-        # If using cache, and
-        with Path(args['--cache']).open('w', encoding='utf-8') as fp:
+        # If using cache and there might have been changes, save them
+        print(f"Saving {len(cache):,} items to cache {cache_file}")
+        with cache_file.open('w', encoding='utf-8') as fp:
             json.dump(cache, fp, ensure_ascii=False, sort_keys=True, indent=1)
+
+
+async def create_ids_from_wdqs(conn, ids, cache, storage_table, verbose):
+    print(f'Query Wikidata Service for {len(ids):,} IDs...')
+    for batch in batches(ids, 5000, lambda v: f'wd:{v}'):
+        records = defaultdict(dict)
+        query = f'''\
+    SELECT ?id ?label WHERE {{
+      VALUES ?id {{ {' '.join(batch)} }}
+      ?id rdfs:label ?label.
+    }}'''
+        if verbose:
+            print(f"----------\n{query}\n----------")
+        for row in wd_query(query):
+            lang = row['label']['xml:lang']
+            qid = entity_id(row['id'])
+            label = row['label']['value']
+            records[qid]['name:' + lang] = label
+            if cache is not None:
+                try:
+                    labels = cache[qid]
+                except KeyError:
+                    labels = {}
+                    cache[qid] = labels
+                labels[lang] = label
+
+        await conn.copy_records_to_table(
+            storage_table, columns=['id', 'labels'], records=records.items())
+    print(f'Finished inserting {len(ids):,} Wikidata IDs from WDQS '
+          f'into {storage_table} table')
 
 
 def find_tables(tileset_path, table_prefix='osm_'):
