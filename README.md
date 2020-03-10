@@ -378,7 +378,7 @@ The **import-borders** script will take the first PBF file from the `/import` di
 import-borders                      # Parse and import first PBF file in IMPORT_DIR
 import-borders [import] planet.pbf  # Parse and import planet.pbf
 import-borders parse planet.pbf     # Parse planet.pbf into a CSV file, but do not import
-import-borders load borders.csv     # Load borders.csv into a table 
+import-borders load borders.csv     # Load borders.csv into a table
 ```
 
 This utility requires PostgreSQL's PG* environment variables, and optionally uses `IMPORT_DIR, BORDERS_PBF_FILE, BORDERS_CSV_FILE, BORDERS_TABLE_NAME`.
