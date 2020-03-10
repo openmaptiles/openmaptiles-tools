@@ -48,7 +48,7 @@ build-docker:
 	docker build --file Dockerfile --tag $(DOCKER_IMAGE) .
 
 .PHONY: build-all-dockers
-build-all-dockers: # build-docker
+build-all-dockers: build-docker
 	# Docker-build all subdirectories in docker/*
 	# For each dir, cd into it and do a docker build + tag with version
 	# The build-arg OMT_TOOLS_VERSION is not needed by most of the builds, so it will show a warning

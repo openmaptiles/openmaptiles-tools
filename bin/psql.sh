@@ -7,7 +7,9 @@ set -o pipefail
 set -o nounset
 
 # wait for Postgres. On error, this script will exit too
-source ./pgwait.sh
+SOURCE_DIR="$(dirname "$(readlink -f "$0")")"
+# shellcheck source=./pgwait
+source "$SOURCE_DIR/pgwait"
 
 # For backward compatibility, allow both PG* and POSTGRES_* forms,
 # with the non-standard POSTGRES_* form taking precedence.

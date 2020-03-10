@@ -39,7 +39,7 @@ function import_pbf() {
 }
 
 function import_osm_with_first_pbf() {
-    if [ "$(ls -A $IMPORT_DIR/*.pbf 2> /dev/null)" ]; then
+    if [ "$(ls -A "$IMPORT_DIR"/*.pbf 2> /dev/null)" ]; then
         local pbf_file
         for pbf_file in "$IMPORT_DIR"/*.pbf; do
             import_pbf "$pbf_file"
