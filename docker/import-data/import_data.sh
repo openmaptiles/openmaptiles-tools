@@ -10,7 +10,7 @@ set -o nounset
 
 # These vars define the destination tables when importing
 : "${WATER_TABLE_NAME:=osm_ocean_polygon}"
-: "${LAKE_CENTERLINE_TABLE:=lake_centerlines/lake_centerline}"
+: "${LAKE_CENTERLINE_TABLE:=lake_centerline}"
 
 
 if [ -z ${PGCONN+x} ]; then
