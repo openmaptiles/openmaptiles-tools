@@ -6,8 +6,12 @@
 ARG OMT_TOOLS_VERSION=latest
 FROM openmaptiles/import-data:${OMT_TOOLS_VERSION} as data
 
-
 ARG OMT_TOOLS_VERSION
+RUN echo "**********************************************************" \
+ && echo "** Preparing database using openmaptiles/postgis:${OMT_TOOLS_VERSION}..." \
+ && echo "**********************************************************"
+
+
 FROM openmaptiles/postgis:${OMT_TOOLS_VERSION} as builder
 
 # Override PGDATA to change the default location of the Postgres data directory
@@ -21,11 +25,20 @@ ENV IMPORT_DIR=/import \
     POSTGRES_PASSWORD=openmaptiles \
     PGDATA=/var/lib/postgresql/data_no_volume
 
+# NOTE: The ogr2ogr in Debian stable does not support PostgreSQL 12
+# Thus parent image must be PG11 or before
+RUN DEBIAN_FRONTEND=noninteractive apt-get update \
+ && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+        gdal-bin
+
 # switch to postgres user for ownership and execution
 USER postgres
 
+# Make sure PGDATA is owned by postgres user
+RUN mkdir -p "${PGDATA}"
+
 COPY --from=data $IMPORT_DIR $IMPORT_DIR/
-COPY --from=data /usr/src/app/import_data.sh /docker-entrypoint-initdb.d/20_import_data.sh
+COPY --from=data /usr/src/app/import_data.sh /docker-entrypoint-initdb.d/zz_import_data.sh
 
 COPY preload-database.sh /usr/local/bin/
 
