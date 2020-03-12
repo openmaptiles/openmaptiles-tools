@@ -153,7 +153,7 @@ async def create_ids_from_wdqs(conn, ids, cache, storage_table, verbose):
         for row in wd_query(query):
             lang = row['label']['xml:lang']
             qid = entity_id(row['id'])
-            missing.remove(qid)
+            missing.discard(qid)
             label = row['label']['value']
             if not is_redirects:
                 add_item(qid, lang, label)
@@ -186,7 +186,7 @@ def resolve_redirects(ids, verbose) -> Dict[str, List[str]]:
         for row in wd_query(query):
             qid = entity_id(row['id'])
             redirects[entity_id(row['id2'])].append(qid)
-            missing.remove(qid)
+            missing.discard(qid)
     print(f'{len(redirects):,} out of {len(ids):,} Wikidata ID redirects were found')
     if missing:
         print(f"{len(missing):,} Wikidata IDs were not found: {', '.join(missing)}")
