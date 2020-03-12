@@ -60,4 +60,4 @@ USER postgres
 # Make sure PGDATA is owned by postgres user
 RUN mkdir -p "${PGDATA}"
 
-COPY --from=builder /var/lib/postgresql/data_copy/* "${PGDATA}/"
+COPY --from=builder --chown=postgres:postgres /var/lib/postgresql/data_copy/* "${PGDATA}/"
