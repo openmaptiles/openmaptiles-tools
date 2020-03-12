@@ -34,7 +34,9 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update \
 USER postgres
 
 COPY --from=data $IMPORT_DIR $IMPORT_DIR/
-COPY --from=data /usr/src/app/import_data.sh /docker-entrypoint-initdb.d/zz_import_data.sh
+
+# Postgis adds 10_... script, and OMT postgis adds 20_... script, so run after both are done
+COPY --from=data /usr/src/app/import_data.sh /docker-entrypoint-initdb.d/30_omt_preload.sh
 
 COPY preload-database.sh /usr/local/bin/
 

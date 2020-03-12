@@ -83,6 +83,6 @@ RUN apt-get -qq -y update \
     && rm -rf /usr/local/lib/*.a \
     && rm -rf /var/lib/apt/lists/*
 
-# The script should run after the parent's postgis.sh runs
-# so it must have the name that's listed after "postgis.sh"
-COPY ./initdb-postgis.sh /docker-entrypoint-initdb.d/postgisZ.sh
+# The script should run after the parent's 10_postgis.sh runs
+# so it must have the name that's listed after that.
+COPY ./initdb-postgis.sh /docker-entrypoint-initdb.d/20_omt_postgis.sh
