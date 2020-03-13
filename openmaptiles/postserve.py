@@ -1,4 +1,5 @@
 import logging
+import os
 from functools import partial
 from typing import Union, List, Any, Dict
 
@@ -135,7 +136,7 @@ class Postserve:
 
     def __init__(self, url, port, pghost, pgport, dbname, user, password,
                  layers, tileset_path, sql_file, key_column, disable_feature_ids,
-                 gzip, verbose, exclude_layers, test_geometry):
+                 gzip, verbose, exclude_layers, test_geometry, max_pg_connections):
         self.url = url
         self.port = port
         self.pghost = pghost
@@ -152,6 +153,10 @@ class Postserve:
         self.disable_feature_ids = disable_feature_ids
         self.test_geometry = test_geometry
         self.verbose = verbose
+
+        if max_pg_connections is None:
+            max_pg_connections = os.cpu_count() or 1
+        self.max_pg_connections = max_pg_connections
 
         self.tileset = Tileset.parse(self.tileset_path)
 
@@ -212,12 +217,16 @@ class Postserve:
         access_log.setLevel(logging.INFO if self.verbose else logging.ERROR)
 
         print(f'Connecting to PostgreSQL at {self.pghost}:{self.pgport}, '
-              f'db={self.dbname}, user={self.user}...')
+              f'db={self.dbname}, user={self.user}, '
+              f'up to {self.max_pg_connections} simultaneous connections...')
         io_loop = IOLoop.current()
         self.pool = io_loop.run_sync(partial(
             create_pool,
             dsn=f"postgresql://{self.user}:{self.password}@"
-                f"{self.pghost}:{self.pgport}/{self.dbname}"))
+                f"{self.pghost}:{self.pgport}/{self.dbname}",
+            min_size=min(2, self.max_pg_connections),
+            max_size=self.max_pg_connections,
+        ))
         io_loop.run_sync(partial(self.init_connection))
 
         if self.sql_file:

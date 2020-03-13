@@ -9,7 +9,7 @@ from openmaptiles.perfutils import COLOR
 from openmaptiles.utils import coalesce, print_err
 
 
-async def get_postgis_version(conn: Connection) -> Tuple[int, int, int]:
+async def get_postgis_version(conn: Connection) -> str:
     try:
         return await conn.fetchval("SELECT postgis_full_version()")
     except (UndefinedFunctionError, UndefinedObjectError) as ex:
