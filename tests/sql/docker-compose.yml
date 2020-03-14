@@ -1,11 +1,17 @@
 version: '3.1'
 
+networks:
+  postgres_conn:
+    driver: bridge
+
 services:
   postgres:
     image: openmaptiles/postgis:latest
     ports:
       - "5432"
     env_file: test.env
+    networks:
+      - postgres_conn
 
   tests:
     image: "$DOCKER_IMAGE"
@@ -16,3 +22,5 @@ services:
     - ../../:/omt
     depends_on:
       - postgres
+    networks:
+      - postgres_conn
