@@ -3,10 +3,10 @@ set -e
 
 # assumes the /omt is mapped to the root of the openmaptiles-tools repo
 
-export PGHOST="${POSTGRES_HOST:-${PGHOST?}}"
-export PGDATABASE="${POSTGRES_DB:-${PGDATABASE?}}"
-export PGUSER="${POSTGRES_USER:-${PGUSER?}}"
-export PGPASSWORD="${POSTGRES_PASSWORD:-${PGPASSWORD?}}"
+export PGHOST="${POSTGRES_HOST:-${PGHOST:?}}"
+export PGDATABASE="${POSTGRES_DB:-${PGDATABASE:?}}"
+export PGUSER="${POSTGRES_USER:-${PGUSER:?}}"
+export PGPASSWORD="${POSTGRES_PASSWORD:-${PGPASSWORD:?}}"
 export PGPORT="${POSTGRES_PORT:-${PGPORT:-5432}}"
 
 MAX_RETRIES=40  # Maximum number of pg_isready calls

@@ -44,7 +44,7 @@ RUN set -eux ;\
     /bin/bash -c 'echo ""; echo ""; echo "##### Building osmborder -- https://github.com/pnorman/osmborder"' >&2 ;\
     git clone https://github.com/pnorman/osmborder.git /usr/src/osmborder ;\
     cd /usr/src/osmborder ;\
-    git checkout ${OSMBORDER_REV?} ;\
+    git checkout ${OSMBORDER_REV:?} ;\
     mkdir -p /usr/src/osmborder/build ;\
     cd /usr/src/osmborder/build ;\
     cmake .. ;\
@@ -92,7 +92,7 @@ RUN set -eux ;\
         git  \
         gnupg2  `# TODO: not sure why gnupg2 is needed`  ;\
     curl https://www.postgresql.org/media/keys/ACCC4CF8.asc | apt-key add - ;\
-    /bin/bash -c 'source /etc/os-release && echo "deb http://apt.postgresql.org/pub/repos/apt/ ${VERSION_CODENAME?}-pgdg main ${PG_MAJOR?}" > /etc/apt/sources.list.d/pgdg.list' ;\
+    /bin/bash -c 'source /etc/os-release && echo "deb http://apt.postgresql.org/pub/repos/apt/ ${VERSION_CODENAME:?}-pgdg main ${PG_MAJOR:?}" > /etc/apt/sources.list.d/pgdg.list' ;\
     DEBIAN_FRONTEND=noninteractive apt-get update ;\
     DEBIAN_FRONTEND=noninteractive apt-get install  -y --no-install-recommends \
         aria2     `# multi-stream file downloader` \
@@ -101,7 +101,7 @@ RUN set -eux ;\
         gdal-bin  `# installs ogr2ogr` \
         osmctools `# osmconvert and other OSM tools` \
         osmosis   `# (TBD if needed) https://wiki.openstreetmap.org/wiki/Osmosis` \
-        postgresql-client-${PG_MAJOR?}  `# psql` \
+        postgresql-client-${PG_MAJOR:?}  `# psql` \
         \
         `# imposm dependencies` \
         libgeos-dev \
@@ -116,7 +116,7 @@ COPY ./requirements.txt .
 
 RUN set -eux ;\
     pip install --no-cache-dir -r requirements.txt ;\
-    mkdir -p "${VT_UTIL_DIR?}" ;\
+    mkdir -p "${VT_UTIL_DIR:?}" ;\
     $WGET -O "${VT_UTIL_DIR}/postgis-vt-util.sql" \
        https://raw.githubusercontent.com/openmaptiles/postgis-vt-util/${VT_UTIL_VERSION}/postgis-vt-util.sql
 

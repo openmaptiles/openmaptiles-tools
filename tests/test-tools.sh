@@ -7,8 +7,8 @@ set -o nounset  # -u
 TESTS=tests
 TESTLAYERS="$TESTS/testlayers"
 HTTPDIR="$TESTS/http"
-DEVDOC=${BUILD?}/devdoc
-mkdir -p "${DEVDOC}"
+DEVDOC=${BUILD:?}/devdoc
+mkdir -p "$DEVDOC"
 
 set -x
 

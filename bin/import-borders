@@ -58,13 +58,13 @@ if [[ "$task" == "import" || "$task" == "parse" ]]; then
   # Parse PBF file to generate borders CSV file, and import it into PG
   IMPORT_PBF_FILE="$2"
   echo "Filtering $IMPORT_PBF_FILE into $BORDERS_PBF_FILE"
-  mkdir -p "$(dirname "${BORDERS_PBF_FILE?}")"
-  rm -rf "${BORDERS_PBF_FILE?}"
+  mkdir -p "$(dirname "${BORDERS_PBF_FILE:?}")"
+  rm -rf "$BORDERS_PBF_FILE"
   osmborder_filter -o "$BORDERS_PBF_FILE" "$IMPORT_PBF_FILE"
 
   echo "Creating a CSV borders file $BORDERS_CSV_FILE"
-  mkdir -p "$(dirname "${BORDERS_CSV_FILE?}")"
-  rm -rf "${BORDERS_CSV_FILE?}"
+  mkdir -p "$(dirname "${BORDERS_CSV_FILE:?}")"
+  rm -rf "$BORDERS_CSV_FILE"
   osmborder -o "$BORDERS_CSV_FILE" "$BORDERS_PBF_FILE"
 elif [[ "$task" == "load" ]]; then
   # In "load" mode, the second parameter is the CSV file to be loaded
@@ -79,10 +79,10 @@ if [[ "$task" != "parse" ]]; then
   # For backward compatibility, allow both PG* and POSTGRES_* forms,
   # with the non-standard POSTGRES_* form taking precedence.
   # An error will be raised if neither form is given, except for the PGPORT
-  export PGHOST="${POSTGRES_HOST:-${PGHOST?}}"
-  export PGDATABASE="${POSTGRES_DB:-${PGDATABASE?}}"
-  export PGUSER="${POSTGRES_USER:-${PGUSER?}}"
-  export PGPASSWORD="${POSTGRES_PASSWORD:-${PGPASSWORD?}}"
+  export PGHOST="${POSTGRES_HOST:-${PGHOST:?}}"
+  export PGDATABASE="${POSTGRES_DB:-${PGDATABASE:?}}"
+  export PGUSER="${POSTGRES_USER:-${PGUSER:?}}"
+  export PGPASSWORD="${POSTGRES_PASSWORD:-${PGPASSWORD:?}}"
   export PGPORT="${POSTGRES_PORT:-${PGPORT:-5432}}"
 
   echo "Importing $BORDERS_CSV_FILE into $PGHOST:$PGPORT/$PGDATABASE as table $BORDERS_TABLE_NAME..."
