@@ -4,7 +4,7 @@ aiohttp==3.6.2
 ascii_graph==1.5.1
 asyncpg==0.20.1
 beautifulsoup4==4.8.2
-dataclasses-json==0.3.8
+dataclasses-json==0.4.1
 deprecated==1.2.7
 docopt-ng==0.7.2
 graphviz==0.13.2
@@ -12,4 +12,4 @@ psycopg2-binary==2.8.4
 pyyaml==5.3
 requests==2.23.0
 tabulate==0.8.6
-tornado==6.0.3
+tornado==6.0.4

@@ -55,7 +55,7 @@ RUN set -eux ;\
 
 
 # Primary image
-FROM python:3.8
+FROM python:3.8-slim
 ARG PG_MAJOR=12
 ARG VT_UTIL_VERSION=v2.0.0
 ARG TOOLS_DIR=/usr/src/app
@@ -83,6 +83,14 @@ ENV VT_UTIL_DIR=/opt/postgis-vt-util \
 
 RUN set -eux ;\
     /bin/bash -c 'echo ""; echo ""; echo "##### Installing packages..."' >&2 ;\
+    DEBIAN_FRONTEND=noninteractive apt-get update ;\
+    DEBIAN_FRONTEND=noninteractive apt-get install  -y --no-install-recommends \
+        `# a few common tools` \
+        ca-certificates \
+        curl \
+        wget \
+        git  \
+        gnupg2  `# TODO: not sure why gnupg2 is needed`  ;\
     curl https://www.postgresql.org/media/keys/ACCC4CF8.asc | apt-key add - ;\
     /bin/bash -c 'source /etc/os-release && echo "deb http://apt.postgresql.org/pub/repos/apt/ ${VERSION_CODENAME?}-pgdg main ${PG_MAJOR?}" > /etc/apt/sources.list.d/pgdg.list' ;\
     DEBIAN_FRONTEND=noninteractive apt-get update ;\
@@ -94,11 +102,6 @@ RUN set -eux ;\
         osmctools `# osmconvert and other OSM tools` \
         osmosis   `# (TBD if needed) https://wiki.openstreetmap.org/wiki/Osmosis` \
         postgresql-client-${PG_MAJOR?}  `# psql` \
-        \
-        `# common tools` \
-        ca-certificates \
-        git \
-        wget \
         \
         `# imposm dependencies` \
         libgeos-dev \
