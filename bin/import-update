@@ -21,7 +21,7 @@ function update() {
         -diffdir "$DIFF_DIR" \
         -expiretiles-dir "$TILES_DIR" \
         -expiretiles-zoom "$EXPIRETILES_ZOOM" \
-        -config "$CONFIG_JSON"
+        -config "$IMPOSM_CONFIG"
 }
 
 update

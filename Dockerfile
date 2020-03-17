@@ -77,7 +77,7 @@ ENV VT_UTIL_DIR=/opt/postgis-vt-util \
     MAPPING_YAML=/mapping/mapping.yaml \
     DIFF_DIR=/import \
     TILES_DIR=/import \
-    CONFIG_JSON=${TOOLS_DIR}/config/repl_config.json
+    IMPOSM_CONFIG=${TOOLS_DIR}/config/repl_config.json
 
 
 

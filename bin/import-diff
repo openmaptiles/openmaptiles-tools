@@ -21,7 +21,7 @@ function import_diff() {
         -diffdir "$IMPORT_DIR" \
         -expiretiles-dir "$IMPORT_DIR" \
         -expiretiles-zoom "$EXPIRETILES_ZOOM" \
-        -config "$CONFIG_JSON" \
+        -config "$IMPOSM_CONFIG" \
         "$IMPORT_DIR/changes.osc.gz"
 }
 
