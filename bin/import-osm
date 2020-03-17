@@ -28,7 +28,7 @@ function import_pbf() {
 
     imposm import \
         -connection "postgis://$PGUSER:$PGPASSWORD@$PGHOST:$PGPORT/$PGDATABASE" \
-        -mapping "$MAPPING_YAML" \
+        -mapping "$IMPOSM_MAPPING" \
         -overwritecache \
         -diffdir "$DIFF_DIR" \
         -cachedir "$IMPOSM_CACHE_DIR" \
