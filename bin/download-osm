@@ -2,11 +2,9 @@
 """
 Usage:
   download-osm list <service> [-l] [-c]
-  download-osm planet [-l] [-p] [-n] [-v] [-d <file> [-i <z>] [-a <z>] [-x <v>]] [--] [<args>...]
-  download-osm url       <url>  [-n] [-v] [-d <file> [-i <z>] [-a <z>] [-x <v>] [--id <id>]] [--] [<args>...]
-  download-osm geofabrik <id> [-l] [-c] [-n] [-v] [-s <file>] [-d <file> [-i <z>] [-a <z>] [-x <v>]] [--] [<args>...]
-  download-osm osmfr     <id>           [-n] [-v] [-s <file>] [-d <file> [-i <z>] [-a <z>] [-x <v>]] [--] [<args>...]
-  download-osm bbbike    <id>           [-n] [-v]             [-d <file> [-i <z>] [-a <z>] [-x <v>]] [--] [<args>...]
+  download-osm planet [-l] [-p] [-n] [-v] [-j <file> [-k <kv>]...] [-d <file> [-i <z>] [-a <z>] [-x <v>]] [--] [<args>...]
+  download-osm url       <url>  [-n] [-v] [-j <file> [-k <kv>]...] [-d <file> [-i <z>] [-a <z>] [-x <v>] [--id <id>]] [--] [<args>...]
+  download-osm (geofabrik|osmfr|bbbike) <id> [-l] [-c] [-n] [-v] [-s <file>] [-j <file> [-k <kv>]...] [-d <file> [-i <z>] [-a <z>] [-x <v>]] [--] [<args>...]
   download-osm make-dc <pbf-file> -d <file> [-i <z>] [-a <z>] [-x <v>] [--id <id>]
   download-osm --help
   download-osm --version
@@ -36,6 +34,9 @@ Options:
                         For Geofabrik, forces catalog re-download.
   -c --no-cache         Do not cache downloaded list of extracts
   -s --state <file>     Download state file and save it to the <file>
+  -j --imposm-cfg <f>   Create an imposm configuration json file, and write
+                        replication_url param into it.  Use -k any additional values.
+  -k --kv <key=value>   Add extra key=value params to the imposm config (requires -j)
   -d --make-dc <file>   Create a docker-compose file with the area metadata.
   -x --dc-ver <ver>     Set docker-compose file version to this value.
                         By default will be 2 unless MAKE_DC_VERSION env var is set.
@@ -363,6 +364,7 @@ async def get_geofabrik_list(session: ClientSession, force_latest, no_cache) -> 
         entry["full_id"] = full_id
         entry["full_name"] = full_name
         entry["url"] = entry["urls"]["pbf"]
+        entry["url_updates"] = entry["urls"]["updates"]
 
     return {v["full_id"]: v
             for v in sorted(entries.values(), key=lambda v: v["full_id"])}
@@ -375,14 +377,41 @@ async def save_state_file(session, state_url, state_file):
     state_file.write_text(data, encoding="utf-8")
 
 
+def save_cfg_file(dry_run, cfg_file, repl_url, extras):
+    cfg_file = Path(cfg_file).resolve()
+    print(f"{'Would create' if dry_run else 'Creating'} Imposm config file {cfg_file}:")
+    if repl_url.endswith("/minute/"):
+        interval = "1m"
+    elif repl_url.endswith("/hour/"):
+        interval = "1h"
+    else:
+        interval = "24h"
+    data = dict(replication_url=repl_url, replication_interval=interval)
+    for kv in (extras or []):
+        kv = kv.split('=', 1)
+        if len(kv) != 2:
+            raise SystemExit(
+                f"--kv '{kv[0]}' must be in a 'key=value' format")
+        data[kv[0]] = kv[1]
+    print(tabulate(data.items()))
+    if not dry_run:
+        cfg_file.write_text(json.dumps(data, indent=2, sort_keys=True) + "\n",
+                            encoding="utf-8")
+
+
 async def prepare_area_download(args, session):
     area_id = (args['<id>'] or args['--id'] or "").strip()
     area_id = area_id if area_id else None
+    repl_url = None
+    force_latest = args["--force-latest"]
+    no_cache = args['--no-cache']
+    if (force_latest or no_cache) and not args.geofabrik:
+        raise SystemExit(
+            f"--force-latest and --no-cache are only supported with geofabrik service")
     if args.url:
         url = args['<url>']
     elif args.bbbike:
-        url = f"https://download.bbbike.org/" \
-              f"osm/bbbike/{area_id}/{area_id}.osm.pbf"
+        url = f"https://download.bbbike.org/osm/bbbike/{area_id}/{area_id}.osm.pbf"
     elif args.osmfr:
         url = f"http://download.openstreetmap.fr/" \
               f"extracts/{area_id}-latest.osm.pbf"
@@ -390,10 +419,10 @@ async def prepare_area_download(args, session):
             state_url = url.replace("-latest.osm.pbf", ".state.txt")
             await save_state_file(session, state_url, args.state)
     elif args.geofabrik:
-        catalog = await get_geofabrik_list(session, args["--force-latest"],
-                                           args['--no-cache'])
+        catalog = await get_geofabrik_list(session, force_latest, no_cache)
         if area_id in catalog:
             url = catalog[area_id]["url"]
+            repl_url = catalog[area_id]["url_updates"]
         else:
             # If there is no exact match, find anything that ends with key
             reg = re.compile(".*" + re.escape("/" + area_id.lstrip("/")) + "$",
@@ -402,7 +431,8 @@ async def prepare_area_download(args, session):
             def matches(key):
                 return bool(reg.match(key))
 
-            area_urls = [(k, v["url"]) for k, v in catalog.items() if matches(k)]
+            area_urls = [(k, v["url"], v["url_updates"])
+                         for k, v in catalog.items() if matches(k)]
             if not area_urls:
                 raise SystemExit(
                     f"Error: ID '{area_id}' was not found in Geofabrik.\n"
@@ -414,6 +444,7 @@ async def prepare_area_download(args, session):
                     f"More than one ID '{area_id}' was found in "
                     f"Geofabrik, use longer ID:\n{variants}")
             url = area_urls[0][1]
+            repl_url = area_urls[0][2]
             if args.state:
                 state_url = url.replace("-latest.osm.pbf", "-updates/state.txt")
                 await save_state_file(session, state_url, args.state)
@@ -423,7 +454,7 @@ async def prepare_area_download(args, session):
     await asyncio.wait([src.load_hash(session, args.verbose),
                         src.load_metadata(session, args.verbose)])
     print(f"Downloading {src.url} (size={src.size_str()}, md5={src.hash})", flush=True)
-    return [src.url], src.hash, area_id
+    return [src.url], src.hash, area_id, repl_url
 
 
 def make_docker_compose_file(pbf_file: Path, dc_file: Path,
@@ -478,7 +509,8 @@ async def main_async(args):
             Path(args["<pbf-file>"]), Path(args["--make-dc"]),
             args['--minzoom'], args['--maxzoom'], args["--id"], args["--dc-ver"])
 
-    urls, md5 = None, None
+    urls, md5, repl_url = None, None, None
+    exit_code = 0
     async with aiohttp.ClientSession(headers={'User-Agent': USER_AGENT}) as session:
         if args.list:
             if args.service != "geofabrik":
@@ -488,17 +520,27 @@ async def main_async(args):
             info = [dict(id=v["full_id"], name=v["full_name"]) for v in
                     catalog.values()]
             print(tabulate(info, headers="keys") + '\n')
-        elif args.planet:
+            return
+
+        if args.planet:
             use_primary = args['--include-primary']
             urls, md5 = await Catalog().init(session, args.verbose, use_primary,
                                              args['--force-latest'])
             area_id = "planet"
+            repl_url = "http://planet.openstreetmap.org/replication/day/"
         else:
-            urls, md5, area_id = await prepare_area_download(args, session)
+            urls, md5, area_id, repl_url = await prepare_area_download(args, session)
 
+    dry_run = args['--dry-run']
     if urls:
-        return await run_aria2c(args.args, args['--dry-run'], md5, urls, args, area_id)
-    return 0
+        exit_code = await run_aria2c(args.args, dry_run, md5, urls, args,
+                                     area_id)
+    if args['--imposm-cfg']:
+        if not repl_url:
+            raise SystemExit(f"Imposm config file cannot be generated in this mode")
+        save_cfg_file(dry_run, args['--imposm-cfg'], repl_url, args['--kv'])
+
+    return exit_code
 
 
 async def run_aria2c(aria2c_args, dry_run, md5, urls, args, area_id):
