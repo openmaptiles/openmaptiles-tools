@@ -102,6 +102,9 @@ async def main(args):
 
     print(f'Dropping and Re-creating {storage_table} table...')
     await conn.execute(f'DROP TABLE IF EXISTS {storage_table} CASCADE;')
+
+    # The wd_names table may also be created by the sql/language.sql
+    # Make sure the SQL table structure is in sync.
     await conn.execute(f'''\
 CREATE TABLE IF NOT EXISTS {storage_table}(
     id     varchar(20) CONSTRAINT id_key PRIMARY KEY,

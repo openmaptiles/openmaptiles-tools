@@ -61,6 +61,8 @@ ARG VT_UTIL_VERSION=v2.0.0
 ARG TOOLS_DIR=/usr/src/app
 ARG PGFUTTER_VERSION=v1.2
 
+LABEL maintainer="Yuri Astrakhan <YuriAstrakhan@gmail.com>"
+
 WORKDIR ${TOOLS_DIR}
 
 # Using VT_UTIL_DIR and OMT_UTIL_DIR vars allow users to provide custom util files:

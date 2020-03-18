@@ -28,7 +28,7 @@ RUN DIR=/downloads/lake_centerline \
 
 
 FROM osgeo/gdal:alpine-normal-3.0.2
-LABEL maintainer="YuriAstrakhan@gmail.com"
+LABEL maintainer="Yuri Astrakhan <YuriAstrakhan@gmail.com>"
 
 ENV IMPORT_DIR=/import
 

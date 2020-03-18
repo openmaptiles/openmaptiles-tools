@@ -4,7 +4,7 @@
 # Once it is updated, or there is a different way to build it, we can upgrade to 12.
 FROM postgis/postgis:11-2.5
 
-LABEL MAINTAINER="Yuri Astrakhan <YuriAstrakhan@gmail.com>"
+LABEL maintainer="Yuri Astrakhan <YuriAstrakhan@gmail.com>"
 
 ENV UTF8PROC_TAG=v2.2.0 \
     MAPNIK_GERMAN_L10N_TAG=v2.5.5 \

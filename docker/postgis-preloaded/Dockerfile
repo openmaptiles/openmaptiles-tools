@@ -52,6 +52,8 @@ RUN preload-database.sh \
 ARG OMT_TOOLS_VERSION
 FROM openmaptiles/postgis:${OMT_TOOLS_VERSION}
 
+LABEL maintainer="Yuri Astrakhan <YuriAstrakhan@gmail.com>"
+
 ENV POSTGRES_DB=openmaptiles \
     POSTGRES_USER=openmaptiles \
     POSTGRES_PASSWORD=openmaptiles
