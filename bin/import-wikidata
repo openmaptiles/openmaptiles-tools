@@ -33,6 +33,7 @@ PostgreSQL Options:
   --password=<password> Postgres password. By default uses POSTGRES_PASSWORD env or "openmaptiles" if not set.
 """
 import json
+import re
 from collections import defaultdict
 
 import asyncio
@@ -49,9 +50,15 @@ from openmaptiles.tileset import Tileset
 from openmaptiles.utils import batches
 
 
+def validate_table_name(table, param):
+    if not re.match(r"^[a-zA-Z_.0-9]+$", table):
+        raise DocoptExit(f'{param} must be a valid table name (letters/digits)')
+    return table
+
+
 async def main(args):
     verbose = args['--verbose']
-    storage_table = args['--storage']
+    storage_table = validate_table_name(args['--storage'], '--storage')
     tileset_path = args['<tileset>']
     if tileset_path:
         tables = find_tables(tileset_path)
@@ -61,7 +68,7 @@ async def main(args):
     elif not args['--table']:
         raise DocoptExit('--table parameter must specify the table to process')
     else:
-        tables = args['--table']
+        tables = [validate_table_name(v, '--table') for v in args['--table']]
 
     pghost, pgport, dbname, user, password = parse_pg_args(args)
     conn = await asyncpg.connect(
@@ -93,8 +100,13 @@ async def main(args):
         new_ids = ids
         print(f'Found {len(ids):,} Wikidata IDs to load.')
 
-    print(f'Deleting any existing data in {storage_table}...')
-    await conn.execute(f'TRUNCATE TABLE {storage_table}')
+    print(f'Dropping and Re-creating {storage_table} table...')
+    await conn.execute(f'DROP TABLE IF EXISTS {storage_table} CASCADE;')
+    await conn.execute(f'''\
+CREATE TABLE IF NOT EXISTS {storage_table}(
+    id     varchar(20) CONSTRAINT id_key PRIMARY KEY,
+    labels hstore
+);''')
 
     if cache:
         cached_ids = {k: {'name:' + kk: vv for kk, vv in cache[k].items()}

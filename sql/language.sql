@@ -118,14 +118,19 @@ END;
 $$ STRICT
 LANGUAGE plpgsql IMMUTABLE;
 
-CREATE TABLE IF NOT EXISTS wd_names(id varchar(20), page varchar(200), labels hstore);
+-- The wd_names table may also be created by the import-wikidata
+-- Make sure the SQL table structure is in sync.
+CREATE TABLE IF NOT EXISTS wd_names(
+    id     varchar(20) CONSTRAINT id_key PRIMARY KEY,
+    labels hstore
+);
 
 CREATE OR REPLACE FUNCTION merge_wiki_names(tags hstore) RETURNS hstore AS $$
 DECLARE
   result hstore;
 BEGIN
 
-  IF (tags ? 'wikidata' OR tags ? 'wikipedia') THEN
+  IF tags ? 'wikidata' THEN
     select INTO result
     CASE
       WHEN avals(wd.labels) && avals(tags)
@@ -133,7 +138,7 @@ BEGIN
       ELSE tags
     END
     FROM wd_names wd
-    WHERE wd.id = tags->'wikidata' OR wd.page = tags->'wikipedia';
+    WHERE wd.id = tags->'wikidata';
     IF result IS NULL THEN
       result := tags;
     END IF;

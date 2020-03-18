@@ -350,7 +350,7 @@ The `import-wikidata` tool searches for all wikidata tags in the database,
 and uses Wikidata Query Service to get the labels in all languages.
 This tool looks at all tables defined in layers' mapping files if they contain
 `tags` hstore field, and if the table has no `_resolve_wikidata: false` flag.
-The localized names are written to the `wd_names` table.
+The localized names are written to the `wd_names` table, which will be created if missing.
 
 ```bash
 import-wikidata openmaptiles.yaml
