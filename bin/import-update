@@ -1,6 +1,5 @@
-#!/usr/bin/env bash
+#!/usr/bin/env sh
 set -o errexit
-set -o pipefail
 set -o nounset
 
 # For backward compatibility, allow both PG* and POSTGRES_* forms,
@@ -11,17 +10,12 @@ export PGDATABASE="${POSTGRES_DB:-${PGDATABASE:?}}"
 export PGUSER="${POSTGRES_USER:-${PGUSER:?}}"
 export PGPASSWORD="${POSTGRES_PASSWORD:-${PGPASSWORD:?}}"
 export PGPORT="${POSTGRES_PORT:-${PGPORT:-5432}}"
-export EXPIRETILES_ZOOM="${EXPIRETILES_ZOOM:-14}"
 
-function update() {
-    imposm run \
-        -connection "postgis://$PGUSER:$PGPASSWORD@$PGHOST:$PGPORT/$PGDATABASE" \
-        -mapping "${IMPOSM_MAPPING:?}" \
-        -cachedir "${IMPOSM_CACHE_DIR:?}" \
-        -diffdir "${DIFF_DIR:?}" \
-        -expiretiles-dir "${TILES_DIR:?}" \
-        -expiretiles-zoom "$EXPIRETILES_ZOOM" \
-        -config "${IMPOSM_CONFIG:?}"
-}
-
-update
+imposm run \
+    -connection "postgis://$PGUSER:$PGPASSWORD@$PGHOST:$PGPORT/$PGDATABASE" \
+    -mapping "${IMPOSM_MAPPING:?}" \
+    -cachedir "${IMPOSM_CACHE_DIR:?}" \
+    -diffdir "${IMPOSM_DIFF_DIR:?}" \
+    -expiretiles-dir "${EXPIRETILES_DIR:?}" \
+    -expiretiles-zoom "${EXPIRETILES_ZOOM:-14}" \
+    -config "${IMPOSM_CONFIG:?}"

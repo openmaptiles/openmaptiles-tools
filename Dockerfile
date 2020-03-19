@@ -56,38 +56,35 @@ RUN set -eux ;\
 
 # Primary image
 FROM python:3.8-slim
+LABEL maintainer="Yuri Astrakhan <YuriAstrakhan@gmail.com>"
+
 ARG PG_MAJOR=12
 ARG VT_UTIL_VERSION=v2.0.0
 ARG TOOLS_DIR=/usr/src/app
-ARG PGFUTTER_VERSION=v1.2
-
-LABEL maintainer="Yuri Astrakhan <YuriAstrakhan@gmail.com>"
 
 WORKDIR ${TOOLS_DIR}
 
-# Using VT_UTIL_DIR and OMT_UTIL_DIR vars allow users to provide custom util files:
-# postgis-vt-util.sql and language.sql
-# See README
-ENV VT_UTIL_DIR=/opt/postgis-vt-util \
-    OMT_UTIL_DIR="${TOOLS_DIR}/sql" \
-    TOOLS_DIR="$TOOLS_DIR" \
-    SQL_DIR=/sql \
-    WGET="wget --quiet --progress=bar:force:noscroll --show-progress" \
+#
+# IMPOSM_CONFIG can be used to provide custom IMPOSM config file
+# SQL_TOOLS_DIR can be used to provide custom SQL files instead of vt_utils and other files from /sql
+#
+ENV TOOLS_DIR="$TOOLS_DIR" \
     PATH="${TOOLS_DIR}:${PATH}" \
-    IMPORT_DIR=/import \
+    IMPOSM_CONFIG=${TOOLS_DIR}/config/repl_config.json \
     IMPOSM_CACHE_DIR=/cache \
+    IMPOSM_DIFF_DIR=/import \
     IMPOSM_MAPPING=/mapping/mapping.yaml \
-    DIFF_DIR=/import \
-    TILES_DIR=/import \
-    IMPOSM_CONFIG=${TOOLS_DIR}/config/repl_config.json
-
+    IMPORT_DIR=/import \
+    SQL_DIR=/sql \
+    SQL_TOOLS_DIR="${TOOLS_DIR}/sql" \
+    TILES_DIR=/import
 
 
 RUN set -eux ;\
     /bin/bash -c 'echo ""; echo ""; echo "##### Installing packages..."' >&2 ;\
     DEBIAN_FRONTEND=noninteractive apt-get update ;\
     DEBIAN_FRONTEND=noninteractive apt-get install  -y --no-install-recommends \
-        `# a few common tools` \
+        # a few common tools
         ca-certificates \
         curl \
         wget \
@@ -118,8 +115,8 @@ COPY ./requirements.txt .
 
 RUN set -eux ;\
     pip install --no-cache-dir -r requirements.txt ;\
-    mkdir -p "${VT_UTIL_DIR:?}" ;\
-    $WGET -O "${VT_UTIL_DIR}/postgis-vt-util.sql" \
+    mkdir -p "${SQL_TOOLS_DIR:?}" ;\
+    wget --quiet --progress=bar:force:noscroll --show-progress -O "${SQL_TOOLS_DIR}/10_postgis-vt-util.sql" \
        https://raw.githubusercontent.com/openmaptiles/postgis-vt-util/${VT_UTIL_VERSION}/postgis-vt-util.sql
 
 # Copy tools, imposm, and osmborder into the app dir
