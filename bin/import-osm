@@ -28,7 +28,7 @@ function import_pbf() {
 
     imposm import \
         -connection "postgis://$PGUSER:$PGPASSWORD@$PGHOST:$PGPORT/$PGDATABASE" \
-        -mapping "${IMPOSM_MAPPING:?}" \
+        -mapping "${IMPOSM_MAPPING_FILE:?}" \
         -overwritecache \
         -diffdir "${IMPOSM_DIFF_DIR:?}" \
         -cachedir "${IMPOSM_CACHE_DIR:?}" \
@@ -36,21 +36,21 @@ function import_pbf() {
         -deployproduction \
         -write \
         ${diff_flag:+"-diff"} \
-        -config "${IMPOSM_CONFIG:?}"
+        -config "${IMPOSM_CONFIG_FILE:?}"
 }
 
 function import_osm_with_first_pbf() {
     if [ -z "${1+x}" ]; then
-      # With no parameters, import the first found PBF file in the $IMPORT_DIR
-      if [ "$(ls -A "${IMPORT_DIR:?}"/*.pbf 2> /dev/null)" ]; then
+      # With no parameters, import the first found PBF file in the $PBF_DATA_DIR
+      if [ "$(ls -A "${PBF_DATA_DIR:?}"/*.pbf 2> /dev/null)" ]; then
           local pbf_file
-          for pbf_file in "$IMPORT_DIR"/*.pbf; do
+          for pbf_file in "$PBF_DATA_DIR"/*.pbf; do
               import_pbf "$pbf_file"
               break
           done
       else
           echo "No PBF files for import found."
-          echo "Please mount the $IMPORT_DIR volume to a folder containing OSM PBF files,"
+          echo "Please mount the $PBF_DATA_DIR volume to a folder containing OSM PBF files,"
           echo "or provide PBF file as the first parameter to import-osm"
           exit 1
       fi

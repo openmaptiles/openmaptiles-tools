@@ -54,7 +54,7 @@ echo "++++++ Importing a PBF file into a DB table"
 echo "++++++ Importing a PBF file into a DB table without import command"
 /omt/bin/import-borders /omt/tests/http/monaco-20150428.osm.pbf
 echo "++++++ Importing a PBF file into a DB table by scanning a dir"
-IMPORT_DIR=/omt/tests/http /omt/bin/import-borders
+PBF_DATA_DIR=/omt/tests/http /omt/bin/import-borders
 
 
 echo "++++++++++++++++++++++++"

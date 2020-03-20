@@ -65,19 +65,18 @@ ARG TOOLS_DIR=/usr/src/app
 WORKDIR ${TOOLS_DIR}
 
 #
-# IMPOSM_CONFIG can be used to provide custom IMPOSM config file
+# IMPOSM_CONFIG_FILE can be used to provide custom IMPOSM config file
 # SQL_TOOLS_DIR can be used to provide custom SQL files instead of vt_utils and other files from /sql
 #
 ENV TOOLS_DIR="$TOOLS_DIR" \
     PATH="${TOOLS_DIR}:${PATH}" \
-    IMPOSM_CONFIG=${TOOLS_DIR}/config/repl_config.json \
+    IMPOSM_CONFIG_FILE=${TOOLS_DIR}/config/repl_config.json \
+    IMPOSM_MAPPING_FILE=/mapping/mapping.yaml \
     IMPOSM_CACHE_DIR=/cache \
     IMPOSM_DIFF_DIR=/import \
-    IMPOSM_MAPPING=/mapping/mapping.yaml \
-    IMPORT_DIR=/import \
+    PBF_DATA_DIR=/import \
     SQL_DIR=/sql \
-    SQL_TOOLS_DIR="${TOOLS_DIR}/sql" \
-    TILES_DIR=/import
+    SQL_TOOLS_DIR="${TOOLS_DIR}/sql"
 
 
 RUN set -eux ;\
@@ -97,9 +96,9 @@ RUN set -eux ;\
         aria2     `# multi-stream file downloader` \
         graphviz  `# used by layer mapping graphs` \
         sqlite3   `# mbtiles file manipulations`   \
-        gdal-bin  `# installs ogr2ogr` \
+        gdal-bin  `# contains ogr2ogr` \
         osmctools `# osmconvert and other OSM tools` \
-        osmosis   `# (TBD if needed) https://wiki.openstreetmap.org/wiki/Osmosis` \
+        osmosis   `# useful toolset - https://wiki.openstreetmap.org/wiki/Osmosis` \
         postgresql-client-${PG_MAJOR:?}  `# psql` \
         \
         `# imposm dependencies` \

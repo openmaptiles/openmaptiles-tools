@@ -241,11 +241,11 @@ $ debug-mvt openmaptiles.yaml 4/7/6 -l place
 ### Environment variables
 Various tools require these environment variables to be set
 
-* `SQL_DIR` /sql
-* `IMPORT_DIR`  /import
-* `IMPOSM_CACHE_DIR`  /cache
-* `IMPOSM_MAPPING`  /mapping/mapping.yaml
-* `IMPOSM_DIFF_DIR`  /import
+* `SQL_DIR`             /sql
+* `PBF_DATA_DIR`        /import
+* `IMPOSM_CACHE_DIR`    /cache
+* `IMPOSM_MAPPING_FILE` /mapping/mapping.yaml
+* `IMPOSM_DIFF_DIR`     /import
 
 * `EXPIRETILES_DIR` used by `import-update` for Imposm's `-expiretiles-dir` parameter
 * `EXPIRETILES_ZOOM` defaults to 14
@@ -400,13 +400,13 @@ generate-tm2source <tileset> --host="localhost" --port=5432 --database="osm" --u
 The **import-borders** script will take the first PBF file from the `/import` dir (by default), extract borders with [osmborder tool](https://github.com/pnorman/osmborder), and import resulting CSV file into the database as osm_border_linestring table (by default). Example usages:
 
 ```bash
-import-borders                      # Parse and import first PBF file in IMPORT_DIR
+import-borders                      # Parse and import first PBF file in PBF_DATA_DIR
 import-borders [import] planet.pbf  # Parse and import planet.pbf
 import-borders parse planet.pbf     # Parse planet.pbf into a CSV file, but do not import
 import-borders load borders.csv     # Load borders.csv into a table
 ```
 
-This utility requires PostgreSQL's PG* environment variables, and optionally uses `IMPORT_DIR, BORDERS_PBF_FILE, BORDERS_CSV_FILE, BORDERS_TABLE_NAME`.
+This utility requires PostgreSQL's PG* environment variables, and optionally uses `PBF_DATA_DIR, BORDERS_PBF_FILE, BORDERS_CSV_FILE, BORDERS_TABLE_NAME`.
 
 ## Importing into Postgres
 The `import-sql` script can execute a single SQL file in Postgres when the file is given as the first parameter.

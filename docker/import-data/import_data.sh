@@ -4,9 +4,9 @@ set -o nounset
 
 
 # File paths must correspond to the files prepared in Dockerfile
-: "${NATURAL_EARTH_FILE:=${IMPORT_DIR:?}/natural_earth/natural_earth_vector.sqlite}"
-: "${WATER_POLYGONS_FILE:=${IMPORT_DIR:?}/water_polygons/water_polygons.shp}"
-: "${LAKE_CENTERLINE_FILE:=${IMPORT_DIR:?}/lake_centerline/lake_centerline.geojson}"
+: "${NATURAL_EARTH_FILE:=${DATA_DIR:?}/natural_earth/natural_earth_vector.sqlite}"
+: "${WATER_POLYGONS_FILE:=${DATA_DIR:?}/water_polygons/water_polygons.shp}"
+: "${LAKE_CENTERLINE_FILE:=${DATA_DIR:?}/lake_centerline/lake_centerline.geojson}"
 
 # These vars define the destination tables when importing
 : "${WATER_TABLE_NAME:=osm_ocean_polygon}"
