@@ -40,8 +40,9 @@ function import_pbf() {
 }
 
 function import_osm_with_first_pbf() {
-    if [ -z "${1+x}" ]; then
+    if [[ -z "${1:-}" ]]; then
       # With no parameters, import the first found PBF file in the $PBF_DATA_DIR
+      echo "Searching for any *.pbf files in $PBF_DATA_DIR"
       if [ "$(ls -A "${PBF_DATA_DIR:?}"/*.pbf 2> /dev/null)" ]; then
           local pbf_file
           for pbf_file in "$PBF_DATA_DIR"/*.pbf; do
@@ -55,6 +56,7 @@ function import_osm_with_first_pbf() {
           exit 1
       fi
     else
+      echo "Importing provided file $1"
       import_pbf "$1"
     fi
 }
