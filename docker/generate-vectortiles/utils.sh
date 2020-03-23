@@ -8,10 +8,10 @@ readonly DEST_PROJECT_FILE="${DEST_PROJECT_DIR%%/}/data.yml"
 # For backward compatibility, allow both PG* and POSTGRES_* forms,
 # with the non-standard POSTGRES_* form taking precedence.
 # An error will be raised if neither form is given, except for the PGPORT
-PGHOST="${POSTGRES_HOST:-${PGHOST:?}}"
-PGDATABASE="${POSTGRES_DB:-${PGDATABASE:?}}"
-PGUSER="${POSTGRES_USER:-${PGUSER:?}}"
-PGPASSWORD="${POSTGRES_PASSWORD:-${PGPASSWORD:?}}"
+PGHOST="${POSTGRES_HOST:-${PGHOST?}}"
+PGDATABASE="${POSTGRES_DB:-${PGDATABASE?}}"
+PGUSER="${POSTGRES_USER:-${PGUSER?}}"
+PGPASSWORD="${POSTGRES_PASSWORD:-${PGPASSWORD?}}"
 PGPORT="${POSTGRES_PORT:-${PGPORT:-5432}}"
 
 # project config will be copied to new folder because we

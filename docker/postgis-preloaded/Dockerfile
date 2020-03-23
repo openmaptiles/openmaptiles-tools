@@ -19,7 +19,7 @@ FROM openmaptiles/postgis:${OMT_TOOLS_VERSION} as builder
 # See also a relevant discussion about data pre-packaging in
 # https://github.com/docker-library/postgres/issues/661#issuecomment-573192715
 
-ENV DATA_DIR=/import \
+ENV IMPORT_DIR=/import \
     POSTGRES_DB=openmaptiles \
     POSTGRES_USER=openmaptiles \
     POSTGRES_PASSWORD=openmaptiles
@@ -33,7 +33,7 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update \
 # switch to postgres user for ownership and execution
 USER postgres
 
-COPY --from=data $DATA_DIR $DATA_DIR/
+COPY --from=data $IMPORT_DIR $IMPORT_DIR/
 
 # Postgis adds 10_... script, and OMT postgis adds 20_... script, so run after both are done
 COPY --from=data /usr/src/app/import_data.sh /docker-entrypoint-initdb.d/30_omt_preload.sh

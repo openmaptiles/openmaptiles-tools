@@ -3,22 +3,22 @@ set -o errexit
 set -o pipefail
 set -o nounset
 
-: "${PBF_DATA_DIR:=/import}"
+: "${IMPORT_DIR:=/import}"
 # Do not use .pbf extension to avoid accidental conflict with the original pbf with multiple runs
-: "${BORDERS_PBF_FILE:="$PBF_DATA_DIR/borders/filtered.pbf"}"
-: "${BORDERS_CSV_FILE:="$PBF_DATA_DIR/borders/lines.csv"}"
+: "${BORDERS_PBF_FILE:="$IMPORT_DIR/borders/filtered.pbf"}"
+: "${BORDERS_CSV_FILE:="$IMPORT_DIR/borders/lines.csv"}"
 : "${BORDERS_TABLE_NAME:=osm_border_linestring}"
 
 function usage() {
   >&2 echo "Usage"
   >&2 echo ""
-  >&2 echo "import-borders                      - Parse and import first PBF file in PBF_DATA_DIR"
+  >&2 echo "import-borders                      - Parse and import first PBF file in IMPORT_DIR"
   >&2 echo "import-borders [import] planet.pbf  - Parse and import planet.pbf"
   >&2 echo "import-borders parse planet.pbf     - Parse planet.pbf into a CSV file, but do not import"
   >&2 echo "import-borders load borders.csv     - Load borders.csv into a table"
   >&2 echo ""
   >&2 echo "Expected variables:  PGHOST, PGDATABASE, PGUSER, PGPASSWORD"
-  >&2 echo "Supported variables:  PBF_DATA_DIR, BORDERS_PBF_FILE, BORDERS_CSV_FILE, BORDERS_TABLE_NAME, PGPORT"
+  >&2 echo "Supported variables:  IMPORT_DIR, BORDERS_PBF_FILE, BORDERS_CSV_FILE, BORDERS_TABLE_NAME, PGPORT"
   >&2 echo ""
   >&2 echo "If first parameter is a file, treat it as 'import'"
   >&2 echo ""
@@ -26,15 +26,15 @@ function usage() {
 }
 
 # First argument is the PBF file to import.
-# If there are no arguments, searches for the first *.pbf file in the $PBF_DATA_DIR
+# If there are no arguments, searches for the first *.pbf file in the $IMPORT_DIR
 if [[ $# -eq 0 ]]; then
-  if [ "$(ls -A "$PBF_DATA_DIR"/*.pbf 2> /dev/null)" ]; then
-    for pbf_file in "$PBF_DATA_DIR"/*.pbf; do
+  if [ "$(ls -A "$IMPORT_DIR"/*.pbf 2> /dev/null)" ]; then
+    for pbf_file in "$IMPORT_DIR"/*.pbf; do
       set -- import "$pbf_file"
       break
     done
   else
-    echo "No PBF files found in the $PBF_DATA_DIR dir."
+    echo "No PBF files found in the $IMPORT_DIR dir."
     usage
   fi
 elif [[ "$1" != "import" && "$1" != "load" && "$1" != "parse" ]]; then
@@ -58,13 +58,13 @@ if [[ "$task" == "import" || "$task" == "parse" ]]; then
   # Parse PBF file to generate borders CSV file, and import it into PG
   IMPORT_PBF_FILE="$2"
   echo "Filtering $IMPORT_PBF_FILE into $BORDERS_PBF_FILE"
-  mkdir -p "$(dirname "${BORDERS_PBF_FILE:?}")"
-  rm -rf "$BORDERS_PBF_FILE"
+  mkdir -p "$(dirname "${BORDERS_PBF_FILE?}")"
+  rm -rf "${BORDERS_PBF_FILE?}"
   osmborder_filter -o "$BORDERS_PBF_FILE" "$IMPORT_PBF_FILE"
 
   echo "Creating a CSV borders file $BORDERS_CSV_FILE"
-  mkdir -p "$(dirname "${BORDERS_CSV_FILE:?}")"
-  rm -rf "$BORDERS_CSV_FILE"
+  mkdir -p "$(dirname "${BORDERS_CSV_FILE?}")"
+  rm -rf "${BORDERS_CSV_FILE?}"
   osmborder -o "$BORDERS_CSV_FILE" "$BORDERS_PBF_FILE"
 elif [[ "$task" == "load" ]]; then
   # In "load" mode, the second parameter is the CSV file to be loaded
@@ -79,10 +79,10 @@ if [[ "$task" != "parse" ]]; then
   # For backward compatibility, allow both PG* and POSTGRES_* forms,
   # with the non-standard POSTGRES_* form taking precedence.
   # An error will be raised if neither form is given, except for the PGPORT
-  export PGHOST="${POSTGRES_HOST:-${PGHOST:?}}"
-  export PGDATABASE="${POSTGRES_DB:-${PGDATABASE:?}}"
-  export PGUSER="${POSTGRES_USER:-${PGUSER:?}}"
-  export PGPASSWORD="${POSTGRES_PASSWORD:-${PGPASSWORD:?}}"
+  export PGHOST="${POSTGRES_HOST:-${PGHOST?}}"
+  export PGDATABASE="${POSTGRES_DB:-${PGDATABASE?}}"
+  export PGUSER="${POSTGRES_USER:-${PGUSER?}}"
+  export PGPASSWORD="${POSTGRES_PASSWORD:-${PGPASSWORD?}}"
   export PGPORT="${POSTGRES_PORT:-${PGPORT:-5432}}"
 
   echo "Importing $BORDERS_CSV_FILE into $PGHOST:$PGPORT/$PGDATABASE as table $BORDERS_TABLE_NAME..."

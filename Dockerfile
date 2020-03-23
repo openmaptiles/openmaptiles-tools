@@ -44,7 +44,7 @@ RUN set -eux ;\
     /bin/bash -c 'echo ""; echo ""; echo "##### Building osmborder -- https://github.com/pnorman/osmborder"' >&2 ;\
     git clone https://github.com/pnorman/osmborder.git /usr/src/osmborder ;\
     cd /usr/src/osmborder ;\
-    git checkout ${OSMBORDER_REV:?} ;\
+    git checkout ${OSMBORDER_REV?} ;\
     mkdir -p /usr/src/osmborder/build ;\
     cd /usr/src/osmborder/build ;\
     cmake .. ;\
@@ -64,42 +64,41 @@ ARG TOOLS_DIR=/usr/src/app
 
 WORKDIR ${TOOLS_DIR}
 
-#
-# IMPOSM_CONFIG_FILE can be used to provide custom IMPOSM config file
-# SQL_TOOLS_DIR can be used to provide custom SQL files instead of vt_utils and other files from /sql
-#
-ENV TOOLS_DIR="$TOOLS_DIR" \
-    PATH="${TOOLS_DIR}:${PATH}" \
-    IMPOSM_CONFIG_FILE=${TOOLS_DIR}/config/repl_config.json \
-    IMPOSM_MAPPING_FILE=/mapping/mapping.yaml \
-    IMPOSM_CACHE_DIR=/cache \
-    IMPOSM_DIFF_DIR=/import \
-    PBF_DATA_DIR=/import \
+# Using VT_UTIL_DIR and OMT_UTIL_DIR vars allow users to provide custom util files:
+# postgis-vt-util.sql and language.sql
+# See README
+ENV VT_UTIL_DIR=/opt/postgis-vt-util \
+    OMT_UTIL_DIR="${TOOLS_DIR}/sql" \
+    TOOLS_DIR="$TOOLS_DIR" \
     SQL_DIR=/sql \
-    SQL_TOOLS_DIR="${TOOLS_DIR}/sql"
+    PATH="${TOOLS_DIR}:${PATH}" \
+    IMPORT_DIR=/import \
+    IMPOSM_CACHE_DIR=/cache \
+    MAPPING_YAML=/mapping/mapping.yaml \
+    DIFF_DIR=/import \
+    TILES_DIR=/import \
+    CONFIG_JSON=${TOOLS_DIR}/config/repl_config.json
+
 
 
 RUN set -eux ;\
     /bin/bash -c 'echo ""; echo ""; echo "##### Installing packages..."' >&2 ;\
-    DEBIAN_FRONTEND=noninteractive apt-get update ;\
-    DEBIAN_FRONTEND=noninteractive apt-get install  -y --no-install-recommends \
-        # a few common tools
-        ca-certificates \
-        curl \
-        wget \
-        git  \
-        gnupg2  `# TODO: not sure why gnupg2 is needed`  ;\
     curl https://www.postgresql.org/media/keys/ACCC4CF8.asc | apt-key add - ;\
-    /bin/bash -c 'source /etc/os-release && echo "deb http://apt.postgresql.org/pub/repos/apt/ ${VERSION_CODENAME:?}-pgdg main ${PG_MAJOR:?}" > /etc/apt/sources.list.d/pgdg.list' ;\
+    /bin/bash -c 'source /etc/os-release && echo "deb http://apt.postgresql.org/pub/repos/apt/ ${VERSION_CODENAME?}-pgdg main ${PG_MAJOR?}" > /etc/apt/sources.list.d/pgdg.list' ;\
     DEBIAN_FRONTEND=noninteractive apt-get update ;\
     DEBIAN_FRONTEND=noninteractive apt-get install  -y --no-install-recommends \
         aria2     `# multi-stream file downloader` \
         graphviz  `# used by layer mapping graphs` \
         sqlite3   `# mbtiles file manipulations`   \
-        gdal-bin  `# contains ogr2ogr` \
+        gdal-bin  `# installs ogr2ogr` \
         osmctools `# osmconvert and other OSM tools` \
-        osmosis   `# useful toolset - https://wiki.openstreetmap.org/wiki/Osmosis` \
-        postgresql-client-${PG_MAJOR:?}  `# psql` \
+        osmosis   `# (TBD if needed) https://wiki.openstreetmap.org/wiki/Osmosis` \
+        postgresql-client-${PG_MAJOR?}  `# psql` \
+        \
+        `# common tools` \
+        ca-certificates \
+        git \
+        wget \
         \
         `# imposm dependencies` \
         libgeos-dev \
@@ -114,8 +113,8 @@ COPY ./requirements.txt .
 
 RUN set -eux ;\
     pip install --no-cache-dir -r requirements.txt ;\
-    mkdir -p "${SQL_TOOLS_DIR:?}" ;\
-    wget --quiet --progress=bar:force:noscroll --show-progress -O "${SQL_TOOLS_DIR}/10_postgis-vt-util.sql" \
+    mkdir -p "${VT_UTIL_DIR?}" ;\
+    wget --quiet --progress=bar:force:noscroll --show-progress -O "${VT_UTIL_DIR}/10_postgis-vt-util.sql" \
        https://raw.githubusercontent.com/openmaptiles/postgis-vt-util/${VT_UTIL_VERSION}/postgis-vt-util.sql
 
 # Copy tools, imposm, and osmborder into the app dir

@@ -30,9 +30,9 @@ RUN DIR=/downloads/lake_centerline \
 FROM osgeo/gdal:alpine-normal-3.0.2
 LABEL maintainer="Yuri Astrakhan <YuriAstrakhan@gmail.com>"
 
-ENV DATA_DIR=/import
+ENV IMPORT_DIR=/import
 
-COPY --from=downloader /downloads $DATA_DIR/
+COPY --from=downloader /downloads $IMPORT_DIR/
 
 WORKDIR /usr/src/app
 COPY import_data.sh /usr/src/app
