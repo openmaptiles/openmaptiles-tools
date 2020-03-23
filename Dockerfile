@@ -90,15 +90,16 @@ RUN set -eux ;\
         aria2     `# multi-stream file downloader` \
         graphviz  `# used by layer mapping graphs` \
         sqlite3   `# mbtiles file manipulations`   \
-        gdal-bin  `# installs ogr2ogr` \
+        gdal-bin  `# contains ogr2ogr` \
         osmctools `# osmconvert and other OSM tools` \
-        osmosis   `# (TBD if needed) https://wiki.openstreetmap.org/wiki/Osmosis` \
+        osmosis   `# useful toolset - https://wiki.openstreetmap.org/wiki/Osmosis` \
         postgresql-client-${PG_MAJOR?}  `# psql` \
         \
         `# common tools` \
         ca-certificates \
-        git \
+        curl \
         wget \
+        git \
         \
         `# imposm dependencies` \
         libgeos-dev \
