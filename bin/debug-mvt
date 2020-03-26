@@ -116,8 +116,8 @@ async def main(args):
         )
         layer_sql = mvt.generate_layer(layer_def)
         if verbose:
-            print(f"\n======= Querying layer {layer_id} =======\n{query.strip()}\n"
-                  f"== MVT SQL\n{layer_sql}")
+            print(f"\n======= Querying layer {layer_id} (#{layer_def.index}) =======\n"
+                  f"{query.strip()}\n== MVT SQL\n{layer_sql}")
 
         # Re-order columns - move osm_id and geometry fields to the right of the table
         names = {
