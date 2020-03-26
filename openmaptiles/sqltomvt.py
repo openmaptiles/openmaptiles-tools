@@ -19,7 +19,8 @@ class MvtGenerator:
                  zoom: Union[str, int], x: Union[str, int], y: Union[str, int],
                  layer_ids: List[str] = None, exclude_layers=False,
                  key_column=False, gzip: Union[int, bool] = False,
-                 use_feature_id: bool = None, test_geometry=False, extent=4096):
+                 use_feature_id: bool = None, test_geometry=False,
+                 order_layers: bool = True, extent=4096):
         if isinstance(tileset, str):
             self.tileset = Tileset.parse(tileset)
         else:
@@ -30,6 +31,7 @@ class MvtGenerator:
         self.key_column = key_column
         self.gzip = gzip
         self.test_geometry = test_geometry
+        self.order_layers = order_layers
         self.set_layer_ids(layer_ids, exclude_layers)
         self.zoom = zoom
         self.x = x
@@ -70,7 +72,7 @@ class MvtGenerator:
         self.layer_ids = set(layer_ids or [])
         self.exclude_layers = exclude_layers
 
-    def generate_sqltomvt_func(self, fname):
+    def generate_sqltomvt_func(self, fname) -> str:
         """
         Creates a SQL function that returns a single bytea value or null
         """
@@ -81,7 +83,7 @@ RETURNS {'TABLE(mvt bytea, key text)' if self.key_column else 'bytea'} AS $$
 {self.generate_sql()};
 $$ LANGUAGE SQL STABLE RETURNS NULL ON NULL INPUT;"""
 
-    def generate_sqltomvt_preparer(self, fname):
+    def generate_sqltomvt_preparer(self, fname) -> str:
         """
         Creates a SQL prepared statement returning 0 or 1 row with a single mvt column.
         """
@@ -97,10 +99,11 @@ END $$;
 PREPARE {fname}(integer, integer, integer) AS
 {self.generate_sql()};"""
 
-    def generate_sql(self):
+    def generate_sql(self) -> str:
         queries = []
-        for layer_id, layer in self.get_layers():
-            queries.append(self.generate_layer(layer))
+        all_layers = list(self.get_layers())
+        for layer_id, layer in all_layers:
+            queries.append(self.generate_layer(layer, len(all_layers) > 1))
 
         extras = ''
         if self.test_geometry:
@@ -118,6 +121,9 @@ PREPARE {fname}(integer, integer, integer) AS
                 assert 0 <= self.gzip <= 9
                 concatenate_layers = f"GZIP({concatenate_layers}, {self.gzip})"
         union_layers = "\n    UNION ALL\n  ".join(queries)
+        if self.order_layers and len(queries) > 1:
+            union_layers = f"{union_layers}\n    ORDER BY _layer_index"
+
         query = f"""\
 SELECT {concatenate_layers} AS mvt{extras} FROM (
   {union_layers}
@@ -130,7 +136,7 @@ SELECT {concatenate_layers} AS mvt{extras} FROM (
 
         return query + '\n'
 
-    def generate_layer(self, layer: Layer):
+    def generate_layer(self, layer: Layer, order_layers=False) -> str:
         """
         Convert layer definition into a SQL statement.
         """
@@ -146,6 +152,8 @@ SELECT {concatenate_layers} AS mvt{extras} FROM (
                       f'-COALESCE(ST_IsValid(mvtgeometry)::int, 1))' \
                       f'+COALESCE(bad_geos, 0)' \
                       f') as bad_geos'
+        if order_layers:
+            extras += f', {layer.index} as _layer_index'
 
         # PostGIS < v3 did not support feature_ids
         # TODO: remove key field (osm_id) from query result to prevent

@@ -66,8 +66,15 @@ class Layer:
 
     def __init__(self,
                  layer_source: Union[str, Path, ParsedData],
-                 tileset: 'Tileset' = None):
+                 tileset: 'Tileset' = None,
+                 index: int = None):
+        """
+        :param layer_source: load layer from this source, e.g. a file
+        :param tileset: parent tileset object (optional)
+        :param index: layer's position index within the tileset
+        """
         self.tileset = tileset
+        self.index = index
 
         if isinstance(layer_source, ParsedData):
             self.filename = layer_source.path
@@ -218,8 +225,14 @@ class Tileset:
 
         self.definition = self.definition['tileset']
         self.layers = []
-        for layer_filename in self.definition['layers']:
-            self.layers.append(Layer(layer_filename, self))
+        self.layers_by_id = {}
+        for index, layer_filename in enumerate(self.definition['layers']):
+            layer = Layer(layer_filename, self, index)
+            if layer.id in self.layers_by_id:
+                raise ValueError(f"Layer '{layer.id}' is defined more than once")
+            self.layers.append(layer)
+            self.layers_by_id[layer.id] = layer
+
         validate_properties(self, f"Tileset {self.filename}")
 
     @deprecated(version='3.2.0', reason='use named properties instead')

@@ -8,6 +8,11 @@ Usage:
                       [--no-geom-test] [--no-mvtgeometry] [--null] [--verbose]
                       [--pghost=<host>] [--pgport=<port>] [--dbname=<db>]
                       [--user=<user>] [--password=<password>]
+  debug-mvt <tileset> <tile_zxy> --summary [--key] [--gzip [<gzlevel>]] [--no-sort]
+                      [--layer=<layer>]... [--exclude-layers]
+                      [--no-geom-test] [--verbose]
+                      [--pghost=<host>] [--pgport=<port>] [--dbname=<db>]
+                      [--user=<user>] [--password=<password>]
   debug-mvt --help
   debug-mvt --version
 
@@ -15,6 +20,11 @@ Usage:
   <tile_zxy>            Tile ID, e.g. "10/4/8" for zoom=10, x=4, y=8
 
 Options:
+  -s --summary          If set, run the entire query in one request, showing tile summary.
+  --key                 If set with --summary, will show a `key` column (md5 of the mvt data)
+  --gzip                If set with --summary, will compress MVT with gzip, with optional level=0..9.
+                        `gzip()` is available from https://github.com/pramsey/pgsql-gzip
+  --no-sort             Do not force layers in the same order as declared in tileset.
   -l --layer=<layer>    If set, limit tile generation to just this layer (could be multiple)
   -x --exclude-layers   If set, uses all layers except the ones listed with -l (-l is required)
   -c --column=<layer>   If set, limits output to just the given field (could be multiple)
@@ -36,11 +46,13 @@ PostgreSQL Options:
   --password=<password> Postgres password. By default uses POSTGRES_PASSWORD env or "openmaptiles" if not set.
 """
 import asyncio
+import gzip
 import re
 
 import asyncpg
 from docopt import docopt, DocoptExit
 from tabulate import tabulate
+from time import time
 
 import openmaptiles
 from openmaptiles.pgutils import parse_pg_args, get_postgis_version, PgWarnings
@@ -76,7 +88,53 @@ async def main(args):
         layer_ids=layers,
         exclude_layers=exclude_layers,
         postgis_ver=await get_postgis_version(conn),
+        gzip=args['--gzip'] and (args['<gzlevel>'] or True),
+        key_column=args['--key'] or False,
+        order_layers=not args['--no-sort'],
     )
+
+    if args['--summary']:
+        mvt.test_geometry = test_geometry
+        query = mvt.generate_sql()
+        if verbose:
+            print(f"\n======= Querying Tile {zoom}/{x}/{y} =======")
+            print(f"{query.strip()}")
+        start_ts = time()
+        try:
+            result = await conn.fetchrow(query)
+            took = time() - start_ts
+        except asyncpg.PostgresError as err:
+            took = time() - start_ts
+            msg = f"####### ERROR getting tile {zoom}/{x}/{y} ({took:.2f}s) #######"
+            line = '#' * len(msg)
+            print(f"{line}\n{msg}\n{line}\n{err.__class__.__name__}: {err}")
+            if hasattr(err, "context") and err.context:
+                print(f"context: {err.context}")
+            pg_warnings.print()
+            if not verbose:
+                # Always print failed SQL
+                print(f"\n== FULL QUERY\n{query.strip()}")
+            print(f"{line}\n")
+            return
+        if result:
+            info = "(filtered layers only) " if layers or exclude_layers else ''
+            print(f"======= Tile {zoom}/{x}/{y} took {took:.2f}s {info}=======")
+            pg_warnings.print()
+            tile_size = f"{len(result['mvt']):,} bytes"
+            if args['--gzip']:
+                uncompressed = len(gzip.decompress(result['mvt']))
+                res = {
+                    "compressed tile size": tile_size,
+                    "uncompressed tile size": f"{uncompressed:,} bytes",
+                }
+            else:
+                res = {"tile size": tile_size}
+            res.update({k: str(v) for k, v in result.items() if k != "mvt"})
+            print(tabulate([res], headers="keys"))
+        else:
+            print(f"======= No data in tile {zoom}/{x}/{y} =======")
+            pg_warnings.print()
+        return
 
     def geom_info(expr):
         return f"GeometryType({expr}) || '(' || ST_MemSize({expr}) || ')'"
@@ -116,8 +174,8 @@ async def main(args):
         )
         layer_sql = mvt.generate_layer(layer_def)
         if verbose:
-            print(f"\n======= Querying layer {layer_id} =======\n{query.strip()}\n"
-                  f"== MVT SQL\n{layer_sql}")
+            print(f"\n======= Querying layer {layer_id} (#{layer_def.index}) =======\n"
+                  f"{query.strip()}\n== MVT SQL\n{layer_sql}")
 
         # Re-order columns - move osm_id and geometry fields to the right of the table
         names = {
@@ -149,8 +207,8 @@ async def main(args):
             pg_warnings.print()
             print(tabulate(result, headers="keys"))
         else:
-            info = f' (layer data had non-zero {layer_mvt} bytes)' if layer_mvt else ''
-            print(f"======= No data in layer {layer_id}{info}")
+            info = layer_mvt and f' (layer data had non-zero {layer_mvt:,} bytes)' or ''
+            print(f"======= No data in layer {layer_id}{info} =======")
             pg_warnings.print()
 
 
