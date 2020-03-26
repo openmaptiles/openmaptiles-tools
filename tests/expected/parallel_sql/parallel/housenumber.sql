@@ -1,8 +1,14 @@
 DO $$ BEGIN RAISE NOTICE 'Processing layer housenumber'; END$$;
 
+-- Layer housenumber - ./housenumber_centroid.sql
+
+
 -- etldoc: osm_housenumber_point -> osm_housenumber_point
 UPDATE osm_housenumber_point SET geometry=topoint(geometry)
 WHERE ST_GeometryType(geometry) <> 'ST_Point';
+
+-- Layer housenumber - ./layer.sql
+
 
 -- etldoc: layer_housenumber[shape=record fillcolor=lightpink, style="rounded,filled",
 -- etldoc:     label="layer_housenumber | <z14_> z14_" ] ;
