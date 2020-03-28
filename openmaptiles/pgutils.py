@@ -1,6 +1,5 @@
-import re
 from os import getenv
-from typing import Tuple, Dict, Union
+from typing import Dict, List, Tuple
 
 import asyncpg
 from asyncpg import UndefinedFunctionError, UndefinedObjectError, Connection
@@ -97,3 +96,47 @@ class PgWarnings:
         for msg in self.messages:
             self.print_message(msg)
         self.messages = []
+
+
+async def get_sql_types(connection: Connection):
+    """
+    Get Postgres types that we can handle,
+    and return the mapping of OSM type id (oid) => MVT style type
+    """
+    sql_to_mvt_types = dict(
+        bool="Boolean",
+        text="String",
+        int4="Number",
+        int8="Number",
+    )
+    types = await connection.fetch(
+        "select oid, typname from pg_type where typname = ANY($1::text[])",
+        list(sql_to_mvt_types.keys())
+    )
+    return {row['oid']: sql_to_mvt_types[row['typname']] for row in types}
+
+
+async def get_vector_layers(conn, mvt) -> List[dict]:
+    pg_types = await get_sql_types(conn)
+    vector_layers = []
+    for layer_id, layer in mvt.get_layers():
+        fields = await mvt.validate_layer_fields(conn, layer_id, layer)
+        unknown = {
+            name: oid
+            for name, oid in fields.items() if oid not in pg_types
+        }
+        if unknown:
+            print(f"Ignoring fields with unknown SQL types (OIDs): "
+                  f"[{', '.join([f'{n} ({o})' for n, o in unknown.items()])}]")
+
+        vector_layers.append(dict(
+            id=layer.id,
+            description=layer.description,
+            minzoom=mvt.tileset.minzoom,
+            maxzoom=mvt.tileset.maxzoom,
+            fields={name: pg_types[type_oid]
+                    for name, type_oid in fields.items()
+                    if type_oid in pg_types},
+        ))
+
+    return vector_layers
