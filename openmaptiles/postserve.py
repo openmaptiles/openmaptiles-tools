@@ -13,7 +13,8 @@ from tornado.log import access_log
 # noinspection PyUnresolvedReferences
 from tornado.web import Application, RequestHandler
 
-from openmaptiles.pgutils import show_settings, get_postgis_version, PgWarnings
+from openmaptiles.pgutils import show_settings, get_postgis_version, PgWarnings, \
+    get_vector_layers
 from openmaptiles.sqltomvt import MvtGenerator
 from openmaptiles.tileset import Tileset
 
@@ -132,7 +133,8 @@ class GetMetadata(RequestHandledWithCors):
 
 class Postserve:
     pool: Pool
-    mvt: MvtGenerator
+    metadata: Dict[str, Any]
+    generated_query: str
 
     def __init__(self, url, port, pghost, pgport, dbname, user, password,
                  layers, tileset_path, sql_file, key_column, disable_feature_ids,
@@ -160,28 +162,84 @@ class Postserve:
 
         self.tileset = Tileset.parse(self.tileset_path)
 
-        self.metadata: Dict[str, Any] = dict(
-            format="pbf",
-            name=self.tileset.name,
-            id=self.tileset.id,
-            bounds=self.tileset.bounds,
-            center=self.tileset.center,
-            maxzoom=self.tileset.maxzoom,
-            minzoom=self.tileset.minzoom,
-            version=self.tileset.version,
-            attribution=self.tileset.attribution,
-            description=self.tileset.description,
-            pixel_scale=self.tileset.pixel_scale,
-            tilejson="2.0.0",
-            tiles=[f"{self.url}" + "/tiles/{z}/{x}/{y}.pbf"],
-            vector_layers=[],
-        )
+    def create_metadata(self,
+                        urls: List[str],
+                        vector_layers: List[dict],
+                        ) -> Dict[str, Any]:
+        """Convert tileset to the tilejson spec
+           https://github.com/mapbox/tilejson-spec/tree/master/2.2.0#2-file-format
+           A few optional parameters were removed as irrelevant
+        """
+        return {
+            # REQUIRED. A semver.org style version number. Describes the version of
+            # the TileJSON spec that is implemented by this JSON object.
+            "tilejson": "2.2.0",
+
+            # OPTIONAL. Default: null. A name describing the tileset. The name can
+            # contain any legal character. Implementations SHOULD NOT interpret the
+            # name as HTML.
+            "name": self.tileset.name,
+
+            # OPTIONAL. Default: null. A text description of the tileset. The
+            # description can contain any legal character. Implementations SHOULD NOT
+            # interpret the description as HTML.
+            "description": self.tileset.description,
+
+            # OPTIONAL. Default: "1.0.0". A semver.org style version number. When
+            # changes across tiles are introduced, the minor version MUST change.
+            # This may lead to cut off labels. Therefore, implementors can decide to
+            # clean their cache when the minor version changes. Changes to the patch
+            # level MUST only have changes to tiles that are contained within one tile.
+            # When tiles change significantly, the major version MUST be increased.
+            # Implementations MUST NOT use tiles with different major versions.
+            "version": self.tileset.version,
+
+            # OPTIONAL. Default: null. Contains an attribution to be displayed
+            # when the map is shown to a user. Implementations MAY decide to treat this
+            # as HTML or literal text. For security reasons, make absolutely sure that
+            # this field can't be abused as a vector for XSS or beacon tracking.
+            "attribution": self.tileset.attribution,
+
+            # REQUIRED. An array of tile endpoints. {z}, {x} and {y}, if present,
+            # are replaced with the corresponding integers. If multiple endpoints are specified, clients
+            # may use any combination of endpoints. All endpoints MUST return the same
+            # content for the same URL. The array MUST contain at least one endpoint.
+            "tiles": urls,
+
+            # OPTIONAL. Default: 0. >= 0, <= 30.
+            # An integer specifying the minimum zoom level.
+            "minzoom": self.tileset.minzoom,
+
+            # OPTIONAL. Default: 30. >= 0, <= 30.
+            # An integer specifying the maximum zoom level. MUST be >= minzoom.
+            "maxzoom": self.tileset.maxzoom,
+
+            # OPTIONAL. Default: [-180, -90, 180, 90].
+            # The maximum extent of available map tiles. Bounds MUST define an area
+            # covered by all zoom levels. The bounds are represented in WGS:84
+            # latitude and longitude values, in the order left, bottom, right, top.
+            # Values may be integers or floating point numbers.
+            "bounds": self.tileset.bounds,
+
+            # OPTIONAL. Default: null.
+            # The first value is the longitude, the second is latitude (both in
+            # WGS:84 values), the third value is the zoom level as an integer.
+            # Longitude and latitude MUST be within the specified bounds.
+            # The zoom level MUST be between minzoom and maxzoom.
+            # Implementations can use this value to set the default location. If the
+            # value is null, implementations may use their own algorithm for
+            # determining a default location.
+            "center": self.tileset.center,
+
+            # This is an undocumented extension to the 2.2 spec that is often used:
+            # https://github.com/mapbox/tilejson-spec/issues/14
+            "vector_layers": vector_layers,
+        }
 
     async def init_connection(self):
-
         async with self.pool.acquire() as conn:
             await show_settings(conn)
-            self.mvt = MvtGenerator(
+            mvt = MvtGenerator(
                 self.tileset,
                 postgis_ver=await get_postgis_version(conn),
                 zoom='$1', x='$2', y='$3',
@@ -192,26 +250,10 @@ class Postserve:
                 test_geometry=self.test_geometry,
                 exclude_layers=self.exclude_layers,
             )
-            pg_types = await get_sql_types(conn)
-            for layer_id, layer in self.mvt.get_layers():
-                fields = await self.mvt.validate_layer_fields(conn, layer_id, layer)
-                unknown = {
-                    name: oid
-                    for name, oid in fields.items() if oid not in pg_types
-                }
-                if unknown:
-                    print(f"Ignoring fields with unknown SQL types (OIDs): "
-                          f"[{', '.join([f'{n} ({o})' for n, o in unknown.items()])}]")
-
-                self.metadata["vector_layers"].append(dict(
-                    id=layer.id,
-                    fields={name: pg_types[type_oid]
-                            for name, type_oid in fields.items()
-                            if type_oid in pg_types},
-                    maxzoom=self.metadata["maxzoom"],
-                    minzoom=self.metadata["minzoom"],
-                    description=layer.description,
-                ))
+            self.generated_query = mvt.generate_sql()
+            self.metadata = self.create_metadata(
+                [self.url + "/tiles/{z}/{x}/{y}.pbf"],
+                await get_vector_layers(conn, mvt))
 
     def serve(self):
         access_log.setLevel(logging.INFO if self.verbose else logging.ERROR)
@@ -234,7 +276,7 @@ class Postserve:
                 query = stream.read()
             print(f'Loaded {self.sql_file}')
         else:
-            query = self.mvt.generate_sql()
+            query = self.generated_query
 
         if self.verbose:
             print(f'Using SQL query:\n\n-------\n\n{query}\n\n-------\n\n')
@@ -258,21 +300,3 @@ class Postserve:
         print(f"Postserve started, listening on 0.0.0.0:{self.port}")
         print(f"Use {self.url} as the data source")
         IOLoop.instance().start()
-
-
-async def get_sql_types(connection: Connection):
-    """
-    Get Postgres types that we can handle,
-    and return the mapping of OSM type id (oid) => MVT style type
-    """
-    sql_to_mvt_types = dict(
-        bool="Boolean",
-        text="String",
-        int4="Number",
-        int8="Number",
-    )
-    types = await connection.fetch(
-        "select oid, typname from pg_type where typname = ANY($1::text[])",
-        list(sql_to_mvt_types.keys())
-    )
-    return {row['oid']: sql_to_mvt_types[row['typname']] for row in types}
