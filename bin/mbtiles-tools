@@ -3,22 +3,24 @@
 A toolbox to manage the mbtiles file.
 
 Usage:
-  mbtiles-tools find-dups <mbtilesfile> [--output=<file>] [--verbose]
-  mbtiles-tools impute <mbtilesfile> --zoom=<zoom>
+  mbtiles-tools find-dups <mbtiles-file> [--output=<file>] [--verbose]
+  mbtiles-tools impute <mbtiles-file> --zoom=<zoom>
                 [--key=<hash>... | --keyfile=<file>] [--output=<file>]
                 [--verbose]
-  mbtiles-tools meta-all <mbtilesfile>
-  mbtiles-tools meta-get <mbtilesfile> <metakey>
-  mbtiles-tools meta-set <mbtilesfile> <metakey> [<newvalue>]
-  mbtiles-tools meta-generate <mbtilesfile> <tileset>
+  mbtiles-tools meta-all <mbtiles-file>
+  mbtiles-tools meta-get <mbtiles-file> <metakey>
+  mbtiles-tools meta-set <mbtiles-file> <metakey> [<newvalue>]
+  mbtiles-tools meta-generate <mbtiles-file> <tileset>
                 [--reset] [--auto-minmax]
                 [--pghost=<host>] [--pgport=<port>] [--dbname=<db>]
                 [--user=<user>] [--password=<password>]
+  mbtiles-tools meta-copy <mbtiles-file> <target-mbtiles-file>
+                [--reset] [--auto-minmax]
   mbtiles-tools --help
   mbtiles-tools --version
 
 
-  <mbtilesfile>  sqlite3 database file with .mbtiles extension
+  <mbtiles-file>  sqlite3 database file with .mbtiles extension
   <tileset>      Tileset definition yaml file
 
 Actions:
@@ -37,8 +39,11 @@ Actions:
                     BBOX, CENTER_ZOOM -- center zoom will only be used if BBOX is set
                     MIN_ZOOM, MAX_ZOOM -- will override tileset except if --auto-minmax is set
                     METADATA_ATTRIBUTION, METADATA_DESCRIPTION, METADATA_NAME, METADATA_VERSION
-                 Supports env variables METADATA_* for overwriting metadata values.
                  Requires a database connection.
+  meta-copy      Copy all metadata from one mbtile file to another.
+                 While copying, values could also be updated by the same env vars as
+                 meta-generate, and can also be modified with --auto-minmax.
+
 
 Options:
   -z --zoom=<zoom>      Process a single zoom. If set, ignores min/max.
@@ -48,8 +53,8 @@ Options:
   -f --keyfile=<file>   A file with tile Keys, one per line.
   -o --output=<file>    Write a list of tiles to this file. Use '-' for stdout.
   -v --verbose          Print additional debugging information.
-  --reset               For meta-generate, when set will clear all existing metadata first.
-  -a --auto-minmax      For meta-generate, query data tables for available min/max zoom.
+  --reset               For meta-generate and meta-copy, clear all existing metadata first.
+  -a --auto-minmax      For meta-generate and meta-copy, query data tables for available min/max zoom.
   --help                Show this screen.
   --version             Show version.
 
@@ -80,31 +85,36 @@ def main():
     elif args['impute']:
         impute(args)
     elif args['meta-all']:
-        Metadata(args['<mbtilesfile>']).print_all()
+        Metadata(args['<mbtiles-file>']).print_all()
     elif args['meta-get']:
-        Metadata(args['<mbtilesfile>']).get_value(args['<metakey>'])
+        Metadata(args['<mbtiles-file>']).get_value(args['<metakey>'])
     elif args['meta-set']:
-        Metadata(args['<mbtilesfile>']).set_value(
+        Metadata(args['<mbtiles-file>']).set_value(
             args['<metakey>'], args['<newvalue>'])
     elif args['meta-generate']:
         pghost, pgport, dbname, user, password = parse_pg_args(args)
-        asyncio.run(Metadata(args['<mbtilesfile>']).generate(
+        asyncio.run(Metadata(args['<mbtiles-file>']).generate(
             args['<tileset>'], reset=args['--reset'], auto_minmax=args['--auto-minmax'],
             pghost=pghost, pgport=pgport, dbname=dbname, user=user, password=password))
+    elif args['meta-copy']:
+        Metadata(args['<mbtiles-file>']).copy(
+            args['<target-mbtiles-file>'],
+            reset=args['--reset'],
+            auto_minmax=args['--auto-minmax'])
     else:
         raise DocoptExit('Invalid command')
 
 
 def find_dups(args):
     KeyFinder(
-        mbtiles=args['<mbtilesfile>'],
+        mbtiles=args['<mbtiles-file>'],
         outfile=args['--output'] or '-',
         verbose=args['--verbose'] or (args['--output'] and args['--output'] != '-'),
     ).run()
 
 
 def impute(args):
-    file = args['<mbtilesfile>']
+    file = args['<mbtiles-file>']
     verbose = args['--verbose']
     zoom = int(args['--zoom'])
     if zoom <= 0:

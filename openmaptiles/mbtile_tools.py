@@ -205,6 +205,26 @@ def validate(name, value):
     return value, True
 
 
+async def get_minmax(cursor):
+    cursor.execute("SELECT MIN(zoom_level), MAX(zoom_level) FROM map")
+    min_z, max_z = cursor.fetchone()
+    if min_z is None:
+        raise ValueError("Unable to get min/max zoom - tile data is empty")
+    return min_z, max_z
+
+
+def update_metadata(cursor, metadata, reset):
+    if reset:
+        cursor.execute("DELETE FROM metadata;")
+    for name, value in metadata.items():
+        _, is_valid = validate(name, value)
+        if not is_valid:
+            raise ValueError(f"Invalid {name}={value}")
+        cursor.execute(
+            "INSERT OR REPLACE INTO  metadata(name, value) VALUES (?, ?);",
+            [name, value])
+
+
 class Metadata:
     def __init__(self, mbtiles) -> None:
         self.mbtiles = mbtiles
@@ -284,21 +304,42 @@ class Metadata:
         with sqlite3.connect(self.mbtiles) as conn:
             cursor = conn.cursor()
             if auto_minmax:
-                cursor.execute("SELECT MIN(zoom_level), MAX(zoom_level) FROM map")
-                min_z, max_z = cursor.fetchone()
-                if min_z is None:
-                    raise ValueError("Unable to get min/max zoom - tile data is empty")
-                metadata["minzoom"] = min_z
-                metadata["maxzoom"] = max_z
+                metadata["minzoom"], metadata["maxzoom"] = await get_minmax(cursor)
+            update_metadata(cursor, metadata, reset)
 
-            if reset:
-                cursor.execute("DELETE FROM metadata;")
-            for name, value in metadata.items():
-                _, is_valid = validate(name, value)
-                if not is_valid:
-                    raise ValueError(f"Invalid {name}={value}")
-                cursor.execute(
-                    "INSERT OR REPLACE INTO  metadata(name, value) VALUES (?, ?);",
-                    [name, value])
+        print("The metadata now contains these values:")
+        self.print_all()
+
+    def copy(self, target_mbtiles, reset, auto_minmax):
+        with sqlite3.connect(self.mbtiles) as conn:
+            metadata = {k: v for k, v in
+                        query(conn, "SELECT name, value FROM metadata", [])}
+
+        def update_from_env(param, env_var):
+            val = os.environ.get(env_var)
+            if val is not None:
+                metadata[param] = val
+
+        update_from_env('name', 'METADATA_NAME')
+        update_from_env('minzoom', 'MIN_ZOOM')
+        update_from_env('maxzoom', 'MAX_ZOOM')
+        update_from_env('attribution', 'METADATA_ATTRIBUTION')
+        update_from_env('description', 'METADATA_DESCRIPTION')
+        update_from_env('version', 'METADATA_VERSION')
+
+        metadata['filesize'] = os.path.getsize(target_mbtiles)
+
+        bbox_str = os.environ.get('BBOX')
+        if bbox_str:
+            bbox = Bbox(bbox=bbox_str,
+                        center_zoom=os.environ.get('CENTER_ZOOM'))
+            metadata["bounds"] = bbox.bounds_str()
+            metadata["center"] = bbox.center_str()
+
+        with sqlite3.connect(target_mbtiles) as conn:
+            cursor = conn.cursor()
+            if auto_minmax:
+                metadata["minzoom"], metadata["maxzoom"] = await get_minmax(cursor)
+            update_metadata(cursor, metadata, reset)
         print("The metadata now contains these values:")
         self.print_all()
