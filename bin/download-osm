@@ -203,8 +203,8 @@ class Catalog:
                 if attr not in attr_to_hash:
                     attr_to_hash[attr] = source.hash
                 elif attr_to_hash[attr] != source.hash:
-                    print(f"Multiple files with the same {attr_desc} have different "
-                          f"hashes:")
+                    print(f"ERROR: Multiple files with the same {attr_desc}"
+                          f" have different hashes:")
                     print(f"* {source}, {attr_desc}={attr}, hash={source.hash}")
                     src = sources_by_hash[attr_to_hash[attr]][0]
                     print(f"* {src}, {attr_desc}={getattr(src, attr_name)}, "
@@ -298,7 +298,10 @@ class Source:
         try:
             if verbose:
                 print(f"Getting md5 checksum from {self.url_hash}")
-            self.hash = (await fetch(session, self.url_hash)).strip().split(' ')[0]
+            hash = (await fetch(session, self.url_hash)).strip().split(' ')[0]
+            if not re.match(r'^[a-fA-F0-9]{32}$', hash):
+                raise ValueError(f"Invalid md5 hash '{hash}'")
+            self.hash = hash
         except Exception as ex:
             print_err(f"Unable to load md5 hash for {self}: {ex}")
 
