@@ -205,9 +205,12 @@ class Metadata():
     def print_all(self):
         with sqlite3.connect(self.mbtiles) as conn:
             data = list(query(conn, "SELECT name, value FROM metadata", []))
-        width = max((len(v[0]) for v in data))
-        for name, value in sorted(data, key=lambda v: v[0] if v[0] != 'json' else 'zz'):
-            print(f"{name:{width}} {self.validate(name, value)[0]}")
+        if data:
+            width = max((len(v[0]) for v in data))
+            for name, value in sorted(data, key=lambda v: v[0] if v[0] != 'json' else 'zz'):
+                print(f"{name:{width}} {self.validate(name, value)[0]}")
+        else:
+            print(f"There are no values present in {self.mbtiles} metadata table")
 
     def get_value(self, name):
         with sqlite3.connect(self.mbtiles) as conn:
