@@ -1,58 +1,63 @@
 {
-  "DESCRIPTION": "This is a fake catalog of Geofabrik areas used in testing",
-  "type": "FeatureCollection",
-  "features": [
-    {
-      "type": "Feature",
-      "properties": {
-        "id": "monaco-test",
-        "parent": "europe",
-        "iso3166-1:alpha2": [
-          "MC"
-        ],
-        "name": "A test file",
-        "urls": {
-          "pbf": "http://localhost:8555/monaco-20150428.osm.pbf"
+    "DESCRIPTION": "This is a fake catalog of Geofabrik areas used in testing",
+    "type": "FeatureCollection",
+    "features": [
+        {
+            "type": "Feature",
+            "properties": {
+                "id": "monaco-test",
+                "parent": "europe",
+                "iso3166-1:alpha2": [
+                    "MC"
+                ],
+                "name": "A test file",
+                "urls": {
+                    "pbf": "http://localhost:8555/monaco-20150428.osm.pbf",
+                    "updates": "http://localhost:8555/fake-updates/"
+                }
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "id": "us/michigan",
+                "parent": "north-america",
+                "iso3166-2": [
+                    "US-MI"
+                ],
+                "name": "Michigan",
+                "urls": {
+                    "pbf": "https://download.geofabrik.de/north-america/us/michigan-latest.osm.pbf",
+                    "bz2": "https://download.geofabrik.de/north-america/us/michigan-latest.osm.bz2",
+                    "shp": "https://download.geofabrik.de/north-america/us/michigan-latest-free.shp.zip",
+                    "pbf-internal": "https://osm-internal.download.geofabrik.de/north-america/us/michigan-latest-internal.osm.pbf",
+                    "history": "https://osm-internal.download.geofabrik.de/north-america/us/michigan-internal.osh.pbf",
+                    "taginfo": "https://taginfo.geofabrik.de/north-america/us/michigan/",
+                    "updates": "https://download.geofabrik.de/north-america/us/michigan-updates"
+                }
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "id": "europe",
+                "name": "Europe",
+                "urls": {
+                    "pbf": "https://download.geofabrik.de/europe-latest.osm.pbf",
+                    "updates": "http://localhost:8555/fake-europe-updates/"
+                }
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "id": "north-america",
+                "name": "North America",
+                "urls": {
+                    "pbf": "https://download.geofabrik.de/north-america-latest.osm.pbf",
+                    "updates": "http://localhost:8555/fake-north-america-updates/"
+                }
+            }
         }
-      }
-    },
-    {
-      "type": "Feature",
-      "properties": {
-        "id" : "us/michigan",
-        "parent" : "north-america",
-        "iso3166-2" : [ "US-MI" ],
-        "name" : "Michigan",
-        "urls" : {
-          "pbf" : "https://download.geofabrik.de/north-america/us/michigan-latest.osm.pbf",
-          "bz2" : "https://download.geofabrik.de/north-america/us/michigan-latest.osm.bz2",
-          "shp" : "https://download.geofabrik.de/north-america/us/michigan-latest-free.shp.zip",
-          "pbf-internal" : "https://osm-internal.download.geofabrik.de/north-america/us/michigan-latest-internal.osm.pbf",
-          "history" : "https://osm-internal.download.geofabrik.de/north-america/us/michigan-internal.osh.pbf",
-          "taginfo" : "https://taginfo.geofabrik.de/north-america/us/michigan/",
-          "updates" : "https://download.geofabrik.de/north-america/us/michigan-updates"
-        }
-      }
-    },
-    {
-      "type": "Feature",
-      "properties": {
-        "id" : "europe",
-        "name" : "Europe",
-        "urls" : {
-          "pbf" : "https://download.geofabrik.de/europe-latest.osm.pbf"
-        }
-      }
-    },
-    {
-      "type": "Feature",
-      "properties": {
-        "id" : "north-america",
-        "name" : "North America",
-        "urls" : {
-          "pbf" : "https://download.geofabrik.de/north-america-latest.osm.pbf"
-        }
-      }
-    }
-  ]
+    ]
 }
