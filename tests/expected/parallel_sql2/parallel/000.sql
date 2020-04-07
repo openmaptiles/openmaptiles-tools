@@ -1,3 +1,8 @@
+DO $$ BEGIN RAISE NOTICE 'Processing layer housenumber'; END$$;
+
+-- etldoc: osm_housenumber_point -> osm_housenumber_point
+UPDATE osm_housenumber_point SET geometry=topoint(geometry)
+WHERE ST_GeometryType(geometry) <> 'ST_Point';
 
 -- etldoc: layer_housenumber[shape=record fillcolor=lightpink, style="rounded,filled",
 -- etldoc:     label="layer_housenumber | <z14_> z14_" ] ;
@@ -14,4 +19,6 @@ DROP MATERIALIZED VIEW IF EXISTS layer_housenumber_gen1 CASCADE;
 CREATE MATERIALIZED VIEW layer_housenumber_gen1 AS (
   SELECT ST_Simplify(geometry, 10) AS geometry, osm_id, housenumber
   FROM osm_housenumber_point
-) /* DELAY_MATERIALIZED_VIEW_CREATION */ ;
+)  WITH NO DATA  ;
+
+DO $$ BEGIN RAISE NOTICE 'Finished layer housenumber'; END$$;

@@ -7,8 +7,8 @@ set -o nounset  # -u
 TESTS=tests
 TESTLAYERS="$TESTS/testlayers"
 HTTPDIR="$TESTS/http"
-DEVDOC=${BUILD?}/devdoc
-mkdir -p "${DEVDOC}"
+DEVDOC=${BUILD:?}/devdoc
+mkdir -p "$DEVDOC"
 
 set -x
 
@@ -19,6 +19,7 @@ generate-imposm3  "$TESTLAYERS/testmaptiles.yaml"                               
 
 generate-sql      "$TESTLAYERS/testmaptiles.yaml"                                 > "$BUILD/sql.sql"
 generate-sql      "$TESTLAYERS/testmaptiles.yaml" --dir "$BUILD/parallel_sql"
+generate-sql      "$TESTLAYERS/testmaptiles.yaml" --dir "$BUILD/parallel_sql2" --nodata
 
 generate-sqltomvt "$TESTLAYERS/testmaptiles.yaml"                                 > "$BUILD/mvttile_func.sql"
 generate-sqltomvt "$TESTLAYERS/testmaptiles.yaml" --key                           > "$BUILD/mvttile_func_key.sql"
