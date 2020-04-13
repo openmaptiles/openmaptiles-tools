@@ -61,8 +61,8 @@ if [[ "$task" == "import" || "$task" == "parse" ]]; then
   mkdir -p "$(dirname "${BORDERS_PBF_FILE?}")"
   rm -rf "${BORDERS_PBF_FILE?}"
   rm -rf "${BORDERS_PBF_FILE%.pbf}-temp.pbf"
-  osmborder_filter -o "${BORDERS_PBF_FILE%.pbf}-temp.pbf" "$IMPORT_PBF_FILE"
-  osmconvert --drop-broken-refs --out-pbf -o="$BORDERS_PBF_FILE" "${BORDERS_PBF_FILE%.pbf}-temp.pbf"
+  osmconvert --drop-broken-refs -b=-180,-90,180,90 --out-pbf -o="${BORDERS_PBF_FILE%.pbf}-temp.pbf" "$IMPORT_PBF_FILE"
+  osmborder_filter -o "${BORDERS_PBF_FILE?}" "${BORDERS_PBF_FILE%.pbf}-temp.pbf"  
   rm -rf "${BORDERS_PBF_FILE%.pbf}-temp.pbf"
 
   echo "Creating a CSV borders file $BORDERS_CSV_FILE"
