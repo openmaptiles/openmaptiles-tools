@@ -1,0 +1,5 @@
+{
+  "foo": "bar",
+  "replication_interval": "4h",
+  "replication_url": "http://localhost:8555/fake-updates/"
+}
