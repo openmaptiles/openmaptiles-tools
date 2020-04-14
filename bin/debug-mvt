@@ -60,10 +60,10 @@ async def main(args):
     test_geometry = not args['--no-geom-test']
     verbose = args['--verbose']
     tileset_path = args['<tileset>']
-    zxy = args['<tile_zxy>']
-    if not re.match(r'\d+/\d+/\d+', zxy):
+    zxy = args['<tile_zxy>'].strip()
+    if not re.match(r'^\d+[/, ]+\d+[/, ]+\d+$', zxy):
         raise DocoptExit('Invalid <tile_zxy> - must be in the form "zoom/x/y"')
-    zoom, x, y = [int(v) for v in zxy.split('/')]
+    zoom, x, y = [int(v) for v in re.split(r'[/, ]+', zxy)]
 
     tileset = Tileset.parse(tileset_path)
     conn = await asyncpg.connect(
@@ -131,7 +131,23 @@ async def main(args):
         result = []
         fields = ','.join(columns) if columns else '*'
         has_names = False
-        for row in await conn.fetch(f"SELECT {fields} FROM {query}"):
+
+        try:
+            query_result = await conn.fetch(f"SELECT {fields} FROM {query}")
+        except asyncpg.PostgresError as err:
+            msg = f"####### ERROR in {layer_id} layer #######"
+            line = '#' * len(msg)
+            print(f"{line}\n{msg}\n{line}\n{err.__class__.__name__}: {err}")
+            if hasattr(err, "context") and err.context:
+                print(f"context: {err.context}")
+            pg_warnings.print()
+            if not verbose:
+                # Always print failed SQL
+                print(f"\n== FULL QUERY\n{query.strip()}\n\n== MVT SQL\n{layer_sql}")
+            print(f"{line}\n")
+            continue
+
+        for row in query_result:
             vals = list(row.items())
             if not columns:
                 vals.sort(key=lambda v: names[v[0]] if v[0] in names else v[0])

@@ -16,7 +16,7 @@ Usage:
 
 Options:
   -v --postgis-ver=<v>  Which version of PostGIS to target.  [default: 3.0]
-                        This value changes optimizes generated SQL for the specific ver.
+                        This parameter optimizes generated SQL for the specific ver.
   --fname=<name>        Name of the generated function  [default: gettile]
   -f --function         Generate function generation SQL [default]
   -p --prepared         Generate prepared statement SQL

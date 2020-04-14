@@ -2,6 +2,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import List, Union, Dict, Any, Callable
 
+import json
 import sys
 import yaml
 from deprecated import deprecated
