@@ -63,6 +63,7 @@ if [[ "$task" == "import" || "$task" == "parse" ]]; then
   if [[ "${BORDERS_CLEANUP?}" == "true" ]]; then
     # Some OSM extracts may include references to elements that are not included in the extract
     echo "Cleaning-up broken references from $IMPORT_PBF_FILE into $BORDERS_CLEANUP_FILE"
+    mkdir -p "$(dirname "${BORDERS_CLEANUP?}")"
     osmconvert --drop-broken-refs -b=-180,-90,180,90 --out-pbf -o="${BORDERS_CLEANUP_FILE}" "$IMPORT_PBF_FILE"
     IMPORT_PBF_FILE="$BORDERS_CLEANUP_FILE"
   else
