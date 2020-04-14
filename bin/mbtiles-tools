@@ -3,27 +3,47 @@
 A toolbox to manage the mbtiles file.
 
 Usage:
-  mbtiles-tools find-dups <mbtilesfile> [--output=<file>] [--verbose]
-  mbtiles-tools impute <mbtilesfile> --zoom=<zoom>
+  mbtiles-tools find-dups <mbtiles-file> [--output=<file>] [--verbose]
+  mbtiles-tools impute <mbtiles-file> --zoom=<zoom>
                 [--key=<hash>... | --keyfile=<file>] [--output=<file>]
                 [--verbose]
-  mbtiles-tools meta-all <mbtilesfile>
-  mbtiles-tools meta-get <mbtilesfile> <metakey>
-  mbtiles-tools meta-set <mbtilesfile> <metakey> [<newvalue>]
+  mbtiles-tools meta-all <mbtiles-file>
+  mbtiles-tools meta-get <mbtiles-file> <metakey>
+  mbtiles-tools meta-set <mbtiles-file> <metakey> [<newvalue>]
+  mbtiles-tools meta-generate <mbtiles-file> <tileset>
+                [--reset] [--auto-minmax]
+                [--pghost=<host>] [--pgport=<port>] [--dbname=<db>]
+                [--user=<user>] [--password=<password>]
+  mbtiles-tools meta-copy <mbtiles-file> <target-mbtiles-file>
+                [--reset] [--auto-minmax]
   mbtiles-tools --help
   mbtiles-tools --version
 
+
+  <mbtiles-file>  sqlite3 database file with .mbtiles extension
+  <tileset>      Tileset definition yaml file
+
 Actions:
-  find-dups Get a list of duplicate tile keys at a given zoom levels (optional),
-            limiting by the tile size (optional).
-  impute    Look at the zoom level one less than <zoom>, and find all tiles that match
-            the given keys (md5 hashes as strings or a file). For each found tile,
-            add tiles at the higher zooms with the same content as the found ones.
-            For example, given a key for an empty water tile, one could clone all such
-            water tiles from zoom 13 to zoom 14 by using --zoom=14 --key=<hash>
-  meta-all  validates and prints all values in the metadata table
-  meta-get  Gets a single value from metadata table
-  meta-set  Sets a single value in the metadata table, or deletes it if no value.
+  find-dups      Get a list of duplicate tile keys at a given zoom levels (optional),
+                 limiting by the tile size (optional).
+  impute         Look at the zoom level one less than <zoom>, and find all tiles that match
+                 the given keys (md5 hashes as strings or a file). For each found tile,
+                 add tiles at the higher zooms with the same content as the found ones.
+                 For example, given a key for an empty water tile, one could clone all such
+                 water tiles from zoom 13 to zoom 14 by using --zoom=14 --key=<hash>
+  meta-all       validates and prints all values in the metadata table
+  meta-get       Gets a single value from metadata table
+  meta-set       Sets a single value in the metadata table, or deletes it if no value.
+  meta-generate  Initialize metadata table with the values from Postgres and tileset,
+                 optionally overriding the bounding box and other params with env vars:
+                    BBOX, CENTER_ZOOM -- center zoom will only be used if BBOX is set
+                    MIN_ZOOM, MAX_ZOOM -- will override tileset except if --auto-minmax is set
+                    METADATA_ATTRIBUTION, METADATA_DESCRIPTION, METADATA_NAME, METADATA_VERSION
+                 Requires a database connection.
+  meta-copy      Copy all metadata from one mbtile file to another.
+                 While copying, values could also be updated by the same env vars as
+                 meta-generate, and can also be modified with --auto-minmax.
+
 
 Options:
   -z --zoom=<zoom>      Process a single zoom. If set, ignores min/max.
@@ -33,17 +53,29 @@ Options:
   -f --keyfile=<file>   A file with tile Keys, one per line.
   -o --output=<file>    Write a list of tiles to this file. Use '-' for stdout.
   -v --verbose          Print additional debugging information.
-  --maxsize=<size>      Ensure tile size is no bigger than <size>.
-  --force               Force action, see action description.
+  --reset               For meta-generate and meta-copy, clear all existing metadata first.
+  -a --auto-minmax      For meta-generate and meta-copy, query data tables for available min/max zoom.
   --help                Show this screen.
   --version             Show version.
+
+PostgreSQL Options:
+  -h --pghost=<host>    Postgres hostname. By default uses PGHOST env or "localhost" if not set.
+  -P --pgport=<port>    Postgres port. By default uses PGPORT env or "5432" if not set.
+  -d --dbname=<db>      Postgres db name. By default uses PGDATABASE env or "openmaptiles" if not set.
+  -U --user=<user>      Postgres user. By default uses PGUSER env or "openmaptiles" if not set.
+  --password=<password> Postgres password. By default uses PGPASSWORD env or "openmaptiles" if not set.
+
+These legacy environment variables should not be used, but they are still supported:
+  POSTGRES_HOST, POSTGRES_PORT, POSTGRES_DB, POSTGRES_USER, POSTGRES_PASSWORD
 """
+import asyncio
 from pathlib import Path
 
 from docopt import docopt, DocoptExit
-import openmaptiles
 
+import openmaptiles
 from openmaptiles.mbtile_tools import Imputer, KeyFinder, Metadata
+from openmaptiles.pgutils import parse_pg_args
 
 
 def main():
@@ -53,26 +85,36 @@ def main():
     elif args['impute']:
         impute(args)
     elif args['meta-all']:
-        Metadata(args['<mbtilesfile>']).print_all()
+        Metadata(args['<mbtiles-file>']).print_all()
     elif args['meta-get']:
-        Metadata(args['<mbtilesfile>']).get_value(args['<metakey>'])
+        Metadata(args['<mbtiles-file>']).get_value(args['<metakey>'])
     elif args['meta-set']:
-        Metadata(args['<mbtilesfile>']).set_value(
+        Metadata(args['<mbtiles-file>']).set_value(
             args['<metakey>'], args['<newvalue>'])
+    elif args['meta-generate']:
+        pghost, pgport, dbname, user, password = parse_pg_args(args)
+        asyncio.run(Metadata(args['<mbtiles-file>']).generate(
+            args['<tileset>'], reset=args['--reset'], auto_minmax=args['--auto-minmax'],
+            pghost=pghost, pgport=pgport, dbname=dbname, user=user, password=password))
+    elif args['meta-copy']:
+        Metadata(args['<mbtiles-file>']).copy(
+            args['<target-mbtiles-file>'],
+            reset=args['--reset'],
+            auto_minmax=args['--auto-minmax'])
     else:
         raise DocoptExit('Invalid command')
 
 
 def find_dups(args):
     KeyFinder(
-        mbtiles=args['<mbtilesfile>'],
+        mbtiles=args['<mbtiles-file>'],
         outfile=args['--output'] or '-',
         verbose=args['--verbose'] or (args['--output'] and args['--output'] != '-'),
     ).run()
 
 
 def impute(args):
-    file = args['<mbtilesfile>']
+    file = args['<mbtiles-file>']
     verbose = args['--verbose']
     zoom = int(args['--zoom'])
     if zoom <= 0:
@@ -84,7 +126,7 @@ def impute(args):
     elif args['--key']:
         keys = args['--key']
     else:
-        keys = KeyFinder(file, show_size=False, zoom=zoom-1).run()
+        keys = KeyFinder(file, show_size=False, zoom=zoom - 1).run()
     Imputer(file, keys, zoom, outfile, verbose).run()
 
 
