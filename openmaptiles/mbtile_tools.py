@@ -205,7 +205,7 @@ def validate(name, value):
     return value, True
 
 
-async def get_minmax(cursor):
+def get_minmax(cursor):
     cursor.execute("SELECT MIN(zoom_level), MAX(zoom_level) FROM map")
     min_z, max_z = cursor.fetchone()
     if min_z is None:
@@ -265,17 +265,22 @@ class Metadata:
     async def generate(self, tileset, reset, auto_minmax,
                        pghost, pgport, dbname, user, password):
         ts = Tileset.parse(tileset)
-        async with asyncpg.create_pool(
-            database=dbname, host=pghost, port=pgport, user=user,
-            password=password, min_size=1, max_size=1,
-        ) as pool:
-            async with pool.acquire() as conn:
-                mvt = MvtGenerator(
-                    ts,
-                    postgis_ver=await get_postgis_version(conn),
-                    zoom='$1', x='$2', y='$3',
-                )
-                json_data = dict(vector_layers=await get_vector_layers(conn, mvt))
+        print(f'Connecting to PostgreSQL at {pghost}:{pgport}, db={dbname}, user={user}...')
+        try:
+            async with asyncpg.create_pool(
+                database=dbname, host=pghost, port=pgport, user=user,
+                password=password, min_size=1, max_size=1,
+            ) as pool:
+                async with pool.acquire() as conn:
+                    mvt = MvtGenerator(
+                        ts,
+                        postgis_ver=await get_postgis_version(conn),
+                        zoom='$1', x='$2', y='$3',
+                    )
+                    json_data = dict(vector_layers=await get_vector_layers(conn, mvt))
+        except ConnectionError as err:
+            print(f"Unable to connect to Postgres database: {err}")
+            raise err
 
         # Convert tileset to the metadata object according to mbtiles 1.3 spec
         # https://github.com/mapbox/mbtiles-spec/blob/master/1.3/spec.md#content
@@ -307,7 +312,7 @@ class Metadata:
         with sqlite3.connect(self.mbtiles) as conn:
             cursor = conn.cursor()
             if auto_minmax:
-                metadata["minzoom"], metadata["maxzoom"] = await get_minmax(cursor)
+                metadata["minzoom"], metadata["maxzoom"] = get_minmax(cursor)
             update_metadata(cursor, metadata, reset)
 
         print("The metadata now contains these values:")
@@ -342,7 +347,7 @@ class Metadata:
         with sqlite3.connect(target_mbtiles) as conn:
             cursor = conn.cursor()
             if auto_minmax:
-                metadata["minzoom"], metadata["maxzoom"] = await get_minmax(cursor)
+                metadata["minzoom"], metadata["maxzoom"] = get_minmax(cursor)
             update_metadata(cursor, metadata, reset)
         print("The metadata now contains these values:")
         self.print_all()
