@@ -4,9 +4,8 @@ set -o pipefail
 set -o nounset
 
 : "${IMPORT_DIR:=/import}"
-: "${BORDERS_CLEANUP:=false}"
+: "${BORDERS_CLEANUP:=true}"
 : "${BORDERS_CLEANUP_FILE:="$IMPORT_DIR/borders/cleanup.pbf"}"
-: "${BORDERS_CLEANUP_BBOX:=-180,-90,180,90}"
 : "${BORDERS_PBF_FILE:="$IMPORT_DIR/borders/filtered.pbf"}"
 : "${BORDERS_CSV_FILE:="$IMPORT_DIR/borders/lines.csv"}"
 : "${BORDERS_TABLE_NAME:=osm_border_linestring}"
@@ -21,7 +20,7 @@ function usage() {
   >&2 echo ""
   >&2 echo "Expected variables:  PGHOST, PGDATABASE, PGUSER, PGPASSWORD"
   >&2 echo "Supported variables:  IMPORT_DIR, BORDERS_PBF_FILE, BORDERS_CSV_FILE, BORDERS_TABLE_NAME, PGPORT,"
-  >&2 echo "                      BORDERS_CLEANUP, BORDERS_CLEANUP_FILE, BORDERS_CLEANUP_BBOX"
+  >&2 echo "                      BORDERS_CLEANUP, BORDERS_CLEANUP_FILE"
   >&2 echo ""
   >&2 echo "If first parameter is a file, treat it as 'import'"
   >&2 echo ""
@@ -64,11 +63,11 @@ if [[ "$task" == "import" || "$task" == "parse" ]]; then
   if [[ "${BORDERS_CLEANUP?}" == "true" ]]; then
     # Some OSM extracts may include references to elements that are not included in the extract
     echo "Cleaning-up broken references from $IMPORT_PBF_FILE into $BORDERS_CLEANUP_FILE ($BORDERS_CLEANUP_BBOX)"
-    osmconvert --drop-broken-refs -b="${BORDERS_CLEANUP_BBOX}" --out-pbf -o="${BORDERS_CLEANUP_FILE}" "$IMPORT_PBF_FILE"
+    osmconvert --drop-broken-refs -b=-180,-90,180,90 --out-pbf -o="${BORDERS_CLEANUP_FILE}" "$IMPORT_PBF_FILE"
     IMPORT_PBF_FILE="$BORDERS_CLEANUP_FILE"
   else
     echo "Skipping broken references cleanup because BORDERS_CLEANUP is not set to 'true'"
-    echo "Enable borders cleanup if you see 'location for one or more nodes not found in node location index' errors"
+    echo "Enable borders cleanup if you see 'location for one or more nodes not found in node location index' error"
   fi
 
   echo "Filtering $IMPORT_PBF_FILE into $BORDERS_PBF_FILE"
