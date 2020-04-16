@@ -2,13 +2,13 @@
 set -euo pipefail
 
 if (( $(id -u) != 0 )); then
-  echo "*****************************************************"
+  echo "***************************************************"
   echo "***  FATAL:  This script should be ran as ROOT  ***"
-  echo "*****************************************************"
+  echo "***************************************************"
   exit 1
 fi
 
-UTF8PROC_TAG=v2.4.0
+UTF8PROC_TAG=v2.5.0
 MAPNIK_GERMAN_L10N_TAG=v2.5.8
 PGSQL_GZIP_TAG=v1.0.0
 
@@ -51,7 +51,7 @@ DEBIAN_FRONTEND=noninteractive apt-get install -y "postgresql-server-dev-${PG_VE
 cd /opt
 
 echo "Installing utf8proc"
-git clone --branch "$UTF8PROC_TAG" --depth 1 https://github.com/JuliaLang/utf8proc.git
+git clone --branch "$UTF8PROC_TAG" --depth 1 https://github.com/JuliaStrings/utf8proc.git
 cd utf8proc
 make
 make install
