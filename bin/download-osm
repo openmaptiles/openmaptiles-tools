@@ -141,8 +141,8 @@ class Catalog:
                     src.hash = len_to_hash[src.file_len]
                     sources_by_hash[src.hash].append(src)
                 else:
-                    print(f"WARN: Source {src} has unrecognized file "
-                          f"length={src.file_len:,}")
+                    print(f"WARN: Source {src} has unrecognized file length=" +
+                          ("unknown" if src.file_len is None else f"{src.file_len:,}"))
         else:
             print(f"Unable to use sources - unable to match 'latest' without date/md5:")
             for s in no_hash_sources:
