@@ -1,37 +1,87 @@
 import re
-from typing import Union
+from typing import Union, Dict, Tuple
 
 from sys import stderr
 
 from openmaptiles.tileset import Tileset, Layer
 
 
-def collect_sql(tileset_filename, parallel=False, nodata=False):
-    """If parallel is True, returns a sql value that must be executed first,
-        and a lists of sql values that can be ran in parallel.
+def collect_sql(tileset_filename, parallel=False, nodata=False
+                ) -> Union[str, Tuple[str, Dict[str, str], str]]:
+    """If parallel is True, returns a sql value that must be executed first, last,
+        and a dict of names -> sql code that can be ran in parallel.
         If parallel is False, returns a single sql string.
         nodata=True replaces all "/* DELAY_MATERIALIZED_VIEW_CREATION */"
         with the "WITH NO DATA" SQL."""
-    tileset = Tileset.parse(tileset_filename)
+    tileset = Tileset(tileset_filename)
 
-    run_first = get_slice_language_tags(tileset.languages)
-    run_last = ''  # at this point we don't have any SQL to run at the end
+    run_first = "-- This SQL code should be executed first\n\n" + \
+                get_slice_language_tags(tileset.languages)
+    # at this point we don't have any SQL to run at the end
+    run_last = "-- This SQL code should be executed last\n"
 
-    parallel_sql = []
-    for layer in tileset.layers:
-        schemas = '\n\n'.join((to_sql(v, layer, nodata) for v in layer.schemas))
-        parallel_sql.append(f"""\
+    # resolved is a map of layer ID to some ID in results.
+    # the ID in results could be the same as layer ID, or it could be a tuple of IDs
+    resolved = {}
+    # results is an ID -> SQL content map
+    results = {}
+    unresolved = tileset.layers_by_id.copy()
+    last_count = -1
+    # safety to prevent infinite loop, even though it is also checked in tileset
+    while len(resolved) > last_count:
+        last_count = len(resolved)
+        for lid, layer in list(unresolved.items()):
+            if all((v in resolved for v in layer.requires)):
+                # All requirements have been resolved.
+                resolved[lid] = lid
+                results[lid] = layer_to_sql(layer, nodata)
+                del unresolved[lid]
+
+                if layer.requires:
+                    # If there are more than one requirement, merge them first,
+                    # e.g. if there are layers A, B, and C; and C requires A & B,
+                    # first concatenate A and B, and then append C to them.
+                    # Make sure the same code is not merged multiple times
+                    mix = list(layer.requires) + [lid]
+                    lid1 = mix[0]
+                    for idx in range(1, len(mix)):
+                        lid2 = mix[idx]
+                        res_id1 = resolved[lid1]
+                        res_id2 = resolved[lid2]
+                        if res_id1 == res_id2:
+                            continue
+                        merged_id = res_id1 + "__" + res_id2
+                        if merged_id in results:
+                            raise ValueError(f"Naming collision - {merged_id} exists")
+                        # NOTE: merging will move entity to the end of the list
+                        results[merged_id] = results[res_id1] + "\n" + results[res_id2]
+                        del results[res_id1]
+                        del results[res_id2]
+                        # Update resolved IDs to point to the merged result
+                        for k, v in resolved.items():
+                            if v == res_id1 or v == res_id2:
+                                resolved[k] = merged_id
+    if unresolved:
+        raise ValueError(f"Circular dependency found in layer requirements: " +
+                         ', '.join(unresolved.keys()))
+
+    if not parallel:
+        sql = '\n'.join(results.values())
+        return f"{run_first}\n{sql}\n{run_last}"
+    else:
+        return run_first, results, run_last
+
+
+def layer_to_sql(layer: Layer, nodata: bool):
+    schemas = '\n\n'.join((to_sql(v, layer, nodata) for v in layer.schemas))
+    sql = f"""\
 DO $$ BEGIN RAISE NOTICE 'Processing layer {layer.id}'; END$$;
 
 {schemas}
 
 DO $$ BEGIN RAISE NOTICE 'Finished layer {layer.id}'; END$$;
-""")
-
-    if parallel:
-        return run_first, parallel_sql, run_last
-    else:
-        return run_first + '\n'.join(parallel_sql) + run_last
+"""
+    return sql.strip() + "\n"
 
 
 def get_slice_language_tags(languages):
@@ -143,7 +193,7 @@ class FieldExpander:
         return "E'" + value.replace('\\', '\\\\').replace("'", "\\'") + "'"
 
 
-def to_sql(sql, layer, nodata):
+def to_sql(sql: str, layer: Layer, nodata: bool):
     """Clean up SQL, and perform any needed code injections"""
     sql = sql.strip()
 

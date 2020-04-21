@@ -46,6 +46,6 @@ if __name__ == '__main__':
 
         (path / 'run_first.sql').write_text(run_first)
         (path / 'run_last.sql').write_text(run_last)
-        for idx, sql in enumerate(parallel_sql):
-            (parallel_dir / f'{idx:03}.sql').write_text(sql)
+        for file, sql in parallel_sql.items():
+            (parallel_dir / f'{file}.sql').write_text(sql)
         print(f'Created {len(parallel_sql)} sql files for parallel execution at {path}')
