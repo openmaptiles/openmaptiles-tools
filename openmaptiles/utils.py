@@ -1,3 +1,5 @@
+import math
+
 import asyncio
 import re
 import sys
@@ -17,6 +19,15 @@ def coalesce(*args):
         if v is not None:
             return v
     return None
+
+
+# From https://wiki.openstreetmap.org/wiki/Slippy_map_tilenames#Lon..2Flat._to_tile_numbers_2
+def deg2num(lat_deg, lon_deg, zoom):
+    lat_rad = math.radians(lat_deg)
+    n = 2.0 ** zoom
+    tile_x = int((lon_deg + 180.0) / 360.0 * n)
+    tile_y = int((1.0 - math.asinh(math.tan(lat_rad)) / math.pi) / 2.0 * n)
+    return tile_x, tile_y
 
 
 class Bbox:
