@@ -10,7 +10,7 @@ from ascii_graph import Pyasciigraph
 # noinspection PyUnresolvedReferences
 from dataclasses_json import dataclass_json, config
 
-from openmaptiles.utils import round_td
+from openmaptiles.utils import round_td, Bbox, deg2num
 
 
 class Colors:
@@ -167,9 +167,16 @@ class TestCase:
     query: str = None
     old_result: PerfTestSummary = None
     result: PerfTestSummary = None
+    bbox: str = None
 
     def __post_init__(self):
         assert self.id and self.desc
+        if self.start is None and self.before is None and self.bbox is not None:
+            bbox = Bbox(self.bbox)
+            self.start = deg2num(bbox.max_lat, bbox.min_lon, self.zoom)
+            self.before = deg2num(bbox.min_lat, bbox.max_lon, self.zoom)
+            self.before = (self.before[0] + 1, self.before[1] + 1)
+
         assert isinstance(self.start, tuple) and isinstance(self.before, tuple)
         assert len(self.start) == 2 and len(self.before) == 2
         assert self.start[0] <= self.before[0] and self.start[1] <= self.before[1]
@@ -202,7 +209,7 @@ class TestCase:
         if self.size() > 0:
             pos = f" [{self.start[0]}/{self.start[1]}]" \
                   f"x[{self.before[0] - 1}/{self.before[1] - 1}]"
-        return f"* {self.id:10} {self.desc} ({self.size():,} " \
+        return f"* {self.id:30} {self.desc} ({self.size():,} " \
                f"tiles at z{self.zoom}{pos})"
 
     def format(self) -> str:
