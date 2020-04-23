@@ -76,6 +76,8 @@ TEST_CASES: Dict[str, TestCase] = {v.id: v for v in [
              bbox='44.7436676,-13.2732554,45.5070347,-12.3485200'),
     TestCase('malta', 'Malta (Europe)',
              bbox='5.3397500,31.2100000,29.9100000,42.9466000'),
+    TestCase('hungary', 'Hungary (Europe)',
+             bbox='15.8690057,43.7898070,24.7137719,49.3859161'),
 ]}
 
 
