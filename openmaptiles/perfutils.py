@@ -12,6 +12,10 @@ from dataclasses_json import dataclass_json, config
 
 from openmaptiles.utils import round_td, Bbox, deg2num
 
+# If the terminal is not present, use this width
+# In github, comments inside the ``` block are about 88 characters
+DEFAULT_TERMINAL_WIDTH = 86
+
 
 class Colors:
     GREEN = ''
@@ -232,7 +236,7 @@ def print_graph(header, data, is_bytes=False):
         float_format='{:,.1f}',
         min_graph_length=20,
         separator_length=1,
-        line_length=shutil.get_terminal_size((100, 20)).columns,
+        line_length=shutil.get_terminal_size((DEFAULT_TERMINAL_WIDTH, 20)).columns,
         human_readable='cs' if is_bytes else None)
     for line in graph.graph(header, data):
         print(line)
