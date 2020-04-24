@@ -1,5 +1,7 @@
 DO $$ BEGIN RAISE NOTICE 'Processing layer enumfield'; END$$;
 
+-- Layer enumfield - ./enumfield.sql
+
 CREATE OR REPLACE FUNCTION map_landuse_class("natural" VARCHAR, landuse VARCHAR) RETURNS TEXT AS $$
     SELECT CASE
         WHEN "natural" = 'bare_rock' THEN 'rock'

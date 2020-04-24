@@ -1,12 +1,21 @@
+-- This SQL code should be executed first
+
 CREATE OR REPLACE FUNCTION slice_language_tags(tags hstore)
 RETURNS hstore AS $$
     SELECT delete_empty_keys(slice(tags, ARRAY['name:en', 'name:de', 'name:cs', 'int_name', 'loc_name', 'name', 'wikidata', 'wikipedia']))
 $$ LANGUAGE SQL IMMUTABLE;
+
 DO $$ BEGIN RAISE NOTICE 'Processing layer housenumber'; END$$;
+
+-- Layer housenumber - ./housenumber_centroid.sql
+
 
 -- etldoc: osm_housenumber_point -> osm_housenumber_point
 UPDATE osm_housenumber_point SET geometry=topoint(geometry)
 WHERE ST_GeometryType(geometry) <> 'ST_Point';
+
+-- Layer housenumber - ./layer.sql
+
 
 -- etldoc: layer_housenumber[shape=record fillcolor=lightpink, style="rounded,filled",
 -- etldoc:     label="layer_housenumber | <z14_> z14_" ] ;
@@ -28,6 +37,8 @@ CREATE MATERIALIZED VIEW layer_housenumber_gen1 AS (
 DO $$ BEGIN RAISE NOTICE 'Finished layer housenumber'; END$$;
 
 DO $$ BEGIN RAISE NOTICE 'Processing layer enumfield'; END$$;
+
+-- Layer enumfield - ./enumfield.sql
 
 CREATE OR REPLACE FUNCTION map_landuse_class("natural" VARCHAR, landuse VARCHAR) RETURNS TEXT AS $$
     SELECT CASE
@@ -56,4 +67,6 @@ END;
 $$ LANGUAGE SQL IMMUTABLE;
 
 DO $$ BEGIN RAISE NOTICE 'Finished layer enumfield'; END$$;
+
+-- This SQL code should be executed last
 

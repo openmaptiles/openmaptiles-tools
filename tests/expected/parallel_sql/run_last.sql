@@ -1,0 +1,1 @@
+-- This SQL code should be executed last
