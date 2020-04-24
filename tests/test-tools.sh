@@ -7,8 +7,8 @@ set -o nounset  # -u
 TESTS=tests
 TESTLAYERS="$TESTS/testlayers"
 HTTPDIR="$TESTS/http"
-DEVDOC=${BUILD?}/devdoc
-mkdir -p "${DEVDOC}"
+DEVDOC=${BUILD:?}/devdoc
+mkdir -p "$DEVDOC"
 
 set -x
 
@@ -19,6 +19,7 @@ generate-imposm3  "$TESTLAYERS/testmaptiles.yaml"                               
 
 generate-sql      "$TESTLAYERS/testmaptiles.yaml"                                 > "$BUILD/sql.sql"
 generate-sql      "$TESTLAYERS/testmaptiles.yaml" --dir "$BUILD/parallel_sql"
+generate-sql      "$TESTLAYERS/testmaptiles.yaml" --dir "$BUILD/parallel_sql2" --nodata
 
 generate-sqltomvt "$TESTLAYERS/testmaptiles.yaml"                                 > "$BUILD/mvttile_func.sql"
 generate-sqltomvt "$TESTLAYERS/testmaptiles.yaml" --key                           > "$BUILD/mvttile_func_key.sql"
@@ -47,8 +48,9 @@ generate-etlgraph "$TESTLAYERS/housenumber/housenumber.yaml" "$DEVDOC" --keep -f
 generate-mapping-graph "$TESTLAYERS/testmaptiles.yaml" "$DEVDOC" --keep -f png -f svg
 generate-mapping-graph "$TESTLAYERS/housenumber/housenumber.yaml" "$DEVDOC/mapping_diagram" --keep -f png -f svg
 
-download-osm planet --dry-run
-download-osm geofabrik michigan --dry-run
+# Using a fake cache/geofabrik.json so that downloader wouldn't need to download the real one from Geofabrik site
+download-osm planet --imposm-cfg "$BUILD/planet-cfg.json" --dry-run
+download-osm geofabrik michigan --imposm-cfg "$BUILD/michigan-cfg.json" --dry-run
 
 
 # Run background http server, and stop it when this script exits
@@ -69,6 +71,6 @@ download-osm url http://localhost:8555/monaco-20150428.osm.pbf \
   --verbose --make-dc "$BUILD/monaco-dc2.yml" -- --dir /tmp
 unset OSM_AREA_NAME MIN_ZOOM MAX_ZOOM MAKE_DC_VERSION
 
-# Using a fake cache/geofabrik.json so that downloader wouldn't need to download the real one from Geofabrik site
 download-osm geofabrik monaco-test \
-  --verbose --make-dc "$BUILD/monaco-dc3.yml" --minzoom 5 --maxzoom 6 --dc-ver 2.1 -- --dir /tmp
+  --verbose --imposm-cfg "$BUILD/monaco-cfg.json" --kv foo=bar --kv replication_interval=4h \
+  --make-dc "$BUILD/monaco-dc3.yml" --minzoom 5 --maxzoom 6 --dc-ver 2.1 -- --dir /tmp
