@@ -3,7 +3,7 @@
 Refresh all PostgreSQL materialized views in parallel, taking into account cross-dependencies.
 
 Usage:
-  refresh-views [--parallel=<count>] [--schema=<schema>]
+  refresh-views [--verbose] [--parallel=<count>] [--schema=<schema>]
   refresh-views --help
   refresh-views --version
 
