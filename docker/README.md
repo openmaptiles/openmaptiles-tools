@@ -2,15 +2,6 @@
 
 Each subdir here creates a docker image that either generates some data, or is built with some pre-computed dataset. For example, the `import-natural-earth` image downloads and cleans up data from the [Natural Earth project](https://www.naturalearthdata.com/). When ran, the image injects the packaged data into PostgreSQL database, without additional downloading and preprocessing.
 
-## [import-osm](import-osm)
-[![](https://img.shields.io/docker/cloud/build/openmaptiles/import-osm?&logo=OpenStreetMap&label=build)](https://hub.docker.com/r/openmaptiles/import-osm)
-[![](https://img.shields.io/docker/automated/openmaptiles/import-osm?label=build)](https://hub.docker.com/r/openmaptiles/import-osm/builds)
-[![](https://img.shields.io/microbadger/layers/openmaptiles/import-osm)](https://hub.docker.com/r/openmaptiles/import-osm)
-[![](https://img.shields.io/microbadger/image-size/openmaptiles/import-osm?label=size)](https://hub.docker.com/r/openmaptiles/import-osm)
-[![](https://img.shields.io/docker/pulls/openmaptiles/import-osm?label=downloads)](https://hub.docker.com/r/openmaptiles/import-osm)
-[![](https://img.shields.io/docker/stars/openmaptiles/import-osm?label=stars)](https://hub.docker.com/r/openmaptiles/import-osm)
-<br><small>Migrated from [import-osm](https://github.com/openmaptiles/import-osm) repo (archived)</small>
-
 ## [import-data](import-data)
 [![](https://img.shields.io/docker/cloud/build/openmaptiles/import-data?&logo=OpenStreetMap&label=build)](https://hub.docker.com/r/openmaptiles/import-data)
 [![](https://img.shields.io/docker/automated/openmaptiles/import-data?label=build)](https://hub.docker.com/r/openmaptiles/import-data/builds)

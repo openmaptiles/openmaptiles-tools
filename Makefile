@@ -103,4 +103,3 @@ build-bin-tests: prepare build-docker
 .PHONY: build-tests
 build-tests: build-bin-tests build-sql-tests
 	# Run all tests that generate test results in the build dir
-

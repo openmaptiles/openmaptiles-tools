@@ -13,6 +13,7 @@ RUN set -eux ;\
         `# installing imposm dependencies` \
         libgeos-dev \
         libleveldb-dev \
+        libprotobuf-dev \
         ;\
     /bin/bash -c 'echo ""; echo ""; echo "##### Build imposm3 -- https://github.com/osm2vectortiles/imposm3"' >&2 ;\
     #
@@ -104,6 +105,7 @@ RUN set -eux ;\
         `# imposm dependencies` \
         libgeos-dev \
         libleveldb-dev \
+        libprotobuf-dev \
         ;\
     \
     /bin/bash -c 'echo ""; echo ""; echo "##### Cleaning up"' >&2 ;\
