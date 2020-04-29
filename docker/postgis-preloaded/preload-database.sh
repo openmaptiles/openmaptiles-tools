@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 set -Eeo pipefail
 
+mkdir -p "${PGDATA}"
+
 # This code was adapted from a postgres issue
 # https://github.com/docker-library/postgres/issues/661#issuecomment-573192715
 

@@ -1,6 +1,12 @@
 FROM golang:1.13 as go-builder
-ARG IMPOSM_REPO="https://github.com/omniscale/imposm3.git"
-ARG IMPOSM_VERSION="v0.10.0"
+
+# By default for now use custom build until we verify everything is stable
+ARG IMPOSM_REPO="https://github.com/openmaptiles/imposm3.git"
+ARG IMPOSM_VERSION="v2017-10-18"
+
+# Current version, disable for now
+#ARG IMPOSM_REPO="https://github.com/omniscale/imposm3.git"
+#ARG IMPOSM_VERSION="v0.10.0"
 
 # Build imposm
 RUN set -eux ;\
@@ -13,6 +19,7 @@ RUN set -eux ;\
         `# installing imposm dependencies` \
         libgeos-dev \
         libleveldb-dev \
+        libprotobuf-dev \
         ;\
     /bin/bash -c 'echo ""; echo ""; echo "##### Build imposm3 -- https://github.com/osm2vectortiles/imposm3"' >&2 ;\
     #
@@ -106,6 +113,7 @@ RUN set -eux ;\
         `# imposm dependencies` \
         libgeos-dev \
         libleveldb-dev \
+        libprotobuf-dev \
         ;\
     \
     /bin/bash -c 'echo ""; echo ""; echo "##### Cleaning up"' >&2 ;\
