@@ -21,9 +21,9 @@ function import_pbf() {
     local diff_flag=""
     if [ "$DIFF_MODE" = true ]; then
         diff_flag="-diff"
-        echo "Importing in diff mode"
+        echo "Importing $pbf_file into $PGHOST:$PGPORT/$PGDATABASE using Imposm in DIFF mode..."
     else
-        echo "Importing in normal mode"
+        echo "Importing $pbf_file into $PGHOST:$PGPORT/$PGDATABASE using Imposm in NORMAL mode..."
     fi
 
     imposm import \
@@ -39,7 +39,7 @@ function import_pbf() {
 }
 
 function import_osm_with_first_pbf() {
-    if [ "$(ls -A $IMPORT_DIR/*.pbf 2> /dev/null)" ]; then
+    if [ "$(ls -A "$IMPORT_DIR"/*.pbf 2> /dev/null)" ]; then
         local pbf_file
         for pbf_file in "$IMPORT_DIR"/*.pbf; do
             import_pbf "$pbf_file"

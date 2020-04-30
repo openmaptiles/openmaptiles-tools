@@ -18,6 +18,7 @@ echo "  Create extensions in template_postgis and $POSTGRES_DB DBs"
 echo "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
 
 for db in template_postgis "$POSTGRES_DB"; do
+echo "Loading extensions into $db"
 PGUSER="$POSTGRES_USER" psql --dbname="$db" <<-'EOSQL'
     CREATE EXTENSION postgis;
     CREATE EXTENSION hstore;

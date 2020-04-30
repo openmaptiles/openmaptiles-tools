@@ -23,6 +23,12 @@ docker run -it --rm -u $(id -u ${USER}):$(id -g ${USER}) \
 
 Where the `<script-name>` could be any of the scripts in the [bin/](./bin) directory, e.g. `generate-imposm3 openmaptiles.yaml`.
 
+##### Docker Volumes
+ - Mount your PBFs into the `/import` folder
+ - Mount your `mapping.yaml` into the `/mapping` folder
+ - If you want to use diff mode mount a persistent location to the `/cache` folder for later reuse
+
+
 #### Using without Docker
 
 ```bash
@@ -332,6 +338,13 @@ example:
 generate-sqlquery layers/landcover/landcover.yaml  14
 ```
 
+### Import and Update OSM data
+The `import-osm`, `update-osm`, and `import-diff` tools will import and update
+PostgreSQL database by running [imposm](https://imposm.org/docs/imposm3/latest/).
+The tools expect these env vars: `PGHOST`, `PGDATABASE`, `PGUSER`, `PGPASSWORD`, and optionally `PGPORT`
+to connect to the PostgreSQL server, and a number of other vars for imposm configuration. See scripts.
+
+
 ### Import Wikidata localized names
 The `import-wikidata` tool searches for all wikidata tags in the database,
 and uses Wikidata Query Service to get the labels in all languages.
@@ -389,7 +402,7 @@ The `import-sql` script can execute a single SQL file in Postgres when the file 
 If ran without any arguments, `import-sql` executes all of the following:
 * SQL files from `$OMT_UTIL_DIR`  -  by default contains the [sql/language.sql](./sql/language.sql) script.
 * SQL files from `$VT_UTIL_DIR`  - by default contains OMT fork of the Mapbox's [postgis-vt-util.sql](https://github.com/openmaptiles/postgis-vt-util) helper functions.
-* SQL files from `$SQL_DIR`  - defaults to `/sql` -- this volume is empty initially, but should contain build results of running other generation scripts. If this directory contains `parallel/` subdirectory, `import-sql` will assume the parallel/*.sql files are safe to execute in parallel, up to `MAX_PARALLEL_PSQL` at a time (defaults to 5). The script will also execute `run_first.sql` before, and `run_last.sql` after the files in `parallel/` dir (if they exist).
+* SQL files from `$SQL_DIR`  - defaults to `/sql` -- this directory should contain the results of the `generate-sql --dir ...` script and possibly other user-defined sql scripts. If this directory contains `parallel/` subdirectory, `import-sql` will assume the parallel/*.sql files are safe to execute in parallel, up to `MAX_PARALLEL_PSQL` at a time (defaults to 5). The script will also execute `run_first.sql` before, and `run_last.sql` after the files in `parallel/` dir (if they exist).
 
 Generating and importing SQL could be done in a single step with `&&`, e.g.
 
