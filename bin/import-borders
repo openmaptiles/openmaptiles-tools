@@ -4,7 +4,7 @@ set -o pipefail
 set -o nounset
 
 : "${PBF_DATA_DIR:=/import}"
-: "${BORDERS_CLEANUP:=true}"
+: "${BORDERS_CLEANUP:=false}"
 : "${BORDERS_CLEANUP_FILE:="$PBF_DATA_DIR/borders/cleanup.pbf"}"
 : "${BORDERS_PBF_FILE:="$PBF_DATA_DIR/borders/filtered.pbf"}"
 : "${BORDERS_CSV_FILE:="$PBF_DATA_DIR/borders/lines.csv"}"
@@ -60,13 +60,13 @@ if [[ "$task" == "import" || "$task" == "parse" ]]; then
   # Parse PBF file to generate borders CSV file, and import it into PG
   IMPORT_PBF_FILE="$2"
 
-  if [[ "${BORDERS_CLEANUP?}" == "true" ]]; then
+  if [[ "$BORDERS_CLEANUP" == "true" ]]; then
     # Some OSM extracts may include references to elements that are not included in the extract
     echo "Cleaning-up broken references from $IMPORT_PBF_FILE into $BORDERS_CLEANUP_FILE"
     echo "Set BORDERS_CLEANUP=false to skip the cleanup -- it is not needed for the full planet and Geofabrik downloads"
-    mkdir -p "$(dirname "${BORDERS_CLEANUP_FILE?}")"
-    rm -rf "${BORDERS_CLEANUP_FILE}"
-    osmconvert --drop-broken-refs -b=-180,-90,180,90 --out-pbf -o="${BORDERS_CLEANUP_FILE}" "$IMPORT_PBF_FILE"
+    mkdir -p "$(dirname "${BORDERS_CLEANUP_FILE:?}")"
+    rm -rf "$BORDERS_CLEANUP_FILE"
+    osmconvert --drop-broken-refs -b=-180,-90,180,90 --out-pbf -o="$BORDERS_CLEANUP_FILE" "$IMPORT_PBF_FILE"
     IMPORT_PBF_FILE="$BORDERS_CLEANUP_FILE"
   else
     echo "Skipping broken references cleanup because BORDERS_CLEANUP is not set to 'true'"
