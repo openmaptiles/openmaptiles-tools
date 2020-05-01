@@ -57,6 +57,9 @@ build-all-dockers: build-docker
 		echo "\n\n*****************************************************" ; \
 		export IMG="openmaptiles/$${dir#docker/}" ; \
 		echo "Building $(IMAGE_NAME) $(foreach ver, $(VERSION), tag $(ver)) in $$dir..." ; \
+		if [ -n "$$DOCKER_PRUNE_ON_BUILD" ]; then \
+			docker image prune --force ; \
+		fi ; \
 		if [ "$$dir" = "docker/postgis-preloaded" ]; then \
 			docker build \
 				--file Dockerfile \
