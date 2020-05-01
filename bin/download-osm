@@ -36,6 +36,7 @@ Options:
   -s --state <file>     Download state file and save it to the <file>
   -j --imposm-cfg <f>   Create an imposm configuration json file, and write
                         replication_url param into it.  Use -k any additional values.
+                        (requires plant, geofabrik, or osmfr download type)
   -k --kv <key=value>   Add extra key=value params to the imposm config (requires -j)
   -d --make-dc <file>   Create a docker-compose file with the area metadata.
   -x --dc-ver <ver>     Set docker-compose file version to this value.
@@ -421,6 +422,8 @@ async def prepare_area_download(args, session):
         if args.state:
             state_url = url.replace("-latest.osm.pbf", ".state.txt")
             await save_state_file(session, state_url, args.state)
+        repl_url = f"http://download.openstreetmap.fr/" \
+              f"replication/{area_id}/minute/"
     elif args.geofabrik:
         catalog = await get_geofabrik_list(session, force_latest, no_cache)
         if area_id in catalog:
