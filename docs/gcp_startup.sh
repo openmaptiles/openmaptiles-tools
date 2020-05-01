@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-if (($(id -u) != 0)); then
+if (( $(id -u) != 0 )); then
   echo "***************************************************"
   echo "***  FATAL:  This script should be ran as ROOT  ***"
   echo "***************************************************"
@@ -28,73 +28,76 @@ PG_DIR="/etc/postgresql/${PG_VERSION}/main"
 PG_CONFIG_FILE="${PG_DIR}/conf.d/99-custom.conf"
 PG_HBA_FILE="${PG_DIR}/pg_hba.conf"
 
+
+
 if [[ ! -f "${PG_CONFIG_FILE}" ]]; then
-  echo "************ First time initialization **************"
+echo "************ First time initialization **************"
 
-  # Add PostgreSQL packages
-  $CURL https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo apt-key add -
-  sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
+# Add PostgreSQL packages
+$CURL https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo apt-key add -
+sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
 
-  # Install the PostgreSQL server and postgis extension
-  DEBIAN_FRONTEND=noninteractive apt-get update -qq
-  DEBIAN_FRONTEND=noninteractive apt-get install -y "postgresql-${PG_VERSION}" postgis
+# Install the PostgreSQL server and postgis extension
+DEBIAN_FRONTEND=noninteractive apt-get update -qq
+DEBIAN_FRONTEND=noninteractive apt-get install -y "postgresql-${PG_VERSION}" postgis
 
-  # Install dependencies required to build extensions
-  DEBIAN_FRONTEND=noninteractive apt-get install -y "postgresql-server-dev-${PG_VERSION}" build-essential git \
-    xsltproc pandoc libkakasi2-dev libgdal-dev libprotobuf-dev libprotobuf-c-dev protobuf-c-compiler libxml2-dev \
-    zlib1g-dev bison flex
+# Install dependencies required to build extensions
+DEBIAN_FRONTEND=noninteractive apt-get install -y "postgresql-server-dev-${PG_VERSION}" build-essential git \
+  xsltproc pandoc libkakasi2-dev libgdal-dev libprotobuf-dev libprotobuf-c-dev protobuf-c-compiler libxml2-dev \
+  zlib1g-dev bison flex
 
-  # Build and install Postgres extentions
-  cd /opt
 
-  echo "Installing utf8proc"
-  git clone --branch "$UTF8PROC_TAG" --depth 1 https://github.com/JuliaStrings/utf8proc.git
-  cd utf8proc
-  make
-  make install
-  ldconfig
-  cd /opt
-  rm -rf utf8proc
+# Build and install Postgres extentions
+cd /opt
 
-  echo "Installing mapnik-german-l10n"
-  git clone --branch "$MAPNIK_GERMAN_L10N_TAG" --depth 1 https://github.com/giggls/mapnik-german-l10n.git
-  cd mapnik-german-l10n
-  git checkout -q
-  make
-  make install
-  cd /opt
-  rm -rf mapnik-german-l10n
+echo "Installing utf8proc"
+git clone --branch "$UTF8PROC_TAG" --depth 1 https://github.com/JuliaStrings/utf8proc.git
+cd utf8proc
+make
+make install
+ldconfig
+cd /opt
+rm -rf utf8proc
 
-  echo "Installing pgsql-gzip"
-  git clone --branch "$PGSQL_GZIP_TAG" --depth 1 https://github.com/pramsey/pgsql-gzip.git
-  cd pgsql-gzip
-  make
-  make install
-  cd /opt
-  rm -rf pgsql-gzip
+echo "Installing mapnik-german-l10n"
+git clone --branch "$MAPNIK_GERMAN_L10N_TAG" --depth 1 https://github.com/giggls/mapnik-german-l10n.git
+cd mapnik-german-l10n
+git checkout -q
+make
+make install
+cd /opt
+rm -rf mapnik-german-l10n
 
-  # remove build deps we no longer need
-  DEBIAN_FRONTEND=noninteractive apt-get remove --purge -y "postgresql-server-dev-${PG_VERSION}" build-essential git \
-    xsltproc pandoc libkakasi2-dev libgdal-dev libprotobuf-dev libprotobuf-c-dev protobuf-c-compiler libxml2-dev \
-    zlib1g-dev bison flex
+echo "Installing pgsql-gzip"
+git clone --branch "$PGSQL_GZIP_TAG" --depth 1 https://github.com/pramsey/pgsql-gzip.git
+cd pgsql-gzip
+make
+make install
+cd /opt
+rm -rf pgsql-gzip
 
-  # Create database
-  systemctl restart postgresql
-  sleep 3
+# remove build deps we no longer need
+DEBIAN_FRONTEND=noninteractive apt-get remove --purge -y "postgresql-server-dev-${PG_VERSION}" build-essential git \
+  xsltproc pandoc libkakasi2-dev libgdal-dev libprotobuf-dev libprotobuf-c-dev protobuf-c-compiler libxml2-dev \
+  zlib1g-dev bison flex
 
-  sudo -u postgres \
+# Create database
+systemctl restart postgresql
+sleep 3
+
+sudo -u postgres \
     psql -v ON_ERROR_STOP="1" \
-    -c "create user $OMT_PGUSER with password '$OMT_PGPASSWORD'" \
-    -c "create database $OMT_PGDATABASE" \
-    -c "grant all privileges on database $OMT_PGDATABASE to $OMT_PGUSER" \
-    -c "\c $OMT_PGDATABASE" \
-    -c "CREATE EXTENSION hstore" \
-    -c "CREATE EXTENSION postgis" \
-    -c "CREATE EXTENSION unaccent" \
-    -c "CREATE EXTENSION fuzzystrmatch" \
-    -c "CREATE EXTENSION osml10n" \
-    -c "CREATE EXTENSION gzip" \
-    -c "CREATE EXTENSION pg_stat_statements"
+         -c "create user $OMT_PGUSER with password '$OMT_PGPASSWORD'" \
+         -c "create database $OMT_PGDATABASE" \
+         -c "grant all privileges on database $OMT_PGDATABASE to $OMT_PGUSER" \
+         -c "\c $OMT_PGDATABASE" \
+         -c "CREATE EXTENSION hstore" \
+         -c "CREATE EXTENSION postgis" \
+         -c "CREATE EXTENSION unaccent" \
+         -c "CREATE EXTENSION fuzzystrmatch" \
+         -c "CREATE EXTENSION osml10n" \
+         -c "CREATE EXTENSION gzip" \
+         -c "CREATE EXTENSION pg_stat_statements"
 
   # set the firwall rules to allow inbound connections from 10.0.0.0/8
   cat <<EOF | tee "$PG_HBA_FILE"
@@ -128,7 +131,8 @@ host    all     all             10.0.0.0/8            md5
 
 EOF
 
-fi # end of the code that only runs on the first startup
+fi  # end of the code that only runs on the first startup
+
 
 #
 # This code should execute on every server restart.

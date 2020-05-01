@@ -51,7 +51,7 @@ RUN set -eux ;\
     /bin/bash -c 'echo ""; echo ""; echo "##### Building osmborder -- https://github.com/pnorman/osmborder"' >&2 ;\
     git clone https://github.com/pnorman/osmborder.git /usr/src/osmborder ;\
     cd /usr/src/osmborder ;\
-    git checkout ${OSMBORDER_REV?} ;\
+    git checkout ${OSMBORDER_REV:?} ;\
     mkdir -p /usr/src/osmborder/build ;\
     cd /usr/src/osmborder/build ;\
     cmake .. ;\
@@ -71,21 +71,19 @@ ARG TOOLS_DIR=/usr/src/app
 
 WORKDIR ${TOOLS_DIR}
 
-# Using VT_UTIL_DIR and OMT_UTIL_DIR vars allow users to provide custom util files:
-# postgis-vt-util.sql and language.sql
-# See README
-ENV VT_UTIL_DIR=/opt/postgis-vt-util \
-    OMT_UTIL_DIR="${TOOLS_DIR}/sql" \
-    TOOLS_DIR="$TOOLS_DIR" \
-    SQL_DIR=/sql \
+#
+# IMPOSM_CONFIG_FILE can be used to provide custom IMPOSM config file
+# SQL_TOOLS_DIR can be used to provide custom SQL files instead of vt_utils and other files from /sql
+#
+ENV TOOLS_DIR="$TOOLS_DIR" \
     PATH="${TOOLS_DIR}:${PATH}" \
-    IMPORT_DIR=/import \
+    IMPOSM_CONFIG_FILE=${TOOLS_DIR}/config/repl_config.json \
+    IMPOSM_MAPPING_FILE=/mapping/mapping.yaml \
     IMPOSM_CACHE_DIR=/cache \
-    MAPPING_YAML=/mapping/mapping.yaml \
-    DIFF_DIR=/import \
-    TILES_DIR=/import \
-    CONFIG_JSON=${TOOLS_DIR}/config/repl_config.json
-
+    IMPOSM_DIFF_DIR=/import \
+    PBF_DATA_DIR=/import \
+    SQL_DIR=/sql \
+    SQL_TOOLS_DIR="${TOOLS_DIR}/sql"
 
 
 RUN set -eux ;\
@@ -124,8 +122,8 @@ COPY ./requirements.txt .
 
 RUN set -eux ;\
     pip install --no-cache-dir -r requirements.txt ;\
-    mkdir -p "${VT_UTIL_DIR?}" ;\
-    wget --quiet --progress=bar:force:noscroll --show-progress -O "${VT_UTIL_DIR}/10_postgis-vt-util.sql" \
+    mkdir -p "${SQL_TOOLS_DIR:?}" ;\
+    wget --quiet --progress=bar:force:noscroll --show-progress -O "${SQL_TOOLS_DIR}/10_postgis-vt-util.sql" \
        https://raw.githubusercontent.com/openmaptiles/postgis-vt-util/${VT_UTIL_VERSION}/postgis-vt-util.sql
 
 # Copy tools, imposm, and osmborder into the app dir

@@ -1,3 +1,7 @@
+# Ensure that errors don't hide inside pipes
+SHELL         = /bin/bash
+.SHELLFLAGS   = -o pipefail -c
+
 VERSION      ?= $(shell grep __version__ ./openmaptiles/__init__.py | sed -E 's/^(.*"([^"]+)".*|.*)$$/\2/')
 IMAGE_NAME   ?= openmaptiles/openmaptiles-tools
 DOCKER_IMAGE ?= $(IMAGE_NAME):$(VERSION)

@@ -20,15 +20,23 @@ async def show_settings(conn: Connection, verbose=True) -> Dict[str, str]:
     settings = {
         'version()': None,
         'postgis_full_version()': None,
-        'jit': lambda
-            v: 'disable JIT in PG 11-12 for complex queries' if v != 'off' else '',
+        'jit':
+            lambda v: 'disable JIT in PG 11+ for complex queries' if v != 'off' else '',
         'shared_buffers': None,
         'work_mem': None,
         'maintenance_work_mem': None,
+        'effective_cache_size': None,
+        'effective_io_concurrency': None,
         'max_connections': None,
         'max_worker_processes': None,
         'max_parallel_workers': None,
         'max_parallel_workers_per_gather': None,
+        'wal_buffers': None,
+        'min_wal_size': None,
+        'max_wal_size': None,
+        'random_page_cost': None,
+        'default_statistics_target': None,
+        'checkpoint_completion_target': None,
     }
     key_len = max((len(v) for v in settings))
     results = {}
@@ -41,7 +49,7 @@ async def show_settings(conn: Connection, verbose=True) -> Dict[str, str]:
             if validator:
                 msg = validator(res)
                 if msg:
-                    prefix, suffix = COLOR.RED, f" {msg}{COLOR.RESET}"
+                    suffix = f" -- {COLOR.RED}{msg}{COLOR.RESET}"
             results[setting] = res
         except (UndefinedFunctionError, UndefinedObjectError) as ex:
             res = ex.message
