@@ -37,7 +37,8 @@ jobs:
 
           # Github has a very low disk limit, so prune often
           export DOCKER_PRUNE_ON_BUILD=1
-          if [[ -z "$VERSION" ]]; then
+          if [[ -z "$VERSION" ]] || [[ -z "$DOCKERHUB_USERNAME" ]] || [[ -z "$DOCKERHUB_PASSWORD" ]]; then
+            echo "Test-building docker images for $GITHUB_REF ..."
             make build-all-dockers
           else
             echo ${DOCKERHUB_PASSWORD} | docker login -u ${DOCKERHUB_USERNAME} --password-stdin
