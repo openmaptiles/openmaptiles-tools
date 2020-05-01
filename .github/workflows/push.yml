@@ -21,14 +21,20 @@ jobs:
         run: |
           make test
 
+          if [[ -z "$DOCKERHUB_USERNAME" ]] || [[ -z "$DOCKERHUB_PASSWORD" ]]; then
+            echo "Docker Hub secrets are not configured in this repo, exiting early"
+            exit 0
+          fi
+
           unset VERSION
           if [[ "$GITHUB_REF" == "refs/heads/master" ]]; then
             # Master branch -- builds latest image
             export VERSION="latest"
-          elif [[ "$GITHUB_REF" =~ ^refs/heads/v([0-9]+\.[0-9]+) ]]; then
+          elif [[ "$GITHUB_REF" =~ ^refs/heads/v([0-9]+\.[0-9]+(-.*)?)$ ]]; then
             # Any vNNN.NNN branch -- builds "NNN.NNN-dev" image
+            # Also allows vNNN.NNN-XXX  -- where XXX could be anything (builds NNN.NNN-XXX-dev)
             export VERSION="${BASH_REMATCH[1]}-dev"
-          elif [[ "$GITHUB_REF" =~ ^refs/tags/v([0-9]+)\.([0-9]+)\.([0-9]+) ]]; then
+          elif [[ "$GITHUB_REF" =~ ^refs/tags/v([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
             # Any vNNN.NNN.NNN tag (not branch!) -- builds "NNN.NNN.NNN" and "NNN.NNN" images
             # This means that the two-part version image will always point to latest patch.
             export VERSION="${BASH_REMATCH[1]}.${BASH_REMATCH[2]}.${BASH_REMATCH[3]} \
@@ -37,7 +43,7 @@ jobs:
 
           # Github has a very low disk limit, so prune often
           export DOCKER_PRUNE_ON_BUILD=1
-          if [[ -z "$VERSION" ]] || [[ -z "$DOCKERHUB_USERNAME" ]] || [[ -z "$DOCKERHUB_PASSWORD" ]]; then
+          if [[ -z "$VERSION" ]]; then
             echo "Test-building docker images for $GITHUB_REF ..."
             make build-all-dockers
           else
