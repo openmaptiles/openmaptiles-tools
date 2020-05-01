@@ -51,7 +51,7 @@ RUN set -eux ;\
     /bin/bash -c 'echo ""; echo ""; echo "##### Building osmborder -- https://github.com/pnorman/osmborder"' >&2 ;\
     git clone https://github.com/pnorman/osmborder.git /usr/src/osmborder ;\
     cd /usr/src/osmborder ;\
-    git checkout ${OSMBORDER_REV?} ;\
+    git checkout ${OSMBORDER_REV:?} ;\
     mkdir -p /usr/src/osmborder/build ;\
     cd /usr/src/osmborder/build ;\
     cmake .. ;\

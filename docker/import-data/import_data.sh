@@ -44,7 +44,7 @@ if [ -z ${1+x} ] || [ "$1" = "natural-earth" ]; then
     -lco DIM=2 \
     -nlt GEOMETRY \
     -overwrite \
-    "${NATURAL_EARTH_FILE?}"
+    "${NATURAL_EARTH_FILE:?}"
 fi
 
 
@@ -62,7 +62,7 @@ if [ -z ${1+x} ] || [ "$1" = "water-polygons" ]; then
       -nlt geometry \
       --config PG_USE_COPY YES \
       "PG:$PGCONN" \
-      "${WATER_POLYGONS_FILE?}"
+      "${WATER_POLYGONS_FILE:?}"
 fi
 
 
@@ -77,5 +77,5 @@ if [ -z ${1+x} ] || [ "$1" = "lake-centerline" ]; then
     -lco OVERWRITE=YES \
     -overwrite \
     -nln "$LAKE_CENTERLINE_TABLE" \
-    "${LAKE_CENTERLINE_FILE?}"
+    "${LAKE_CENTERLINE_FILE:?}"
 fi
