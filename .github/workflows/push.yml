@@ -1,0 +1,47 @@
+name: Build and publish to Docker
+
+on:
+  push:
+  release:
+    types: [published]
+
+jobs:
+
+  job:
+    name: Build and Publish
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout the changes
+        uses: actions/checkout@v2
+
+      - name: main
+        env:
+          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+          DOCKERHUB_PASSWORD: ${{ secrets.DOCKERHUB_PASSWORD }}
+        run: |
+          make test
+
+          unset VERSION
+          if [[ "$GITHUB_REF" == "refs/heads/master" ]]; then
+            # Master branch -- builds latest image
+            export VERSION="latest"
+          elif [[ "$GITHUB_REF" =~ ^refs/heads/v([0-9]+\.[0-9]+) ]]; then
+            # Any vNNN.NNN branch -- builds "NNN.NNN-dev" image
+            export VERSION="${BASH_REMATCH[1]}-dev"
+          elif [[ "$GITHUB_REF" =~ ^refs/tags/v([0-9]+)\.([0-9]+)\.([0-9]+) ]]; then
+            # Any vNNN.NNN.NNN tag (not branch!) -- builds "NNN.NNN.NNN" and "NNN.NNN" images
+            # This means that the two-part version image will always point to latest patch.
+            export VERSION="${BASH_REMATCH[1]}.${BASH_REMATCH[2]}.${BASH_REMATCH[3]} \
+                            ${BASH_REMATCH[1]}.${BASH_REMATCH[2]}"
+          fi
+
+          # Github has a very low disk limit, so prune often
+          export DOCKER_PRUNE_ON_BUILD=1
+          if [[ -z "$VERSION" ]] || [[ -z "$DOCKERHUB_USERNAME" ]] || [[ -z "$DOCKERHUB_PASSWORD" ]]; then
+            echo "Test-building docker images for $GITHUB_REF ..."
+            make build-all-dockers
+          else
+            echo ${DOCKERHUB_PASSWORD} | docker login -u ${DOCKERHUB_USERNAME} --password-stdin
+            make push-all-dockers
+            docker logout
+          fi

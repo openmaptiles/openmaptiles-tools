@@ -21,7 +21,6 @@ EXPECTED_DIR := tests/expected
 # Export image name so that tests/sql/docker-compose.yml can use it
 export DOCKER_IMAGE
 
-
 .PHONY: test
 test: clean run-python-tests build-tests
 	@echo ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"
@@ -49,7 +48,7 @@ prepare:
 
 .PHONY: build-docker
 build-docker:
-	docker build --file Dockerfile --tag $(DOCKER_IMAGE) .
+	docker build --file Dockerfile $(foreach ver, $(VERSION), --tag $(IMAGE_NAME):$(ver)) .
 
 .PHONY: build-all-dockers
 build-all-dockers: build-docker
@@ -60,21 +59,39 @@ build-all-dockers: build-docker
 	( \
 		cd $$dir ; \
 		echo "\n\n*****************************************************" ; \
-		echo "Building openmaptiles/$${dir#docker/}:$(VERSION) in $$dir..." ; \
+		export IMG="openmaptiles/$${dir#docker/}" ; \
+		echo "Building $(IMAGE_NAME) $(foreach ver, $(VERSION), tag $(ver)) in $$dir..." ; \
+		if [ -n "$$DOCKER_PRUNE_ON_BUILD" ]; then \
+			docker image prune --force ; \
+		fi ; \
 		if [ "$$dir" = "docker/postgis-preloaded" ]; then \
 			docker build \
 				--file Dockerfile \
 				--build-arg OMT_TOOLS_VERSION=$(VERSION) \
-				--tag openmaptiles/$${dir#docker/}:$(VERSION) \
+				$(foreach ver, $(VERSION), --tag $$IMG:$(ver)) \
 				. ; \
 		else \
 			docker build \
 				--file Dockerfile \
-				--tag openmaptiles/$${dir#docker/}:$(VERSION) \
+				$(foreach ver, $(VERSION), --tag $$IMG:$(ver)) \
 				. ; \
 		fi ; \
 	) ; \
 	done
+
+.PHONY: push-all-dockers
+push-all-dockers: build-all-dockers
+	@for image in $(foreach ver, $(VERSION), openmaptiles/openmaptiles-tools:$(ver)) ; do \
+		echo "Uploading $$image" ; \
+		docker push "$$image" ; \
+	done
+	@for dir in $$(find docker/* -maxdepth 0 -type d | sort) ; do \
+		for image in $(foreach ver, $(VERSION), openmaptiles/$${dir#docker/}:$(ver)) ; do \
+			echo "Uploading $$image" ; \
+			docker push "$$image" ; \
+		done ; \
+	done
+
 
 .PHONY: run-python-tests
 run-python-tests: build-docker
