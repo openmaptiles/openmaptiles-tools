@@ -1,0 +1,40 @@
+name: Build and publish to Docker
+
+on:
+  push:
+  release:
+    types: [published]
+
+jobs:
+
+  job:
+    name: Build and Publish
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout the changes
+        uses: actions/checkout@v2
+
+      - name: main
+        env:
+          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+          DOCKERHUB_PASSWORD: ${{ secrets.DOCKERHUB_PASSWORD }}
+        run: |
+          make test
+
+          unset VERSION
+          if [[ "$GITHUB_REF" == "refs/heads/master" ]]; then
+            export VERSION="latest"
+          elif [[ "$GITHUB_REF" =~ ^refs/heads/v([0-9]+\.[0-9]+) ]]; then
+            export VERSION="${BASH_REMATCH[1]}-dev"
+          elif [[ "$GITHUB_REF" =~ ^refs/tags/v([0-9]+)\.([0-9]+)\.([0-9]+) ]]; then
+            export VERSION="${BASH_REMATCH[1]}.${BASH_REMATCH[2]}.${BASH_REMATCH[3]} \
+                            ${BASH_REMATCH[1]}.${BASH_REMATCH[2]}"
+          fi
+
+          if [[ -z "$VERSION" ]]; then
+            make build-all-dockers
+          else
+            echo ${DOCKERHUB_PASSWORD} | docker login -u ${DOCKERHUB_USERNAME} --password-stdin
+            make push-all-dockers
+            docker logout
+          fi
