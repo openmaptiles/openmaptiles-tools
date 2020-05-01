@@ -23,10 +23,14 @@ jobs:
 
           unset VERSION
           if [[ "$GITHUB_REF" == "refs/heads/master" ]]; then
+            # Master branch -- builds latest image
             export VERSION="latest"
           elif [[ "$GITHUB_REF" =~ ^refs/heads/v([0-9]+\.[0-9]+) ]]; then
+            # Any vNNN.NNN branch -- builds "NNN.NNN-dev" image
             export VERSION="${BASH_REMATCH[1]}-dev"
           elif [[ "$GITHUB_REF" =~ ^refs/tags/v([0-9]+)\.([0-9]+)\.([0-9]+) ]]; then
+            # Any vNNN.NNN.NNN tag (not branch!) -- builds "NNN.NNN.NNN" and "NNN.NNN" images
+            # This means that the two-part version image will always point to latest patch.
             export VERSION="${BASH_REMATCH[1]}.${BASH_REMATCH[2]}.${BASH_REMATCH[3]} \
                             ${BASH_REMATCH[1]}.${BASH_REMATCH[2]}"
           fi
