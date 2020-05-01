@@ -65,12 +65,8 @@ function import_all_sql_files() {
 # If there are no arguments, imports everything,
 # otherwise the first argument is the name of a file to be imported.
 if [[ $# -eq 0 ]]; then
-  if [[ "${OMT_UTIL_DIR:-}" == "" ]]; then
-    echo "ENV variable OMT_UTIL_DIR is not set. It should contain directory with .sql files, e.g. language.sql "
-    exit 1
-  fi
-  if [[ "${VT_UTIL_DIR:-}" == "" ]]; then
-    echo "ENV variable VT_UTIL_DIR is not set. It should contain directory with .sql files, e.g. postgis-vt-util.sql"
+  if [[ "${SQL_TOOLS_DIR:-}" == "" ]]; then
+    echo "ENV variable SQL_TOOLS_DIR is not set. It should contain directory with .sql files, e.g. postgis-vt-util.sql and language.sql"
     exit 1
   fi
   if [[ "${SQL_DIR:-}" == "" ]]; then
@@ -78,8 +74,7 @@ if [[ $# -eq 0 ]]; then
     exit 1
   fi
 
-  import_all_sql_files "$VT_UTIL_DIR"  # import postgis-vt-util.sql
-  import_all_sql_files "$OMT_UTIL_DIR"  # import language.sql
+  import_all_sql_files "$SQL_TOOLS_DIR"  # import postgis-vt-util.sql and all other tools SQL files from /sql
   import_all_sql_files "$SQL_DIR"  # import compiled tileset.sql
 else
   exec_psql_file "$1"
