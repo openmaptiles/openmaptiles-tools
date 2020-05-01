@@ -1,10 +1,16 @@
 import json
+import os
 import sqlite3
 from datetime import datetime
 from pathlib import Path
 
+import asyncpg
+
+from openmaptiles.pgutils import get_postgis_version, get_vector_layers
 from openmaptiles.sqlite_utils import query
-from openmaptiles.utils import print_err
+from openmaptiles.sqltomvt import MvtGenerator
+from openmaptiles.tileset import Tileset
+from openmaptiles.utils import print_err, Bbox
 
 
 class KeyFinder:
@@ -178,29 +184,50 @@ class Imputer:
             yield with_key, without_key
 
 
-class Metadata():
+def validate(name, value):
+    if name == 'mtime':
+        try:
+            val = datetime.fromtimestamp(int(value) / 1000.0)
+            return f'{value} ({val.isoformat()})', True
+        except ValueError:
+            return f'{value} (invalid)', False
+    elif name in ('filesize', 'maskLevel', 'minzoom', 'maxzoom'):
+        try:
+            return f'{int(value):,}', True
+        except ValueError:
+            return f'{value} (invalid)', False
+    elif name == 'json':
+        try:
+            json.loads(value)
+            return f'(ok)\n{value}', True
+        except ValueError:
+            return f'(invalid)\n{value}', False
+    return value, True
+
+
+def get_minmax(cursor):
+    cursor.execute("SELECT MIN(zoom_level), MAX(zoom_level) FROM map")
+    min_z, max_z = cursor.fetchone()
+    if min_z is None:
+        raise ValueError("Unable to get min/max zoom - tile data is empty")
+    return min_z, max_z
+
+
+def update_metadata(cursor, metadata, reset):
+    if reset:
+        cursor.execute("DELETE FROM metadata;")
+    for name, value in metadata.items():
+        _, is_valid = validate(name, value)
+        if not is_valid:
+            raise ValueError(f"Invalid {name}={value}")
+        cursor.execute(
+            "INSERT OR REPLACE INTO  metadata(name, value) VALUES (?, ?);",
+            [name, value])
+
+
+class Metadata:
     def __init__(self, mbtiles) -> None:
         self.mbtiles = mbtiles
-
-    def validate(self, name, value):
-        if name == 'mtime':
-            try:
-                val = datetime.fromtimestamp(int(value) / 1000.0)
-                return f'{value} ({val.isoformat()})', True
-            except ValueError:
-                return f'{value} (invalid)', False
-        elif name in ('filesize', 'maskLevel', 'minzoom', 'maxzoom'):
-            try:
-                return f'{int(value):,}', True
-            except ValueError:
-                return f'{value} (invalid)', False
-        elif name == 'json':
-            try:
-                json.loads(value)
-                return f'(ok)\n{value}', True
-            except ValueError:
-                return f'(invalid)\n{value}', False
-        return value, True
 
     def print_all(self):
         with sqlite3.connect(self.mbtiles) as conn:
@@ -208,7 +235,7 @@ class Metadata():
         if data:
             width = max((len(v[0]) for v in data))
             for name, value in sorted(data, key=lambda v: v[0] if v[0] != 'json' else 'zz'):
-                print(f"{name:{width}} {self.validate(name, value)[0]}")
+                print(f"{name:{width}} {validate(name, value)[0]}")
         else:
             print(f"There are no values present in {self.mbtiles} metadata table")
 
@@ -223,7 +250,7 @@ class Metadata():
             print(row[0])
 
     def set_value(self, name, value):
-        _, is_valid = self.validate(name, value)
+        _, is_valid = validate(name, value)
         if not is_valid:
             raise ValueError(f"Invalid {name}={value}")
         with sqlite3.connect(self.mbtiles) as conn:
@@ -234,3 +261,93 @@ class Metadata():
                 cursor.execute(
                     "INSERT OR REPLACE INTO  metadata(name, value) VALUES (?, ?);",
                     [name, value])
+
+    async def generate(self, tileset, reset, auto_minmax,
+                       pghost, pgport, dbname, user, password):
+        ts = Tileset.parse(tileset)
+        print(f'Connecting to PostgreSQL at {pghost}:{pgport}, db={dbname}, user={user}...')
+        try:
+            async with asyncpg.create_pool(
+                database=dbname, host=pghost, port=pgport, user=user,
+                password=password, min_size=1, max_size=1,
+            ) as pool:
+                async with pool.acquire() as conn:
+                    mvt = MvtGenerator(
+                        ts,
+                        postgis_ver=await get_postgis_version(conn),
+                        zoom='$1', x='$2', y='$3',
+                    )
+                    json_data = dict(vector_layers=await get_vector_layers(conn, mvt))
+        except ConnectionError as err:
+            print(f"Unable to connect to Postgres database: {err}")
+            raise err
+
+        # Convert tileset to the metadata object according to mbtiles 1.3 spec
+        # https://github.com/mapbox/mbtiles-spec/blob/master/1.3/spec.md#content
+        metadata = dict(
+            # MUST
+            name=os.environ.get('METADATA_NAME', ts.name),
+            format="pbf",
+            json=json.dumps(json_data, ensure_ascii=False, separators=(',', ':')),
+            # SHOULD
+            bounds=",".join((str(v) for v in ts.bounds)),
+            center=",".join((str(v) for v in ts.center)),
+            minzoom=os.environ.get('MIN_ZOOM', str(ts.minzoom)),
+            maxzoom=os.environ.get('MAX_ZOOM', str(ts.maxzoom)),
+            # MAY
+            attribution=os.environ.get('METADATA_ATTRIBUTION', ts.attribution),
+            description=os.environ.get('METADATA_DESCRIPTION', ts.description),
+            version=os.environ.get('METADATA_VERSION', ts.version),
+            # EXTRAS
+            filesize=os.path.getsize(self.mbtiles),
+        )
+
+        bbox_str = os.environ.get('BBOX')
+        if bbox_str:
+            bbox = Bbox(bbox=bbox_str,
+                        center_zoom=os.environ.get('CENTER_ZOOM', ts.center[2]))
+            metadata["bounds"] = bbox.bounds_str()
+            metadata["center"] = bbox.center_str()
+
+        with sqlite3.connect(self.mbtiles) as conn:
+            cursor = conn.cursor()
+            if auto_minmax:
+                metadata["minzoom"], metadata["maxzoom"] = get_minmax(cursor)
+            update_metadata(cursor, metadata, reset)
+
+        print("The metadata now contains these values:")
+        self.print_all()
+
+    def copy(self, target_mbtiles, reset, auto_minmax):
+        with sqlite3.connect(self.mbtiles) as conn:
+            metadata = {k: v for k, v in
+                        query(conn, "SELECT name, value FROM metadata", [])}
+
+        def update_from_env(param, env_var):
+            val = os.environ.get(env_var)
+            if val is not None:
+                metadata[param] = val
+
+        update_from_env('name', 'METADATA_NAME')
+        update_from_env('minzoom', 'MIN_ZOOM')
+        update_from_env('maxzoom', 'MAX_ZOOM')
+        update_from_env('attribution', 'METADATA_ATTRIBUTION')
+        update_from_env('description', 'METADATA_DESCRIPTION')
+        update_from_env('version', 'METADATA_VERSION')
+
+        metadata['filesize'] = os.path.getsize(target_mbtiles)
+
+        bbox_str = os.environ.get('BBOX')
+        if bbox_str:
+            bbox = Bbox(bbox=bbox_str,
+                        center_zoom=os.environ.get('CENTER_ZOOM'))
+            metadata["bounds"] = bbox.bounds_str()
+            metadata["center"] = bbox.center_str()
+
+        with sqlite3.connect(target_mbtiles) as conn:
+            cursor = conn.cursor()
+            if auto_minmax:
+                metadata["minzoom"], metadata["maxzoom"] = get_minmax(cursor)
+            update_metadata(cursor, metadata, reset)
+        print("The metadata now contains these values:")
+        self.print_all()

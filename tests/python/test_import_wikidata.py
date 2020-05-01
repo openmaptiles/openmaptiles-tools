@@ -6,7 +6,7 @@ from unittest import IsolatedAsyncioTestCase, main
 import asyncpg
 import shutil
 
-from openmaptiles.pgutils import PgWarnings
+from openmaptiles.pgutils import PgWarnings, parse_pg_args
 
 test_dir = Path(__file__).parent
 
@@ -25,25 +25,21 @@ class UtilsTestCase(IsolatedAsyncioTestCase):
         tables = importer.find_tables(test_dir / '../testlayers/testmaptiles.yaml')
         self.assertEqual(tables, ['osm_housenumber_point'])
 
-    async def test_pg_func(self):
-        conn = None
-        try:
-            conn = await asyncpg.connect(
-                database=os.getenv('PGDATABASE'),
-                host=os.getenv('PGHOST'),
-                port=os.getenv('PGPORT'),
-                user=os.getenv('PGUSER'),
-                password=os.getenv('PGPASSWORD'),
-            )
-            PgWarnings(conn)
-            await conn.set_builtin_type_codec('hstore', codec_name='pg_contrib.hstore')
-
-            # TODO: implement some tests
-            print("WARNING: import-wikidata PostgreSQL tests are not yet implemented")
-
-        finally:
-            if conn:
-                await conn.close()
+    # async def test_pg_func(self):
+    #     conn = None
+    #     try:
+    #         pghost, pgport, dbname, user, password = parse_pg_args(
+    #             dict(args=dict(dict=lambda v: None))
+    #         )
+    #         conn = await asyncpg.connect(
+    #             database=dbname, host=pghost, port=pgport, user=user, password=password,
+    #         )
+    #         PgWarnings(conn)
+    #         await conn.set_builtin_type_codec('hstore', codec_name='pg_contrib.hstore')
+    #
+    #     finally:
+    #         if conn:
+    #             await conn.close()
 
 
 if __name__ == '__main__':

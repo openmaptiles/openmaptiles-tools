@@ -1,6 +1,5 @@
-import re
 from os import getenv
-from typing import Tuple, Dict, Union
+from typing import Dict, List, Tuple
 
 import asyncpg
 from asyncpg import UndefinedFunctionError, UndefinedObjectError, Connection
@@ -21,15 +20,23 @@ async def show_settings(conn: Connection, verbose=True) -> Dict[str, str]:
     settings = {
         'version()': None,
         'postgis_full_version()': None,
-        'jit': lambda
-            v: 'disable JIT in PG 11-12 for complex queries' if v != 'off' else '',
+        'jit':
+            lambda v: 'disable JIT in PG 11+ for complex queries' if v != 'off' else '',
         'shared_buffers': None,
         'work_mem': None,
         'maintenance_work_mem': None,
+        'effective_cache_size': None,
+        'effective_io_concurrency': None,
         'max_connections': None,
         'max_worker_processes': None,
         'max_parallel_workers': None,
         'max_parallel_workers_per_gather': None,
+        'wal_buffers': None,
+        'min_wal_size': None,
+        'max_wal_size': None,
+        'random_page_cost': None,
+        'default_statistics_target': None,
+        'checkpoint_completion_target': None,
     }
     key_len = max((len(v) for v in settings))
     results = {}
@@ -42,7 +49,7 @@ async def show_settings(conn: Connection, verbose=True) -> Dict[str, str]:
             if validator:
                 msg = validator(res)
                 if msg:
-                    prefix, suffix = COLOR.RED, f" {msg}{COLOR.RESET}"
+                    suffix = f" -- {COLOR.RED}{msg}{COLOR.RESET}"
             results[setting] = res
         except (UndefinedFunctionError, UndefinedObjectError) as ex:
             res = ex.message
@@ -97,3 +104,47 @@ class PgWarnings:
         for msg in self.messages:
             self.print_message(msg)
         self.messages = []
+
+
+async def get_sql_types(connection: Connection):
+    """
+    Get Postgres types that we can handle,
+    and return the mapping of OSM type id (oid) => MVT style type
+    """
+    sql_to_mvt_types = dict(
+        bool="Boolean",
+        text="String",
+        int4="Number",
+        int8="Number",
+    )
+    types = await connection.fetch(
+        "select oid, typname from pg_type where typname = ANY($1::text[])",
+        list(sql_to_mvt_types.keys())
+    )
+    return {row['oid']: sql_to_mvt_types[row['typname']] for row in types}
+
+
+async def get_vector_layers(conn, mvt) -> List[dict]:
+    pg_types = await get_sql_types(conn)
+    vector_layers = []
+    for layer_id, layer in mvt.get_layers():
+        fields = await mvt.validate_layer_fields(conn, layer_id, layer)
+        unknown = {
+            name: oid
+            for name, oid in fields.items() if oid not in pg_types
+        }
+        if unknown:
+            print(f"Ignoring fields with unknown SQL types (OIDs): "
+                  f"[{', '.join([f'{n} ({o})' for n, o in unknown.items()])}]")
+
+        vector_layers.append(dict(
+            id=layer.id,
+            description=layer.description,
+            minzoom=mvt.tileset.minzoom,
+            maxzoom=mvt.tileset.maxzoom,
+            fields={name: pg_types[type_oid]
+                    for name, type_oid in fields.items()
+                    if type_oid in pg_types},
+        ))
+
+    return vector_layers

@@ -2,6 +2,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import List, Union, Dict, Any, Callable
 
+import json
 import sys
 import yaml
 from deprecated import deprecated
@@ -16,7 +17,7 @@ def tag_fields_to_sql(fields):
 
 @dataclass
 class ParsedData:
-    data: dict
+    data: Union[dict, str]
     path: Path
 
 
@@ -66,8 +67,15 @@ class Layer:
 
     def __init__(self,
                  layer_source: Union[str, Path, ParsedData],
-                 tileset: 'Tileset' = None):
+                 tileset: 'Tileset' = None,
+                 index: int = None):
+        """
+        :param layer_source: load layer from this source, e.g. a file
+        :param tileset: parent tileset object (optional)
+        :param index: layer's position index within the tileset
+        """
         self.tileset = tileset
+        self.index = index
 
         if isinstance(layer_source, ParsedData):
             self.filename = layer_source.path
@@ -86,11 +94,28 @@ class Layer:
 
         self.imposm_mappings = [parse_file(f) for f in self.imposm_mapping_files]
 
-        self.schemas = [Path(layer_dir, f).read_text('utf-8')
-                        for f in self.definition.get('schema', [])]
+        schemas = [
+            (f.path, f.data) if isinstance(f, ParsedData)
+            else (f, Path(layer_dir, f).read_text('utf-8'))
+            for f in self.definition.get('schema', [])
+        ]
+        self.schemas = [f"-- Layer {self.id} - {p}\n\n{d}" for p, d in schemas]
 
         self.fields = [Field(k, v) for k, v in
                        self.definition['layer']['fields'].items()]
+
+        if 'requires' in self.definition['layer']:
+            self.requires = self.definition['layer']['requires']
+            if isinstance(self.requires, str):
+                self.requires = [self.requires]
+            if (
+                not isinstance(self.requires, list) or
+                any(not isinstance(v, str) or v == "" for v in self.requires)
+            ):
+                raise ValueError("If defined, 'requires' parameter must be the ID "
+                                 "of another layer, or a list of layer IDs")
+        else:
+            self.requires = []
 
         validate_properties(self, f"Layer {self.filename}")
 
@@ -218,8 +243,35 @@ class Tileset:
 
         self.definition = self.definition['tileset']
         self.layers = []
-        for layer_filename in self.definition['layers']:
-            self.layers.append(Layer(layer_filename, self))
+        self.layers_by_id = {}
+        for index, layer_filename in enumerate(self.definition['layers']):
+            layer = Layer(layer_filename, self, index)
+            if layer.id in self.layers_by_id:
+                raise ValueError(f"Layer '{layer.id}' is defined more than once")
+            self.layers.append(layer)
+            self.layers_by_id[layer.id] = layer
+
+        # Detect circular dependencies and missing layer IDs for the 'requires' field
+        resolved = set()
+        unresolved = self.layers_by_id.copy()
+        last_count = -1
+        while len(resolved) > last_count:
+            last_count = len(resolved)
+            for lid, layer in list(unresolved.items()):
+                for req in layer.requires:
+                    if req not in self.layers_by_id:
+                        raise ValueError(f"Unknown layer '{req}' required for "
+                                         f"layer {layer.id}")
+                    if req not in resolved:
+                        break
+                else:
+                    # all requirements are already in resolved (or no reqs)
+                    resolved.add(lid)
+                    del unresolved[lid]
+        if unresolved:
+            raise ValueError(f"Circular dependency found in layer requirements: " +
+                             ', '.join(unresolved.keys()))
+
         validate_properties(self, f"Tileset {self.filename}")
 
     @deprecated(version='3.2.0', reason='use named properties instead')
