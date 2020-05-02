@@ -14,7 +14,7 @@ from openmaptiles.utils import round_td, Bbox, deg2num
 
 # If the terminal is not present, use this width
 # In github, comments inside the ``` block are about 88 characters
-DEFAULT_TERMINAL_WIDTH = 86
+DEFAULT_TERMINAL_WIDTH = 80
 
 
 class Colors:
