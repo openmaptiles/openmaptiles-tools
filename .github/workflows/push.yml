@@ -55,7 +55,7 @@ jobs:
 
           function push_docker {
             for ver in $VERSION; do
-              echo "docker push openmaptiles/$1:$ver"
+              docker push openmaptiles/$1:$ver
             done
           }
 
@@ -73,7 +73,7 @@ jobs:
           docker image prune --force
           df -h .
 
-          build-postgis-preloaded
+          make build-postgis-preloaded
           push_docker postgis
           push_docker import-data
           push_docker postgis-preloaded
