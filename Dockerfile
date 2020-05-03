@@ -20,6 +20,7 @@ RUN set -eux ;\
         libgeos-dev \
         libleveldb-dev \
         libprotobuf-dev \
+        protobuf-compiler `# sporadically protoc does not get installed somehow` \
         ;\
     /bin/bash -c 'echo ""; echo ""; echo "##### Build imposm3 -- https://github.com/osm2vectortiles/imposm3"' >&2 ;\
     #
