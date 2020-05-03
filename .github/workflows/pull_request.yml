@@ -13,14 +13,51 @@ jobs:
 
       - name: main
         run: |
+          set +e
+          set -x
+
+          df -h .
+          sudo docker system prune --all --force
+          df -h .
+          exit 0
+
+
+          function info {
+            echo "++++++++++++++ STEP $1 ++++++++++++++++++"
+            df -h .
+            sudo du -hs /var /opt /usr
+            sudo docker container ls -a
+            sudo docker images -a
+            echo "++++++++++++++ END STEP $1 ++++++++++++++++++"
+          }
+          trap info EXIT
+          export VERSION="5.0-pg11-3.0-dev"
+
+          info 0
+
+          sudo du -hs /var/*
+          sudo du -hs /opt/*
+          sudo du -hs /usr/*
+
           make test
+          info 1
+          make build-docker
+          info 2
+          make build-generate-vectortiles
+          info 3
+          docker image prune --force
+          info 4
+          make build-postgis
+          info 5
+          make build-import-data
+          info 6
+          sudo du -hs /var/*
+          sudo du -hs /opt/*
+          sudo du -hs /usr/*
 
-          pushd docker/postgis
-          docker build .
-          popd
 
-          pushd docker/generate-vectortiles
-          docker build .
-          popd
+          make build-postgis-preloaded-nodep
 
-          # Do not auto-build import-data and postgis-preload due to high download requirements
+
+
+

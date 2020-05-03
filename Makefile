@@ -72,12 +72,16 @@ build-import-data:
 		$(foreach ver, $(VERSION), --tag $(IMAGE_REPO)/import-data:$(ver)) \
 		docker/import-data
 
-.PHONY: build-postgis-preloaded
-build-postgis-preloaded: build-postgis build-import-data
+# This step assumes the dependent docker images have already been built
+.PHONY: build-postgis-preloaded-nodep
+build-postgis-preloaded-nodep:
 	docker build \
 		--build-arg "OMT_TOOLS_VERSION=$(word 1,$(VERSION))" \
 		$(foreach ver, $(VERSION), --tag $(IMAGE_REPO)/postgis-preloaded:$(ver)) \
 		docker/postgis-preloaded
+
+.PHONY: build-postgis-preloaded
+build-postgis-preloaded: build-postgis build-import-data build-postgis-preloaded-nodep
 
 .PHONY: build-all-dockers
 build-all-dockers: build-docker build-generate-vectortiles build-import-data build-postgis build-postgis-preloaded
