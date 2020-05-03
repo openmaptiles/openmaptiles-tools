@@ -70,7 +70,7 @@ jobs:
 
           # Github has a very low disk limit, so prune docker images often
           df -h .
-          docker image prune --force
+          sudo docker system prune --all --force
           df -h .
 
           make build-postgis-preloaded
