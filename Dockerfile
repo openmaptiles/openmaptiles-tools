@@ -10,7 +10,6 @@ ARG IMPOSM_VERSION="v2017-10-18"
 
 # Build imposm
 RUN set -eux ;\
-    \
     DEBIAN_FRONTEND=noninteractive apt-get update ;\
     DEBIAN_FRONTEND=noninteractive apt-get install  -y \
         `# installing imposm dependencies` \
@@ -18,6 +17,8 @@ RUN set -eux ;\
         libleveldb-dev \
         libprotobuf-dev \
         ;\
+    \
+    apt list --installed ;\
     \
     go version ;\
     go get github.com/tools/godep ;\
