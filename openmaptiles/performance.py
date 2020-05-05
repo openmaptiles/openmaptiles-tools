@@ -274,8 +274,8 @@ generate_series(CAST($4 as int), CAST($5 as int)) AS yval(y);
 
         old_buckets = old and old.buckets or []
         print_graph(
-            f"Tile size distribution for {test.tiles:,} tiles "
-            f"(~{test.tiles / buckets:.0f}/line) generated in "
+            f"Tile sizes for {test.tiles:,} tiles "
+            f"(~{test.tiles / buckets:.0f}/line) done in "
             f"{round_td(test.result.duration)} "
             f"({test.result.gen_speed:,.1f} tiles/s"
             f"{change(old.gen_speed, test.result.gen_speed, True) if old else ''})",
