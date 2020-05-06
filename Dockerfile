@@ -10,18 +10,20 @@ ARG IMPOSM_VERSION="v2017-10-18"
 
 # Build imposm
 RUN set -eux ;\
-    go version ;\
-    go get github.com/tools/godep ;\
-    mkdir /build-bin ;\
-    \
     DEBIAN_FRONTEND=noninteractive apt-get update ;\
-    DEBIAN_FRONTEND=noninteractive apt-get install  -y --no-install-recommends \
+    DEBIAN_FRONTEND=noninteractive apt-get install  -y \
         `# installing imposm dependencies` \
         libgeos-dev \
         libleveldb-dev \
         libprotobuf-dev \
-        protobuf-compiler `# sporadically protoc does not get installed somehow` \
         ;\
+    \
+    apt list --installed ;\
+    \
+    go version ;\
+    go get github.com/tools/godep ;\
+    mkdir /build-bin ;\
+    \
     /bin/bash -c 'echo ""; echo ""; echo "##### Build imposm3 -- https://github.com/osm2vectortiles/imposm3"' >&2 ;\
     #
     # get and build specific version of imposm

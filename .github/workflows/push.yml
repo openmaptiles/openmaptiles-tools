@@ -1,9 +1,9 @@
 name: Build and publish to Docker
 
+# Push seems to be triggered for both refs/heads/... and refs/tags/...
+# So there is no need to trigger on  release: { types: [published] }
 on:
   push:
-  release:
-    types: [published]
 
 jobs:
 

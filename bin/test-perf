@@ -4,7 +4,7 @@ Evaluate tile generation performance against a PostgreSQL database.
 
 Usage:
   test-perf <tileset> [--test=<set>]... [--layer=<layer>]... [--exclude-layers]
-              [--per-layer] [--summary] [--test-all]
+              [--per-layer] [--summary] [--test-all] [--bbox=<bbox>]...
               ([--zoom=<zoom>]... | [--minzoom=<min>] [--maxzoom=<max>])
               [--record=<file>] [--compare=<file>] [--buckets=<count>]
               [--key] [--gzip [<gzlevel>]] [--no-color] [--no-feature-ids]
@@ -18,9 +18,12 @@ Usage:
   <tileset>             Tileset definition yaml file
 
 Options:
-  -t --test=<set>       Which predefined test to run.  [default: us-across]
-                        Use invalid value to see a list.  Use 'null' for PostGIS < v2.5
+  -t --test=<set>       Which predefined test to run, default is us-across unless --bbox
+                        or --test-all are set. Use invalid value to see a list.
+                        Use 'null' for PostGIS < v2.5
   -a --test-all         Run all available tests except 'null'
+  -o --bbox=<bbox>      Provide one or more custom test areas in BBOX format:
+                          comma-separated geo coordinates - <left,bottom,right,top>
   -p --per-layer        Test each layer individually, also show per-layer summary graph.
   -s --summary          Run summary tests, without per-tile break-down.
   -l --layer=<layers>   Limit testing to a specific layer (could be more than one)
@@ -67,10 +70,16 @@ def main(args):
     if not zooms:
         zooms = list(range(int(args['--minzoom']), int(args['--maxzoom']) + 1))
     pghost, pgport, dbname, user, password = parse_pg_args(args)
+
+    tests = args['--test']
+    if not tests and not args['--test-all'] and not args['--bbox']:
+        tests = ["us-across"]
+
     perf = PerfTester(
         tileset=args['<tileset>'],
-        tests=args['--test'],
+        tests=tests,
         test_all=args['--test-all'],
+        bboxes=args['--bbox'],
         summary=args['--summary'],
         per_layer=args['--per-layer'],
         layers=args['--layer'],
