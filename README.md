@@ -1,9 +1,26 @@
-# OpenMapTiles Tools [![Build Status](https://api.travis-ci.org/openmaptiles/openmaptiles-tools.svg?branch=master)](https://travis-ci.org/openmaptiles/openmaptiles-tools) [![Docker Automated build](https://img.shields.io/docker/automated/openmaptiles/openmaptiles-tools.svg)](https://hub.docker.com/r/openmaptiles/openmaptiles-tools) [![](https://images.microbadger.com/badges/image/openmaptiles/openmaptiles-tools.svg)](https://microbadger.com/images/openmaptiles/openmaptiles-tools)
+# OpenMapTiles Tools ![Build and publish to Docker](https://github.com/openmaptiles/openmaptiles-tools/workflows/Build%20and%20publish%20to%20Docker/badge.svg)
 
-The OpenMapTiles toolbox for generating TM2Source projects, imposm3 mappings and SQL instructions
-from OpenMapTiles layers. We encourage other people to use this for their vector tile projects as well since this approach works well for us.
+The OpenMapTiles toolbox for generating map vector tiles.
+It includes tools to prepare Imposm mappings and SQL files based on layers defined in [OpenMapTiles](https://github.com/openmaptiles/openmaptiles) or similar projects. It also includes map data downloading, parsing, debugging, and performance evaluation tools. 
+We encourage other people to use this for their vector tile projects as well since this approach works well for us.
 
-Check out the [OpenMapTiles project](https://github.com/openmaptiles/openmaptiles/) for a real world example.
+## Docker Images
+##### openmaptiles-tools [![](https://img.shields.io/microbadger/layers/openmaptiles/openmaptiles-tools)](https://hub.docker.com/r/openmaptiles/openmaptiles-tools) [![](https://img.shields.io/microbadger/image-size/openmaptiles/openmaptiles-tools?label=size)](https://hub.docker.com/r/openmaptiles/openmaptiles-tools) [![](https://img.shields.io/docker/pulls/openmaptiles/openmaptiles-tools?label=downloads)](https://hub.docker.com/r/openmaptiles/openmaptiles-tools) [![](https://img.shields.io/docker/stars/openmaptiles/openmaptiles-tools?label=stars)](https://hub.docker.com/r/openmaptiles/openmaptiles-tools)
+A collection of tools for downloading, parsing, and generating map tiles described below.
+
+##### import-data [![](https://img.shields.io/microbadger/layers/openmaptiles/import-data)](https://hub.docker.com/r/openmaptiles/import-data) [![](https://img.shields.io/microbadger/image-size/openmaptiles/import-data?label=size)](https://hub.docker.com/r/openmaptiles/import-data) [![](https://img.shields.io/docker/pulls/openmaptiles/import-data?label=downloads)](https://hub.docker.com/r/openmaptiles/import-data) [![](https://img.shields.io/docker/stars/openmaptiles/import-data?label=stars)](https://hub.docker.com/r/openmaptiles/import-data)
+Multiple data sources packaged for import into PostgreSQL DB, includes data from [Natural Earth](http://www.naturalearthdata.com/), [water polygons](http://osmdata.openstreetmap.de), and [lake centerlines](https://github.com/lukasmartinelli/osm-lakelines).
+
+##### postgis [![](https://img.shields.io/microbadger/layers/openmaptiles/postgis)](https://hub.docker.com/r/openmaptiles/postgis) [![](https://img.shields.io/microbadger/image-size/openmaptiles/postgis?label=size)](https://hub.docker.com/r/openmaptiles/postgis) [![](https://img.shields.io/docker/pulls/openmaptiles/postgis?label=downloads)](https://hub.docker.com/r/openmaptiles/postgis) [![](https://img.shields.io/docker/stars/openmaptiles/postgis?label=stars)](https://hub.docker.com/r/openmaptiles/postgis)
+An image with PostgreSQL database, Postgis, and several other extensions, custom built for OpenMapTiles project.
+
+##### postgis-preloaded [![](https://img.shields.io/microbadger/layers/openmaptiles/postgis-preloaded)](https://hub.docker.com/r/openmaptiles/postgis-preloaded) [![](https://img.shields.io/microbadger/image-size/openmaptiles/postgis-preloaded?label=size)](https://hub.docker.com/r/openmaptiles/postgis-preloaded) [![](https://img.shields.io/docker/pulls/openmaptiles/postgis-preloaded?label=downloads)](https://hub.docker.com/r/openmaptiles/postgis-preloaded) [![](https://img.shields.io/docker/stars/openmaptiles/postgis-preloaded?label=stars)](https://hub.docker.com/r/openmaptiles/postgis-preloaded)
+The above `postgis` image pre-loaded with the `import-data`. This image is mostly used for testing, and may not be appropriate for production. The image has hardcoded user `openmaptiles` and password `openmaptiles`.
+
+
+##### generate-vectortiles [![](https://img.shields.io/microbadger/layers/openmaptiles/generate-vectortiles)](https://hub.docker.com/r/openmaptiles/generate-vectortiles) [![](https://img.shields.io/microbadger/image-size/openmaptiles/generate-vectortiles?label=size)](https://hub.docker.com/r/openmaptiles/generate-vectortiles) [![](https://img.shields.io/docker/pulls/openmaptiles/generate-vectortiles?label=downloads)](https://hub.docker.com/r/openmaptiles/generate-vectortiles) [![](https://img.shields.io/docker/stars/openmaptiles/generate-vectortiles?label=stars)](https://hub.docker.com/r/openmaptiles/generate-vectortiles)
+Legacy Mapnik-based image that simplifies `tilelive-copy` tile generation.  Eventually will be replaced with PostgreSQL-based [ST_AsMVT](https://postgis.net/docs/ST_AsMVT.html) approach. 
+
 
 ## Usage
 

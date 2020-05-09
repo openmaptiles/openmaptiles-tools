@@ -2,9 +2,11 @@
 SHELL         = /bin/bash
 .SHELLFLAGS   = -o pipefail -c
 
+# VERSION could be set to more than one space-separated value, e.g. "5.3.2 5.3"
 VERSION      ?= $(shell grep __version__ ./openmaptiles/__init__.py | sed -E 's/^(.*"([^"]+)".*|.*)$$/\2/')
-IMAGE_NAME   ?= openmaptiles/openmaptiles-tools
-DOCKER_IMAGE ?= $(IMAGE_NAME):$(VERSION)
+IMAGE_REPO   ?= openmaptiles
+IMAGE_NAME   ?= $(IMAGE_REPO)/openmaptiles-tools
+DOCKER_IMAGE ?= $(IMAGE_NAME):$(word 1,$(VERSION))
 BUILD_DIR    ?= build
 
 # Options to run with docker - ensure the container is destroyed on exit,
@@ -20,7 +22,6 @@ EXPECTED_DIR := tests/expected
 
 # Export image name so that tests/sql/docker-compose.yml can use it
 export DOCKER_IMAGE
-
 
 .PHONY: test
 test: clean run-python-tests build-tests
@@ -49,32 +50,37 @@ prepare:
 
 .PHONY: build-docker
 build-docker:
-	docker build --file Dockerfile --tag $(DOCKER_IMAGE) .
+	docker build \
+		$(foreach ver, $(VERSION), --tag $(IMAGE_NAME):$(ver)) \
+		.
+
+.PHONY: build-generate-vectortiles
+build-generate-vectortiles:
+	docker build \
+		$(foreach ver, $(VERSION), --tag $(IMAGE_REPO)/generate-vectortiles:$(ver)) \
+		docker/generate-vectortiles
+
+.PHONY: build-postgis
+build-postgis:
+	docker build \
+		$(foreach ver, $(VERSION), --tag $(IMAGE_REPO)/postgis:$(ver)) \
+		docker/postgis
+
+.PHONY: build-import-data
+build-import-data:
+	docker build \
+		$(foreach ver, $(VERSION), --tag $(IMAGE_REPO)/import-data:$(ver)) \
+		docker/import-data
+
+.PHONY: build-postgis-preloaded
+build-postgis-preloaded: build-postgis build-import-data
+	docker build \
+		--build-arg "OMT_TOOLS_VERSION=$(word 1,$(VERSION))" \
+		$(foreach ver, $(VERSION), --tag $(IMAGE_REPO)/postgis-preloaded:$(ver)) \
+		docker/postgis-preloaded
 
 .PHONY: build-all-dockers
-build-all-dockers: build-docker
-	# Docker-build all subdirectories in docker/*
-	# For each dir, cd into it and do a docker build + tag with version
-	# The build-arg OMT_TOOLS_VERSION is not needed by most of the builds, so it will show a warning
-	@for dir in $$(find docker/* -maxdepth 0 -type d | sort) ; do \
-	( \
-		cd $$dir ; \
-		echo "\n\n*****************************************************" ; \
-		echo "Building openmaptiles/$${dir#docker/}:$(VERSION) in $$dir..." ; \
-		if [ "$$dir" = "docker/postgis-preloaded" ]; then \
-			docker build \
-				--file Dockerfile \
-				--build-arg OMT_TOOLS_VERSION=$(VERSION) \
-				--tag openmaptiles/$${dir#docker/}:$(VERSION) \
-				. ; \
-		else \
-			docker build \
-				--file Dockerfile \
-				--tag openmaptiles/$${dir#docker/}:$(VERSION) \
-				. ; \
-		fi ; \
-	) ; \
-	done
+build-all-dockers: build-docker build-generate-vectortiles build-import-data build-postgis build-postgis-preloaded
 
 .PHONY: run-python-tests
 run-python-tests: build-docker

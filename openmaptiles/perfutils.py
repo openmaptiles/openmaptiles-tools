@@ -14,7 +14,7 @@ from openmaptiles.utils import round_td, Bbox, deg2num
 
 # If the terminal is not present, use this width
 # In github, comments inside the ``` block are about 88 characters
-DEFAULT_TERMINAL_WIDTH = 86
+DEFAULT_TERMINAL_WIDTH = 85
 
 
 class Colors:
@@ -125,10 +125,10 @@ class PerfBucket:
         else:
             delta = ''
             color = None
-        msg = f"avg tile size" \
+        msg = f"avg size" \
               f"{delta}, " \
-              f"{self.smallest_size:,} B ({self.smallest_id}) — " \
-              f"{self.largest_size:,} B ({self.largest_id})"
+              f"{self.smallest_size:,}B ({self.smallest_id}) — " \
+              f"{self.largest_size:,}B ({self.largest_id})"
         if color:
             return msg, self.tile_avg_size, color
         else:

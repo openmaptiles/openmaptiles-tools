@@ -36,7 +36,7 @@ Options:
   -s --state <file>     Download state file and save it to the <file>
   -j --imposm-cfg <f>   Create an imposm configuration json file, and write
                         replication_url param into it.  Use -k any additional values.
-                        (requires plant, geofabrik, or osmfr download type)
+                        (requires planet, geofabrik, or osmfr download type)
   -k --kv <key=value>   Add extra key=value params to the imposm config (requires -j)
   -d --make-dc <file>   Create a docker-compose file with the area metadata.
   -x --dc-ver <ver>     Set docker-compose file version to this value.
@@ -351,24 +351,33 @@ async def get_geofabrik_list(session: ClientSession, force_latest, no_cache) -> 
             list_path.write_text(data, encoding='utf-8')
     entries = {v["properties"]["id"]: v["properties"]
                for v in json.loads(data)["features"]}
+    warnings = []
     # resolve parents until no more changes are made
     for entry in entries.values():
         full_id = entry["id"]
-        full_name = entry["name"]
-        current = entry
-        for idx in range(10):  # avoids infinite recursion
-            if "parent" in current:
-                current = entries[current["parent"]]
-                full_id = f"{current['id']}/{full_id}"
-                full_name = f"{current['name']} / {full_name}"
+        try:
+            full_name = entry["name"]
+            current = entry
+            for idx in range(10):  # avoids infinite recursion
+                if "parent" in current:
+                    current = entries[current["parent"]]
+                    full_id = f"{current['id']}/{full_id}"
+                    full_name = f"{current['name']} / {full_name}"
+                else:
+                    break
             else:
-                break
-        else:
-            raise ValueError(f"Geofabrik data '{entry['id']}' has infinite parent loop")
-        entry["full_id"] = full_id
-        entry["full_name"] = full_name
-        entry["url"] = entry["urls"]["pbf"]
-        entry["url_updates"] = entry["urls"]["updates"]
+                raise ValueError(f"Geofabrik data '{entry['id']}' has infinite parent loop")
+            entry["full_id"] = full_id
+            entry["full_name"] = full_name
+            entry["url"] = entry["urls"]["pbf"]
+            entry["url_updates"] = entry["urls"]["updates"]
+        except KeyError as key:
+            warnings.append(
+                f"Unable to parse entry {full_id} - key {key} does not exist")
+    if warnings:
+        print(f"ERRORS parsing Geofabrik catalog file:", file=sys.stderr)
+        for warn in warnings:
+            print(f" * {warn}", file=sys.stderr)
 
     return {v["full_id"]: v
             for v in sorted(entries.values(), key=lambda v: v["full_id"])}

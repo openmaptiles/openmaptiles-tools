@@ -45,39 +45,6 @@ TEST_CASES: Dict[str, TestCase] = {v.id: v for v in [
         'null',
         'Empty set, useful for query validation.',
         (0, 0), (0, 0)),  # DO NOT CHANGE THESE COORDINATES
-
-    # Smallest Geofabrik areas, smallest to largest (in PBF MBs)
-    TestCase('monaco', 'Monaco (Europe)',
-             bbox='7.4016843,43.5165358,7.5002447,43.7543525'),
-    # saint-helena-ascension-and-tristan-da-cunha has 2,519,538 tiles, skipping
-    TestCase('sao-tome-and-principe', 'Sao Tome and Principe (Africa)',
-             bbox='6.2606420,-0.2135137,7.6704783,1.9257601'),
-    TestCase('rutland', 'Rutland (Europe/England)',
-             bbox='-0.8754549,52.2185243,-0.2619499,53.2289705'),
-    TestCase('andorra', 'Andorra (Europe)',
-             bbox='0.9755770,42.3242153,1.8246545,42.7883379'),
-    TestCase('equatorial-guinea', 'Equatorial Guinea (Africa)',
-             bbox='5.4172943,-1.6732196,12.3733400,4.3475256'),
-    TestCase('liechtenstein', 'Liechtenstein (Europe)',
-             bbox='9.0900979,46.9688169,9.6717077,47.5258072'),
-    TestCase('isle-of-man', 'Isle of Man (Europe)',
-             bbox='-20.0516670,52.0363391,-2.9134845,55.7175267'),
-    TestCase('seychelles', 'Seychelles (Africa)',
-             bbox='44.7888890,-12.8022220,56.4979396,-3.5120000'),
-    TestCase('enfield', 'Enfield (Europe, England, London)',
-             bbox='-0.3411928,51.5711773,0.0420140,51.7314462'),
-    TestCase('comores', 'Comores (Africa)',
-             bbox='43.0253050,-12.7197220,45.7675000,-10.9803547'),
-    TestCase('maldives', 'Maldives (Asia)',
-             bbox='51.0378745,-0.9074935,80.5838734,25.6240842'),
-    TestCase('faroe-islands', 'Faroe Islands (Europe)',
-             bbox='-14.0036840,57.5958843,9.9757588,65.3045646'),
-    TestCase('mayotte', 'Mayotte (Europe, France)',
-             bbox='44.7436676,-13.2732554,45.5070347,-12.3485200'),
-    TestCase('malta', 'Malta (Europe)',
-             bbox='5.3397500,31.2100000,29.9100000,42.9466000'),
-    TestCase('hungary', 'Hungary (Europe)',
-             bbox='15.8690057,43.7898070,24.7137719,49.3859161'),
 ]}
 
 
@@ -89,8 +56,8 @@ class PerfTester:
                  zooms: List[int], dbname: str, pghost, pgport: str, user: str,
                  password: str, summary: bool, per_layer: bool, buckets: int,
                  save_to: Union[None, str, Path], compare_with: Union[None, str, Path],
-                 key_column: bool, gzip: bool, disable_feature_ids: bool = None,
-                 exclude_layers: bool = False, verbose: bool = None):
+                 key_column: bool, gzip: bool, disable_feature_ids: bool,
+                 exclude_layers: bool, verbose: bool, bboxes: List[str]):
         self.tileset = Tileset.parse(tileset)
         self.dbname = dbname
         self.pghost = pghost
@@ -116,14 +83,22 @@ class PerfTester:
         else:
             self.old_run = None
 
+        self.all_test_cases = TEST_CASES.copy()
+
+        # Fake bbox tests as if they were defined, and create names for them
+        for bbox_idx, bbox in enumerate(bboxes, start=1):
+            tc = TestCase(f'bbox_test_{bbox_idx}', bbox, bbox=bbox)
+            self.all_test_cases[tc.id] = tc
+            tests.append(tc.id)
+
         for test in tests:
-            if test not in TEST_CASES:
-                cases = '\n'.join(map(TestCase.fmt_table, TEST_CASES.values()))
+            if test not in self.all_test_cases:
+                cases = '\n'.join(map(TestCase.fmt_table, self.all_test_cases.values()))
                 raise DocoptExit(f"Test '{test}' is not defined. "
                                  f"Available tests are:\n{cases}\n")
         if test_all:
             # Do this after validating individual tests, they are ignored but validated
-            tests = [v for v in TEST_CASES.keys() if v != 'null']
+            tests = [v for v in self.all_test_cases.keys() if v != 'null']
         all_layers = [v.id for v in self.tileset.layers]
         if layers and exclude_layers:
             # inverse layers list
@@ -205,7 +180,7 @@ SELECT {prefix}(COALESCE(LENGTH(({query})), 0)) AS len FROM
 generate_series(CAST($2 as int), CAST($3 as int)) AS xval(x),
 generate_series(CAST($4 as int), CAST($5 as int)) AS yval(y);
 """
-        return TEST_CASES[test].make_test(zoom, layers, query)
+        return self.all_test_cases[test].make_test(zoom, layers, query)
 
     async def run_test(self, conn: Connection, test: TestCase):
         results = []
@@ -266,8 +241,8 @@ generate_series(CAST($4 as int), CAST($5 as int)) AS yval(y);
 
         old_buckets = old and old.buckets or []
         print_graph(
-            f"Tile size distribution for {test.tiles:,} tiles "
-            f"(~{test.tiles / buckets:.0f}/line) generated in "
+            f"Tile sizes for {test.tiles:,} tiles "
+            f"(~{test.tiles / buckets:.0f}/line) done in "
             f"{round_td(test.result.duration)} "
             f"({test.result.gen_speed:,.1f} tiles/s"
             f"{change(old.gen_speed, test.result.gen_speed, True) if old else ''})",
