@@ -387,6 +387,7 @@ async def save_state_file(session, state_url, state_file):
     state_file = Path(state_file).resolve()
     print(f"Downloading state file {state_url} to {state_file}")
     data = await fetch(session, state_url)
+    state_file.parent.mkdir(exist_ok=True)
     state_file.write_text(data, encoding="utf-8")
 
 
