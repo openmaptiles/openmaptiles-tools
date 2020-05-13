@@ -69,14 +69,13 @@ FROM python:3.8-slim
 LABEL maintainer="Yuri Astrakhan <YuriAstrakhan@gmail.com>"
 
 ARG PG_MAJOR=12
-ARG VT_UTIL_VERSION=v2.0.0
 ARG TOOLS_DIR=/usr/src/app
 
 WORKDIR ${TOOLS_DIR}
 
 #
 # IMPOSM_CONFIG_FILE can be used to provide custom IMPOSM config file
-# SQL_TOOLS_DIR can be used to provide custom SQL files instead of vt_utils and other files from /sql
+# SQL_TOOLS_DIR can be used to provide custom SQL files instead of the files from /sql
 #
 ENV TOOLS_DIR="$TOOLS_DIR" \
     PATH="${TOOLS_DIR}:${PATH}" \
@@ -122,12 +121,7 @@ RUN set -eux ;\
 
 # Copy requirements.txt first to avoid pip install on every code change
 COPY ./requirements.txt .
-
-RUN set -eux ;\
-    pip install --no-cache-dir -r requirements.txt ;\
-    mkdir -p "${SQL_TOOLS_DIR:?}" ;\
-    wget --quiet --progress=bar:force:noscroll --show-progress -O "${SQL_TOOLS_DIR}/10_postgis-vt-util.sql" \
-       https://raw.githubusercontent.com/openmaptiles/postgis-vt-util/${VT_UTIL_VERSION}/postgis-vt-util.sql
+RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy tools, imposm, and osmborder into the app dir
 COPY --from=go-builder /build-bin/* ./

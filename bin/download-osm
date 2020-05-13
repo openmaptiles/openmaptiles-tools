@@ -387,6 +387,7 @@ async def save_state_file(session, state_url, state_file):
     state_file = Path(state_file).resolve()
     print(f"Downloading state file {state_url} to {state_file}")
     data = await fetch(session, state_url)
+    state_file.parent.mkdir(exist_ok=True)
     state_file.write_text(data, encoding="utf-8")
 
 
@@ -460,9 +461,9 @@ async def prepare_area_download(args, session):
                     f"Geofabrik, use longer ID:\n{variants}")
             url = area_urls[0][1]
             repl_url = area_urls[0][2]
-            if args.state:
-                state_url = url.replace("-latest.osm.pbf", "-updates/state.txt")
-                await save_state_file(session, state_url, args.state)
+        if args.state:
+            state_url = url.replace("-latest.osm.pbf", "-updates/state.txt")
+            await save_state_file(session, state_url, args.state)
     else:
         raise DocoptExit()
     src = Source(area_id or 'raw url', url, url_hash=url + '.md5')
