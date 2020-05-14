@@ -2,7 +2,7 @@
 # the postgis base image has outdated ogr2ogr (gdal-bin package)
 # does not support PG12 yet, which means postgis-preloaded cannot be built easily.
 # Once it is updated, or there is a different way to build it, we can upgrade to 12.
-FROM postgis/postgis:11-3.0
+FROM postgis/postgis:12-3.0
 
 LABEL maintainer="Yuri Astrakhan <YuriAstrakhan@gmail.com>"
 

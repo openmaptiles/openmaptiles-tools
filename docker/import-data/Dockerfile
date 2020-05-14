@@ -10,6 +10,7 @@ RUN DIR=/downloads/natural_earth \
  && wget --quiet http://naciscdn.org/naturalearth/packages/natural_earth_vector.sqlite.zip \
  && unzip -oj natural_earth_vector.sqlite.zip \
  && ../clean-natural-earth.sh natural_earth_vector.sqlite \
+ && rm ../clean-natural-earth.sh \
  && rm natural_earth_vector.sqlite.zip
 
 # Download water polygons data from http://osmdata.openstreetmap.de
