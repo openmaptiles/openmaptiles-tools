@@ -66,7 +66,6 @@ CREATE OR REPLACE FUNCTION get_latin_name(tags hstore, geometry geometry) RETURN
       CASE
         WHEN tags->'name' is not null and omt_is_latin(tags->'name')
           THEN tags->'name'
-        ELSE NULL
       END,
       NULLIF(tags->'name:en', ''),
       NULLIF(tags->'int_name', ''),
