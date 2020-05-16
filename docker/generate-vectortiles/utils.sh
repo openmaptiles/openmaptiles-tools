@@ -40,3 +40,28 @@ function replace_db_connection() {
     sed -i "$replace_expr_4" "$DEST_PROJECT_FILE"
     sed -i "$replace_expr_5" "$DEST_PROJECT_FILE"
 }
+
+# Fix Mapnik output and errors
+#
+# Usage:
+#   filter_deprecation tilelive-copy ...
+#
+function filter_deprecation()(
+  (
+    # Swap stdin and stderr
+    "$@" 3>&2- 2>&1- 1>&3- | (
+      # Remove "is deprecated" error messages
+      sed -u "/is deprecated/d"
+  # Swap back stdin and stderr
+  )) 3>&2- 2>&1- 1>&3- | \
+  # Fix time precision
+  sed -u "s/s\] /000&/;s/\(\.[0-9][0-9][0-9]\)[0-9]*s\] /\1s] /" | \
+  # Redraw progress on the same line
+  while read line; do
+  if [[ "$line" == *left ]] ; then
+    echo -n "$line"
+  else
+    echo "$line"
+  fi
+done
+);
