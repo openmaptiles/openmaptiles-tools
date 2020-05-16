@@ -239,7 +239,7 @@ class Mirror:
         """initialize the self.sources with the relevant Source objects
         by parsing the mirror's HTML page, and getting all <a> tags"""
         try:
-            sources = self.get_sources(session, verbose)
+            sources = await self.get_sources(session, verbose)
             if not sources:
                 raise ValueError(f"No sources found")
             await asyncio.wait([v.load_hash(session, verbose) for v in sources] +
@@ -250,7 +250,7 @@ class Mirror:
         except Exception as ex:
             print_err(f"Unable to use {self.country} source {self.url}: {ex}")
 
-    def get_sources(self, session, verbose):
+    async def get_sources(self, session, verbose):
         return [Source(
             name='planet-latest.osm.pbf',
             url=self.url,
@@ -261,7 +261,7 @@ class Mirror:
 class Mirror2(Mirror):
     """A mirror with multiple files"""
 
-    def get_sources(self, session, verbose):
+    async def get_sources(self, session, verbose):
         soup = BeautifulSoup(await fetch(session, self.url), 'html.parser')
         return self.parse_hrefs(
             [(v.text.strip(), v['href'].strip())
