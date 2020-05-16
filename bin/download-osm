@@ -96,41 +96,43 @@ USER_AGENT = f'OpenMapTiles download-osm {openmaptiles.__version__} ' \
 
 class Catalog:
     def __init__(self):
-        self.sites = [
-            Site('GB', 'https://planet.openstreetmap.org/pbf/', is_primary_source=True),
-            Site('DE', 'https://download.bbbike.org/osm/planet/planet-latest.osm.pbf',
-                 is_file=True),
-            Site('DE', 'https://ftp.spline.de/pub/openstreetmap/pbf/'),
-            Site('DE', 'https://ftp5.gwdg.de'
-                       '/pub/misc/openstreetmap/planet.openstreetmap.org/pbf/'),
-            Site('DE', 'https://ftp.fau.de/osm-planet/pbf/'),
-            Site('NL', 'https://ftp.nluug.nl/maps/planet.openstreetmap.org'
-                       '/pbf/planet-latest.osm.pbf', is_file=True),
-            Site('NL', 'https://ftp.snt.utwente.nl'
-                       '/pub/misc/openstreetmap/planet-latest.osm.pbf', is_file=True),
-            Site('TW', 'https://free.nchc.org.tw/osm.planet/pbf/'),
-            Site('US', 'https://ftp.osuosl.org'
-                       '/pub/openstreetmap/pbf/planet-latest.osm.pbf', is_file=True),
-            Site('US', 'https://ftpmirror.your.org/pub/openstreetmap/pbf/'),
+        self.mirrors = [
+            Mirror2('GB', 'https://planet.openstreetmap.org/pbf/', is_primary=True),
+            Mirror('DE',
+                   'https://download.bbbike.org/osm/planet/planet-latest.osm.pbf'),
+            Mirror2('DE', 'https://ftp.spline.de/pub/openstreetmap/pbf/'),
+            Mirror2('DE', 'https://ftp5.gwdg.de'
+                          '/pub/misc/openstreetmap/planet.openstreetmap.org/pbf/'),
+            # https://planet.passportcontrol.net/pbf/ redirects to broken SSL cert
+            # when used from some locations.
+            # See https://twitter.com/IchikawaYukko/status/1261541590566223872
+            Mirror2('JP', 'https://planet.passportcontrol.net/pbf/'),
+            Mirror2('DE', 'https://ftp.fau.de/osm-planet/pbf/'),
+            Mirror('NL', 'https://ftp.nluug.nl/maps/planet.openstreetmap.org'
+                         '/pbf/planet-latest.osm.pbf'),
+            Mirror('NL', 'https://ftp.snt.utwente.nl'
+                         '/pub/misc/openstreetmap/planet-latest.osm.pbf'),
+            Mirror2('TW', 'https://free.nchc.org.tw/osm.planet/pbf/'),
+            Mirror('US', 'https://ftp.osuosl.org'
+                         '/pub/openstreetmap/pbf/planet-latest.osm.pbf'),
+            Mirror2('US', 'https://ftpmirror.your.org/pub/openstreetmap/pbf/'),
 
             # Internet archive is a bit tricky -- https://archive.org/details/osmdata
-            # https://planet.passportcontrol.net/pbf/ redirects to broken SSL cert
-            # Site('JP', 'https://planet.passportcontrol.net/pbf/'),
         ]
 
     async def init(self,
                    session: ClientSession, verbose: bool,
                    use_primary: bool, force_latest: bool) -> Tuple[List[str], str]:
-        """Load the list of all available sources from all mirror sites,
+        """Load the list of all available sources from all mirrors,
         and pick the most recent file that is widely available.
         Returns a list of urls and the expected md5 hash.
         """
         print("Retrieving available files...")
         await sleep(0.01)  # Make sure the above print statement prints first
         sources_by_hash: Dict[str, List[Source]] = defaultdict(list)
-        await asyncio.wait([v.init(session, verbose) for v in self.sites])
-        for site in self.sites:
-            for s in site.sources:
+        await asyncio.wait([v.init(session, verbose) for v in self.mirrors])
+        for mirror in self.mirrors:
+            for s in mirror.sources:
                 sources_by_hash[s.hash].append(s)
         # Remove "latest" from sources if they have no md5 hash
         # noinspection PyTypeChecker
@@ -172,7 +174,7 @@ class Catalog:
 
         print("\nLatest available files:\n")
         info = [dict(date=f"{s[0]:%Y-%m-%d}" if s[0] < datetime.max else "Unknown",
-                     number_of_sites=s[1], md5=s[2].hash,
+                     mirror_count=s[1], md5=s[2].hash,
                      size=s[2].size_str())
                 for s in stats]
         print(tabulate(info, headers="keys") + '\n')
@@ -189,15 +191,16 @@ class Catalog:
         ts = f"{ts:%Y-%m-%d}" if ts else "latest (unknown date)"
 
         if len(src_list) > 2 and not use_primary:
-            src_list = [v for v in src_list if not v.site.is_primary_source]
+            src_list = [v for v in src_list if not v.mirror.is_primary]
             info = ' (will not use primary)' + info
 
         print(f"Will download planet published on {ts}, "
               f"size={src_list[0].size_str()}, md5={src_list[0].hash}, "
               f"using {len(src_list)} sources{info}")
         if verbose:
-            print(tabulate([dict(country=s.site.country, url=s.url) for s in src_list],
-                           headers="keys") + '\n')
+            print(
+                tabulate([dict(country=s.mirror.country, url=s.url) for s in src_list],
+                         headers="keys") + '\n')
 
         return [s.url for s in src_list], hash_to_download
 
@@ -223,32 +226,20 @@ class Catalog:
         return attr_to_hash
 
 
-class Site:
+class Mirror:
     re_name = re.compile(r'^planet-(\d{6}|latest)\.osm\.pbf(\.md5)?$')
 
-    def __init__(self, country, url, is_primary_source=False, is_file=False):
+    def __init__(self, country, url, is_primary=False):
         self.country: str = country
         self.url: str = url
-        self.is_primary_source: bool = is_primary_source
-        self.is_file = is_file
+        self.is_primary: bool = is_primary
         self.sources: List[Source] = []
 
     async def init(self, session: ClientSession, verbose: bool):
         """initialize the self.sources with the relevant Source objects
-        by parsing the mirror's site HTML page, and getting all <a> tags"""
+        by parsing the mirror's HTML page, and getting all <a> tags"""
         try:
-            if self.is_file:
-                # This site only has a single PBF file
-                sources = [Source(name='planet-latest.osm.pbf',
-                                  url=self.url,
-                                  url_hash=self.url + '.md5',
-                                  site=self)]
-            else:
-                soup = BeautifulSoup(await fetch(session, self.url), 'html.parser')
-                sources = self.parse_hrefs(
-                    [(v.text.strip(), v['href'].strip())
-                     for v in soup.find_all('a') if 'href' in v.attrs],
-                    verbose)
+            sources = self.get_sources(session, verbose)
             if not sources:
                 raise ValueError(f"No sources found")
             await asyncio.wait([v.load_hash(session, verbose) for v in sources] +
@@ -258,6 +249,24 @@ class Site:
             self.sources = sources
         except Exception as ex:
             print_err(f"Unable to use {self.country} source {self.url}: {ex}")
+
+    def get_sources(self, session, verbose):
+        return [Source(
+            name='planet-latest.osm.pbf',
+            url=self.url,
+            url_hash=self.url + '.md5',
+            mirror=self)]
+
+
+class Mirror2(Mirror):
+    """A mirror with multiple files"""
+
+    def get_sources(self, session, verbose):
+        soup = BeautifulSoup(await fetch(session, self.url), 'html.parser')
+        return self.parse_hrefs(
+            [(v.text.strip(), v['href'].strip())
+             for v in soup.find_all('a') if 'href' in v.attrs],
+            verbose)
 
     def parse_hrefs(self, items: List[tuple], verbose) -> List['Source']:
         """Convert a list of (name, href) tuples to a list of valid sources,
@@ -299,7 +308,7 @@ class Source:
     name: str
     url: str
     timestamp: datetime = None
-    site: Site = None
+    mirror: Mirror = None
     url_hash: str = None
     hash: str = None
     file_len: int = None
@@ -309,8 +318,8 @@ class Source:
 
     def to_str(self, use_hash_url=False):
         res = f"{self.name} from {self.url_hash if use_hash_url else self.url}"
-        if self.site:
-            res = f"{res} ({self.site.country})"
+        if self.mirror:
+            res = f"{res} ({self.mirror.country})"
         return res
 
     async def load_hash(self, session: ClientSession, verbose: bool):
