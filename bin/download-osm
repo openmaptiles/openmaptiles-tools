@@ -3,17 +3,16 @@
 Usage:
   download-osm list <service> [-l] [-c]
   download-osm planet [-l] [-p] [-n] [-v] [-j <file> [-k <kv>]...] [-d <file> [-i <z>] [-a <z>] [-x <v>]] [--] [<args>...]
-  download-osm url       <url>  [-n] [-v] [-j <file> [-k <kv>]...] [-d <file> [-i <z>] [-a <z>] [-x <v>] [--id <id>]] [--] [<args>...]
-  download-osm (geofabrik|osmfr|bbbike) <id> [-l] [-c] [-n] [-v] [-s <file>] [-j <file> [-k <kv>]...] [-d <file> [-i <z>] [-a <z>] [-x <v>]] [--] [<args>...]
+  download-osm [geofabrik|osmfr|bbbike|url] <area_or_url> [-l] [-c] [-n] [-v] [-s <file>] [-j <file> [-k <kv>]...] [-d <file> [-i <z>] [-a <z>] [-x <v>] [--id <id>]] [--] [<args>...]
   download-osm make-dc <pbf-file> -d <file> [-i <z>] [-a <z>] [-x <v>] [--id <id>]
   download-osm --help
   download-osm --version
 
 Download types:
   planet           Loads latest planet file (50+ GB) from all known mirrors
+  list <service>   Show available areas for a service. For now only 'geofabrik'.
   url <url>        Loads file from the specific <url>.
                    If <url>.md5 is available, download-osm will use it to validate.
-  list <service>   Show available areas for a service. For now only 'geofabrik'.
   geofabrik <id>   Loads file from Geofabrik by ID, where the ID is either
                    "australia-oceania/new-zealand" or just "new-zealand".
                    See https://download.geofabrik.de/
@@ -443,16 +442,22 @@ def save_cfg_file(dry_run, cfg_file, repl_url, extras):
 
 
 async def prepare_area_download(args, session):
-    area_id = (args['<id>'] or args['--id'] or "").strip()
-    area_id = area_id if area_id else None
+    area_id = args['<area_or_url>']
     repl_url = None
     force_latest = args["--force-latest"]
     no_cache = args['--no-cache']
+    if not args.url and not args.bbbike and not args.osmfr and not args.geofabrik:
+        # Autodetect the type of the source
+        if area_id.startswith("https://") or area_id.startswith("http://"):
+            args.url = True
+        else:
+            raise SystemExit("Support for auto type is not yet implemented")
     if (force_latest or no_cache) and not args.geofabrik:
         raise SystemExit(
             f"--force-latest and --no-cache are only supported with geofabrik service")
     if args.url:
-        url = args['<url>']
+        url = area_id
+        area_id = (args["--id"] or "").strip() or None
     elif args.bbbike:
         url = f"https://download.bbbike.org/osm/bbbike/{area_id}/{area_id}.osm.pbf"
     elif args.osmfr:
