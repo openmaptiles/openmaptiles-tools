@@ -83,7 +83,7 @@ from collections import defaultdict
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import List, Dict, Tuple, Iterable
+from typing import List, Dict, Tuple, Iterable, Union
 
 import aiohttp
 import yaml
@@ -382,7 +382,7 @@ class AreaSource:
         self.name = type(self).__name__
 
     async def search(self, area_id: str, id2: str,
-                     is_guessing: bool) -> Tuple[Source, str, str]:
+                     is_guessing: bool) -> Union[None, Tuple[Source, str, str]]:
         raise ValueError(f"Search is not implemented for {self.name}")
 
     async def get_catalog(self) -> dict:
@@ -473,7 +473,7 @@ class Geofabrik(AreaSource):
             if error:
                 if is_guessing:
                     print(error)
-                    return None, None, None
+                    return None
                 else:
                     raise SystemExit(error)
         url = catalog[area_id]["url"]
@@ -486,7 +486,7 @@ class UrlSrc(AreaSource):
     async def search(self, val: str, id2: str, is_guessing: bool):
         if not is_guessing or val.startswith("https://") or val.startswith("http://"):
             return Source((id2 or "").strip() or "raw url", val), None, None
-        return None, None, None
+        return None
 
 
 class Bbbike(AreaSource):
@@ -517,7 +517,7 @@ class Bbbike(AreaSource):
         for k, v in catalog.items():
             if area_id == k.lower():
                 return v, None, None
-        return None, None, None
+        return None
 
 
 class Osmfr(AreaSource):
@@ -586,25 +586,26 @@ class AreaParamParser:
     async def parse(self):
         if self.is_guessing:
             print("Area source has not been specified. Auto-detecting...")
+        id2 = self.args["--id"] or os.environ.get("OSM_AREA_NAME")
         for src_name, src_type in self.sources.items():
             site = src_type(self.session, self.force_latest, self.no_cache)
-            src, repl_url, state_url = await site.search(
-                self.area_id, self.args["--id"], self.is_guessing)
-            if src:
+            res = await site.search(self.area_id, id2, self.is_guessing)
+            if res:
+                src, repl_url, state_url = res
                 await self.load_source(src)
                 if src.file_len is not None:
                     break
         else:
             raise SystemExit(f"Unable to auto-detect the source for '{self.area_id}'")
         if self.is_guessing:
-            print(f"'{self.area_id}' found in {src_name}.")
+            print(f"'{src.name}' was found in {src_name}.")
         print(f"Downloading {src.url} (size={src.size_str()}, md5={src.hash})",
               flush=True)
         if self.args.state:
             if not state_url:
                 raise SystemExit(f"State is not available when using '{src_type}'")
             await save_state_file(self.session, state_url, self.args.state)
-        return [src.url], src.hash, self.area_id, repl_url
+        return [src.url], src.hash, src.name, repl_url
 
     def load_source(self, source: Source):
         return load_sources([source], self.session, self.args.verbose)
