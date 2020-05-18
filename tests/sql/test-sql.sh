@@ -46,15 +46,22 @@ echo "++++++++++++++++++++++++"
 BORDERS_OUT=/omt/build/import-borders.csv
 
 echo "++++++ Parsing PBF file into CSV..."
-BORDERS_CSV_FILE=$BORDERS_OUT /omt/bin/import-borders parse /omt/tests/http/monaco-20150428.osm.pbf
+BORDERS_CSV_FILE=$BORDERS_OUT \
+  /omt/bin/import-borders parse /omt/tests/http/monaco-20150428.osm.pbf
 echo "++++++ Load parsed CSV file into a table"
 /omt/bin/import-borders load "$BORDERS_OUT"
 echo "++++++ Importing a PBF file into a DB table"
 /omt/bin/import-borders import /omt/tests/http/monaco-20150428.osm.pbf
 echo "++++++ Importing a PBF file into a DB table without import command"
 /omt/bin/import-borders /omt/tests/http/monaco-20150428.osm.pbf
-echo "++++++ Importing a PBF file into a DB table by scanning a dir"
-PBF_DATA_DIR=/omt/tests/http /omt/bin/import-borders
+echo "++++++ Importing first found PBF file into a DB table by scanning a dir"
+PBF_DATA_DIR=/omt/tests/http \
+  BORDERS_PBF_FILE=/import/borders/filtered.pbf \
+  BORDERS_CSV_FILE=/import/borders/lines.csv \
+  /omt/bin/import-borders
+echo "++++++ Importing a PBF file into a DB table with additional filtering"
+BORDERS_CLEANUP=true \
+  /omt/bin/import-borders import /omt/tests/http/monaco-20150428.osm.pbf
 
 
 echo "++++++++++++++++++++++++"
