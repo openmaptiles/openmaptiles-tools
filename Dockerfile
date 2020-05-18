@@ -132,7 +132,8 @@ RUN set -eux ;\
     mv bin/* . ;\
     rm -rf bin ;\
     rm requirements.txt ;\
-    ./download-osm list geofabrik
+    ./download-osm list geofabrik ;\
+    ./download-osm list bbbike
 
 WORKDIR /tileset
 

@@ -34,7 +34,6 @@ count=0
 for tbl in $(echo \
   "select name from sqlite_master " \
   "WHERE type='table' AND name like 'ne%' and name not in (" \
-    "'ne_10m_admin_0_boundary_lines_disputed_areas'," \
     "'ne_10m_admin_0_boundary_lines_land'," \
     "'ne_10m_admin_0_countries'," \
     "'ne_10m_admin_1_states_provinces'," \
@@ -45,15 +44,8 @@ for tbl in $(echo \
     "'ne_10m_lakes'," \
     "'ne_10m_ocean'," \
     "'ne_10m_populated_places'," \
-    "'ne_10m_rivers_europe'," \
     "'ne_10m_rivers_lake_centerlines'," \
-    "'ne_10m_rivers_north_america'," \
-    "'ne_10m_roads'," \
-    "'ne_10m_roads_north_america'," \
-    "'ne_10m_urban_areas'," \
     "'ne_50m_admin_0_boundary_lines_land'," \
-    "'ne_50m_admin_0_breakaway_disputed_areas_scale_rank'," \
-    "'ne_50m_admin_1_states_provinces'," \
     "'ne_50m_admin_1_states_provinces_lines'," \
     "'ne_50m_antarctic_ice_shelves_polys'," \
     "'ne_50m_glaciated_areas'," \
