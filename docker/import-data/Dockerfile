@@ -3,28 +3,32 @@ FROM bash as downloader
 
 # Prepare Natural Earth data from http://www.naturalearthdata.com/
 COPY clean-natural-earth.sh /downloads/
-RUN DIR=/downloads/natural_earth \
- && mkdir -p "$DIR" \
- && cd "$DIR" \
- && apk add --no-cache sqlite \
- && wget --quiet http://naciscdn.org/naturalearth/packages/natural_earth_vector.sqlite.zip \
- && unzip -oj natural_earth_vector.sqlite.zip \
- && ../clean-natural-earth.sh natural_earth_vector.sqlite \
- && rm natural_earth_vector.sqlite.zip
+RUN set -eux  ;\
+    DIR=/downloads/natural_earth  ;\
+    mkdir -p "$DIR"  ;\
+    cd "$DIR"  ;\
+    apk add --no-cache sqlite  ;\
+    wget --quiet http://naciscdn.org/naturalearth/packages/natural_earth_vector.sqlite.zip  ;\
+    unzip -oj natural_earth_vector.sqlite.zip  ;\
+    ../clean-natural-earth.sh natural_earth_vector.sqlite  ;\
+    rm ../clean-natural-earth.sh  ;\
+    rm natural_earth_vector.sqlite.zip
 
 # Download water polygons data from http://osmdata.openstreetmap.de
-RUN DIR=/downloads/water_polygons \
- && mkdir -p "$DIR" \
- && cd "$DIR" \
- && wget --quiet http://osmdata.openstreetmap.de/download/water-polygons-split-3857.zip \
- && unzip -oj water-polygons-split-3857.zip \
- && rm water-polygons-split-3857.zip
+RUN set -eux  ;\
+    DIR=/downloads/water_polygons  ;\
+    mkdir -p "$DIR"  ;\
+    cd "$DIR"  ;\
+    wget --quiet http://osmdata.openstreetmap.de/download/water-polygons-split-3857.zip  ;\
+    unzip -oj water-polygons-split-3857.zip  ;\
+    rm water-polygons-split-3857.zip
 
 # Download lake centerlines from https://github.com/lukasmartinelli/osm-lakelines
-RUN DIR=/downloads/lake_centerline \
- && mkdir -p "$DIR" \
- && cd "$DIR" \
- && wget --quiet https://github.com/lukasmartinelli/osm-lakelines/releases/download/v0.9/lake_centerline.geojson
+RUN set -eux  ;\
+    DIR=/downloads/lake_centerline  ;\
+    mkdir -p "$DIR"  ;\
+    cd "$DIR"  ;\
+    wget --quiet https://github.com/lukasmartinelli/osm-lakelines/releases/download/v0.9/lake_centerline.geojson
 
 
 FROM osgeo/gdal:alpine-normal-3.0.2
