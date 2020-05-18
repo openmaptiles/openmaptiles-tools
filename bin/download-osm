@@ -3,10 +3,10 @@
 Usage:
   download-osm list <service> [-l] [-c]
   download-osm planet [-o <file> [-f]] [-j <file> [-k <kv>]...] [-d <file> [-i <z>]
-               [-l] [-p] [-n] [-v] [-a <z>] [-x <v>]] [--] [<args>...]
+               [-l] [-p] [-n] [-v] [-a <z>] [-x <v>]] [--] [<aria2c_args>...]
   download-osm [url|geofabrik|osmfr|bbbike] <area_or_url> [-o <file> [-f]] [-s <file>]
                [-j <file> [-k <kv>]...] [-l] [-c] [-n] [-v]
-               [-d <file> [-i <z>] [-a <z>] [-x <v>] [--id <id>]] [--] [<args>...]
+               [-d <file> [-i <z>] [-a <z>] [-x <v>] [--id <id>]] [--] [<aria2c_args>...]
   download-osm make-dc <pbf-file> -d <file> [-i <z>] [-a <z>] [-x <v>] [--id <id>]
   download-osm --help
   download-osm --version
@@ -693,7 +693,7 @@ async def main_async(args):
 
     dry_run = args['--dry-run']
     if urls:
-        exit_code = await run_aria2c(args.args, dry_run, md5, urls, args,
+        exit_code = await run_aria2c(args['<aria2c_args>'], dry_run, md5, urls, args,
                                      area_id)
     if args['--imposm-cfg']:
         if not repl_url:
