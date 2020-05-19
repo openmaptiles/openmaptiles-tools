@@ -11,10 +11,8 @@ __Returns:__ `numeric`
 ******************************************************************************/
 create or replace function CleanNumeric (i text) returns numeric as
 $body$
-begin
-    return substring(i from '^\s*([-+]?(?=\d|\.\d)\d*(?:\.\d*)?(?:[Ee][-+]?\d+)?)\s*$')::numeric;
-end;
+ SELECT substring(i from '^\s*([-+]?(?=\d|\.\d)\d*(?:\.\d*)?(?:[Ee][-+]?\d+)?)\s*$')::numeric;
 $body$
-language plpgsql
+language sql
 strict immutable cost 20
 parallel safe;
