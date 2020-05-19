@@ -1,0 +1,132 @@
+#!/usr/bin/env python
+"""
+Compare execution time of PostgreSQL functions
+
+Usage:
+  profile-pg-func [--file <file>]... <func>...
+                  [--calls <calls>] [--runs <runs>] [--trim <trim>]
+                  [--verbose] [--pghost=<host>] [--pgport=<port>] [--dbname=<db>]
+                  [--user=<user>] [--password=<password>]
+  profile-pg-func --help
+  profile-pg-func --version
+
+  <func>          A SQL function call that should be tested, e.g. 'random()'
+
+Options:
+  -f --file <file>      Import this file(s) into PostgreSQL before profiling.
+  -c --calls <calls>    How many times to call each test function. [default: 100000]
+  -r --runs <runs>      How many runs to do (each run executes N calls). [default: 10]
+  -t --trim <trim>      How many of the highest and lowest runs to ignore. [default: 1]
+  -v --verbose          Print additional debugging information
+  --help                Show this screen.
+  --version             Show version.
+
+PostgreSQL Options:
+  -h --pghost=<host>    Postgres hostname. By default uses PGHOST env or "localhost" if not set.
+  -P --pgport=<port>    Postgres port. By default uses PGPORT env or "5432" if not set.
+  -d --dbname=<db>      Postgres db name. By default uses PGDATABASE env or "openmaptiles" if not set.
+  -U --user=<user>      Postgres user. By default uses PGUSER env or "openmaptiles" if not set.
+  --password=<password> Postgres password. By default uses PGPASSWORD env or "openmaptiles" if not set.
+
+These legacy environment variables should not be used, but they are still supported:
+  POSTGRES_HOST, POSTGRES_PORT, POSTGRES_DB, POSTGRES_USER, POSTGRES_PASSWORD
+"""
+from pathlib import Path
+
+import asyncio
+import asyncpg
+import statistics
+from datetime import datetime as dt, timedelta
+from docopt import docopt, DocoptExit
+from tabulate import tabulate
+
+import openmaptiles
+from openmaptiles.pgutils import parse_pg_args, PgWarnings
+from openmaptiles.utils import round_td
+
+
+def get_int(args, param, min_val) -> int:
+    try:
+        v = int(args[param])
+        if v < min_val:
+            raise DocoptExit(f"{param} must be an integer >= {min_val}")
+        return v
+    except ValueError:
+        raise DocoptExit(f"{param} must be an integer, but '{args[param]}' was given")
+
+
+async def main(args):
+    pghost, pgport, dbname, user, password = parse_pg_args(args)
+    functions = args['<func>']
+    files = args['--file']
+    runs = get_int(args, '--runs', 1)
+    calls = get_int(args, '--calls', 1)
+    trim = get_int(args, '--trim', 0)
+    verbose = args['--verbose']
+
+    if trim * 2 >= runs:
+        raise DocoptExit("--trim must be less than half of --runs")
+
+    conn = await asyncpg.connect(
+        database=dbname, host=pghost, port=pgport, user=user, password=password,
+    )
+    pg_warnings = PgWarnings(conn, delay_printing=True)
+
+    for file in files:
+        print(f"Importing {file}...")
+        await conn.execute(Path(file).read_text("utf-8"))
+
+    print(f"Running {len(functions)} functions x {runs} runs x {calls:,} each...")
+    stats = [[] for _ in range(len(functions))]
+    for run in range(runs):
+        for idx, func in enumerate(functions):
+            query = f"""\
+SELECT count(*) FROM
+  (SELECT {func} FROM generate_series(1, {calls})) q"""
+            if verbose:
+                print(f'Running: {query}')
+
+            start = dt.utcnow()
+            try:
+                await conn.fetchval(query)
+                took = dt.utcnow() - start
+            except asyncpg.PostgresError as err:
+                took = dt.utcnow() - start
+                msg = f"####### ERROR running {func} ({took:.2f}s) #######"
+                line = '#' * len(msg)
+                print(f"{line}\n{msg}\n{line}\n{err.__class__.__name__}: {err}")
+                if hasattr(err, "context") and err.context:
+                    print(f"context: {err.context}")
+                pg_warnings.print()
+                if not verbose:
+                    print(f'Failed query: {query}')
+                print(f"{line}\n")
+                return
+
+            stats[idx].append(took)
+            pg_warnings.print()
+            if verbose:
+                print(f'Done in {round_td(took)}')
+        print(f'Finished run #{run+1}')
+
+    stats = [list(sorted(vals)) for vals in stats]
+    if trim > 0:
+        print(f'Dropping {trim} fastest and {trim} slowest runs')
+        stats = [vals[trim:-trim] for vals in stats]
+
+    print()
+    mean_hdr = f"AVG of {runs - trim * 2} runs"
+    results = [{
+        "Function": functions[idx],
+        mean_hdr:
+            timedelta(seconds=statistics.mean([v.total_seconds() for v in vals])),
+        "MIN": timedelta(seconds=min([v.total_seconds() for v in vals])),
+        "MAX": timedelta(seconds=max([v.total_seconds() for v in vals])),
+        "STDEV": statistics.stdev([v.total_seconds() for v in vals]),
+    } for idx, vals in enumerate(stats)]
+
+    print(tabulate(results, headers="keys"))
+
+
+if __name__ == '__main__':
+    asyncio.run(main(docopt(__doc__, version=openmaptiles.__version__)))

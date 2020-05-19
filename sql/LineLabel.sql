@@ -21,17 +21,14 @@ create or replace function LineLabel (
         g geometry
     )
     returns boolean
-    language plpgsql immutable
+    language sql immutable
     parallel safe as
 $func$
-begin
-    if zoom > 20 or ST_Length(g) = 0 then
+    SELECT CASE
         -- if length is 0 geom is (probably) a point; keep it
-        return true;
-    else
-        return length(label) between 1 and ST_Length(g)/(2^(20-zoom));
-    end if;
-end;
+        WHEN zoom > 20 or ST_Length(g) = 0 THEN true
+        ELSE length(label) between 1 and ST_Length(g)/(2^(20-zoom))
+    END;
 $func$;
 
 
