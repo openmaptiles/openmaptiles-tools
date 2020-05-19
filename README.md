@@ -253,6 +253,9 @@ $ debug-mvt openmaptiles.yaml 4/7/6 -l place
         ...
 ```
 
+### Profile PostgreSQL functions
+Use `profile-pg-func` to compare PostgreSQL function execution speed. Each function is called thousands of times in several runs. The fastest and slowest runs are discarded.  `profile-pg-func` can import SQL files before running the test, e.g. to add the latest developer versions of the function(s).
+
 ## Tools
 
 ### Environment variables
