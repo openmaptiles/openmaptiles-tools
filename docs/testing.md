@@ -42,10 +42,19 @@ gcloud compute instances \
 Login into the newly created VM. The OpenMapTiles and OpenMapTiles-tools repos will be automatically cloned on the first login.
 
 ```bash
-gcloud compute ssh --project $GOOGLE_PROJECT_ID $TEST_VM_NAME --zone=$GOOGLE_ZONE_NAME
+# SSH to the machine, and 
+gcloud compute ssh --project $GOOGLE_PROJECT_ID $TEST_VM_NAME --zone=$GOOGLE_ZONE_NAME -- -L 8090:localhost:8090
+
+# if you don't see openmaptiles files, logoff/login - the script hasn't finished yet
+ls
+# See if the startup script completed ok
+sudo tail -f -n 1000 /var/log/syslog | grep 'startup-script:'
 ```
 
-Once started and docker is accessible with `docker ps` command, start by creating a database:
+#### Init OpenMapTiles database
+Once started and docker is accessible with `docker ps` command, check out the needed git branch and create the database.
+
+To test a pull request, go to the bottom of the PR page, click `command line instructions`, and copy/paste `step 1`.
 
 ```bash
 # Create a new database that is already pre-loaded with some data
@@ -55,14 +64,18 @@ make start-db-preloaded
 # make start-db     # create new blank database
 # make import-data  # import all pre-packaged data
 
-make all          # create needed files
-make bash         # Connect to tools to run commands directly
+make all            # create needed files
+make bash           # Connect to tools to run commands directly
 
-# inside tools:
-
-download-osm monaco -o /import/data/monaco.pbf   # download some data
+# inside tools shell:
+download-osm monaco -o /import/monaco.pbf   # download some data
 import-borders                     # created borders based on the data file
 import-osm                         # import data file
 import-wikidata openmaptiles.yaml  # import wikidata labels for mentioned data
 import-sql                         # run sql files to update indexes
+exit
+
+# start postserve and view the real time results in Maputnik
+# the -L ssh param above will proxy tile requests from your machine
+make start-postserve
 ```
