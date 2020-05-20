@@ -51,6 +51,8 @@ ls
 sudo tail -f -n 1000 /var/log/syslog | grep 'startup-script:'
 ```
 
+Note that the script automatically starts [tmux](https://github.com/tmux/tmux/wiki/Getting-Started) session, so in the event of disconnect your work will not be lost. 
+
 #### Init OpenMapTiles database
 Once started and docker is accessible with `docker ps` command, check out the needed git branch and create the database.
 
