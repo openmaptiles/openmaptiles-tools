@@ -7,7 +7,7 @@ FROM postgis/postgis:9.6-3.0
 LABEL maintainer="Yuri Astrakhan <YuriAstrakhan@gmail.com>"
 
 ENV UTF8PROC_TAG=v2.5.0 \
-    MAPNIK_GERMAN_L10N_TAG=v2.5.8 \
+    MAPNIK_GERMAN_L10N_TAG=v2.5.5 \
     PGSQL_GZIP_HASH=v1.0.0
 
 RUN apt-get -qq -y update \
