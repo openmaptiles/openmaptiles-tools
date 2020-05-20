@@ -16,7 +16,7 @@ function export_local_mbtiles() {
        exit 500
     fi
 
-    exec tilelive-copy \
+    filter_deprecation tilelive-copy \
         --scheme="list" \
         --list="$LIST_FILE" \
         --timeout="$TILE_TIMEOUT" \
