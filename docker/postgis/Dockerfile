@@ -2,13 +2,13 @@
 # the postgis base image has outdated ogr2ogr (gdal-bin package)
 # does not support PG12 yet, which means postgis-preloaded cannot be built easily.
 # Once it is updated, or there is a different way to build it, we can upgrade to 12.
-FROM postgis/postgis:12-3.0
+FROM postgis/postgis:11-3.0
 
 LABEL maintainer="Yuri Astrakhan <YuriAstrakhan@gmail.com>"
 
 ENV UTF8PROC_TAG=v2.5.0 \
-    MAPNIK_GERMAN_L10N_TAG=v2.5.8 \
-    PGSQL_GZIP_HASH=33b640b72836f5ad05840a0ee55be5e34839eb39
+    MAPNIK_GERMAN_L10N_TAG=v2.5.5 \
+    PGSQL_GZIP_HASH=v1.0.0
 
 RUN apt-get -qq -y update \
     ##
