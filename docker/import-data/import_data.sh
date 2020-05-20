@@ -32,18 +32,12 @@ fi
 
 if [ -z ${1+x} ] || [ "$1" = "natural-earth" ]; then
   echo "Importing Natual Earth $INFO..."
-  # since ogr2ogr v3 NaturalEarth data shows ring self-intersecting failures.
-  # See https://github.com/OSGeo/gdal/issues/2301
-  # Adding -skipfailures
-  # TODO: add -makevalid once it becomes available, or possibly remove
-  # the -clipsrc, and run an update query afterwards to clip and make geometries valid.
   PGCLIENTENCODING=UTF8 ogr2ogr \
     -progress \
     -f Postgresql \
     -s_srs EPSG:4326 \
     -t_srs EPSG:3857 \
     -clipsrc -180.1 -85.0511 180.1 85.0511 \
-    -skipfailures \
     "PG:$PGCONN" \
     -lco GEOMETRY_NAME=geometry \
     -lco OVERWRITE=YES \

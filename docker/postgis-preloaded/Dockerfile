@@ -27,16 +27,10 @@ ENV DATA_DIR=/import \
 USER root
 
 # NOTE: The ogr2ogr in Debian stable does not support PostgreSQL 12
-# Use the sid source instead (Debian unstable).  Once gdal 3.0+ is in stable, use this code instead:
-#RUN DEBIAN_FRONTEND=noninteractive apt-get update \
-# && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
-#        gdal-bin
-RUN set -eux ;\
-    echo "APT::Default-Release "stable";" > /etc/apt/apt.conf.d/default-release ;\
-    echo "deb http://ftp.debian.org/debian sid main" >  /etc/apt/sources.list.d/sid.list ;\
-    DEBIAN_FRONTEND=noninteractive apt-get update ;\
-    DEBIAN_FRONTEND=noninteractive apt-get -y --no-install-recommends -t sid install \
-        locales-all gdal-bin python3-gdal libgdal26 libnetcdf18 libogdi4.1 libhdf5-hl-100
+# Thus parent image must be PG11 or before
+RUN DEBIAN_FRONTEND=noninteractive apt-get update \
+ && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+        gdal-bin
 
 # switch to postgres user for ownership and execution
 USER postgres
