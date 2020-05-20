@@ -50,6 +50,7 @@ function filter_deprecation()(
   set -e
   if [[ -z "${FILTER_MAPNIK_OUTPUT:-}" ]]; then
     # if FILTER_MAPNIK_OUTPUT is not set, execute as is, without any filtering
+    echo "Set FILTER_MAPNIK_OUTPUT=1 to hide deprecation warnings"
     "$@"
     return 0
   fi
