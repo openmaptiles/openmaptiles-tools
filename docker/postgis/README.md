@@ -1,7 +1,7 @@
 # PostGIS + OSM-specific extensions Docker image
 [![](https://images.microbadger.com/badges/image/openmaptiles/postgis.svg)](https://microbadger.com/images/openmaptiles/postgis "Get your own image badge on microbadger.com") [![Docker Automated buil](https://img.shields.io/docker/automated/openmaptiles/postgis.svg)]()
 
-This images is based on PostgreSQL 11 and PostGIS 2.5 [Docker image](https://hub.docker.com/r/postgis/postgis/) and includes [osml10n extension](https://github.com/giggls/mapnik-german-l10n.git) - OSM-specific label manipulation support.
+This images is based on PostgreSQL 12 and PostGIS 3.0 [Docker image](https://hub.docker.com/r/postgis/postgis/) and includes [osml10n extension](https://github.com/giggls/mapnik-german-l10n.git) - OSM-specific label manipulation support.
 
 ## Usage
 
