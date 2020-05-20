@@ -1,7 +1,7 @@
-# PostgreSQL with GEOS 3.6.4 and PostGIS 2.4.8
+# PostGIS + OSM-specific extensions Docker image
 [![](https://images.microbadger.com/badges/image/openmaptiles/postgis.svg)](https://microbadger.com/images/openmaptiles/postgis "Get your own image badge on microbadger.com") [![Docker Automated buil](https://img.shields.io/docker/automated/openmaptiles/postgis.svg)]()
 
-A custom PostgreSQL Docker image based off GEOS 3.6.4 and PostGIS 2.4.8.
+This images is based on PostgreSQL 9.6 and PostGIS 3.0 [Docker image](https://hub.docker.com/r/postgis/postgis/) and includes [osml10n extension](https://github.com/giggls/mapnik-german-l10n.git) - OSM-specific label manipulation support.
 
 ## Usage
 

@@ -24,6 +24,8 @@ ENV DATA_DIR=/import \
     POSTGRES_USER=openmaptiles \
     POSTGRES_PASSWORD=openmaptiles
 
+USER root
+
 # NOTE: The ogr2ogr in Debian stable does not support PostgreSQL 12
 # Thus parent image must be PG11 or before
 RUN DEBIAN_FRONTEND=noninteractive apt-get update \

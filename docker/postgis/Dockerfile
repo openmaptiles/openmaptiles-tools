@@ -1,93 +1,60 @@
-FROM postgres:9.6
-MAINTAINER "Lukas Martinelli <me@lukasmartinelli.ch>"
-ENV POSTGIS_MAJOR=2.4 \
-    POSTGIS_VERSION=2.4.8 \
-    GEOS_VERSION=3.6.4
+# There is an issue updating to postgis 12:
+# the postgis base image has outdated ogr2ogr (gdal-bin package)
+# does not support PG12 yet, which means postgis-preloaded cannot be built easily.
+# Once it is updated, or there is a different way to build it, we can upgrade to 12.
+FROM postgis/postgis:9.6-3.0
+
+LABEL maintainer="Yuri Astrakhan <YuriAstrakhan@gmail.com>"
+
+ENV UTF8PROC_TAG=v2.5.0 \
+    MAPNIK_GERMAN_L10N_TAG=v2.5.5 \
+    PGSQL_GZIP_HASH=v1.0.0
 
 RUN apt-get -qq -y update \
- && apt-get -qq -y --no-install-recommends install \
-        autoconf \
-        automake \
-        autotools-dev \
+    ##
+    ## Install build dependencies
+    && apt-get -qq -y --no-install-recommends install \
         build-essential \
         ca-certificates \
-        bison \
-        cmake \
+        # Required by Nominatim to download data files
         curl \
-        dblatex \
-        docbook-mathml \
-        docbook-xsl \
         git \
-        gdal-bin \
-        libcunit1-dev \
-        libkakasi2-dev \
-        libtool \
         pandoc \
-        unzip \
-        xsltproc \
-        # PostGIS build dependencies
-            libgdal-dev \
-            libjson-c-dev \
-            libproj-dev \
-            libxml2-dev \
-            postgresql-server-dev-$PG_MAJOR \
-## GEOS
- && cd /opt/ \
- && curl -o /opt/geos.tar.bz2 http://download.osgeo.org/geos/geos-$GEOS_VERSION.tar.bz2 \
- && mkdir /opt/geos \
- && tar xf /opt/geos.tar.bz2 -C /opt/geos --strip-components=1 \
- && cd /opt/geos/ \
- && ./configure \
- && make -j \
- && make install \
- && rm -rf /opt/geos* \
-## Protobuf
- && cd /opt/ \
- && curl -L https://github.com/google/protobuf/archive/v3.0.2.tar.gz | tar xvz && cd protobuf-3.0.2 \
- && ./autogen.sh \
- && ./configure \
- && make \
- && make install \
- && ldconfig \
- && rm -rf /opt/protobuf-3.0.2 \
-## Protobuf-c
- && cd /opt/ \
- && curl -L https://github.com/protobuf-c/protobuf-c/releases/download/v1.2.1/protobuf-c-1.2.1.tar.gz | tar xvz && cd protobuf-c-1.2.1 \
- && ./configure \
- && make \
- && make install \
- && ldconfig \
- && rm -rf /opt/protobuf-c.1.2.1 \
-## Postgis
- && cd /opt/ \
- && git clone https://github.com/postgis/postgis.git \
- && cd postgis \
- && git reset --hard $POSTGIS_VERSION \
- && ./autogen.sh \
- && ./configure CFLAGS="-Wall" \
- && make \
- && make install \
- && ldconfig \
- && rm -rf /opt/postgis \
-## UTF8Proc
- && cd /opt/ \
- && git clone https://github.com/JuliaLang/utf8proc.git \
- && cd utf8proc \
- && git checkout -q v2.0.2 \
- && make \
- && make install \
- && ldconfig \
- && rm -rf /opt/utf8proc \
-## Mapnik German
- && cd /opt/ \
- && git clone https://github.com/openmaptiles/mapnik-german-l10n.git \
- && cd mapnik-german-l10n \
- && make \
- && make install \
- && rm -rf /opt/mapnik-german-l10n \
-## Cleanup
- && cd / \
- && apt-get -qq -y --auto-remove purge \
+        # $PG_MAJOR is declared in postgres docker
+        postgresql-server-dev-$PG_MAJOR \
+        libkakasi2-dev \
+        libgdal-dev \
+    ##
+    ## gzip extension
+    && cd /opt/ \
+    && git clone https://github.com/pramsey/pgsql-gzip.git \
+    && cd pgsql-gzip \
+    && git checkout -q $PGSQL_GZIP_HASH \
+    && make \
+    && make install \
+    && rm -rf /opt/pgsql-gzip \
+    ##
+    ## UTF8Proc
+    && cd /opt/ \
+    && git clone https://github.com/JuliaLang/utf8proc.git \
+    && cd utf8proc \
+    && git checkout -q $UTF8PROC_TAG \
+    && make \
+    && make install \
+    && ldconfig \
+    && rm -rf /opt/utf8proc \
+    ##
+    ## osml10n extension (originally Mapnik German)
+    && cd /opt/ \
+    && git clone https://github.com/giggls/mapnik-german-l10n.git \
+    && cd mapnik-german-l10n \
+    && git checkout -q $MAPNIK_GERMAN_L10N_TAG \
+    && make \
+    && make install \
+    && rm -rf /opt/mapnik-german-l10n \
+    ##
+    ## Cleanup
+    && apt-get -qq -y --auto-remove purge \
         autoconf \
         automake \
         autotools-dev \
@@ -108,6 +75,14 @@ RUN apt-get -qq -y update \
         pandoc \
         unzip \
         xsltproc \
-&& rm -rf /var/lib/apt/lists/*
+        libpq-dev \
+        postgresql-server-dev-$PG_MAJOR \
+        libxml2-dev \
+        libjson-c-dev \
+        libgdal-dev \
+    && rm -rf /usr/local/lib/*.a \
+    && rm -rf /var/lib/apt/lists/*
 
-COPY ./initdb-postgis.sh /docker-entrypoint-initdb.d/10_postgis.sh
+# The script should run after the parent's 10_postgis.sh runs
+# so it must have the name that's listed after that.
+COPY ./initdb-postgis.sh /docker-entrypoint-initdb.d/20_omt_postgis.sh
