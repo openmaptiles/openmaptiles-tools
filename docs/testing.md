@@ -80,4 +80,8 @@ exit
 # start postserve and view the real time results in Maputnik
 # the -L ssh param above will proxy tile requests from your machine
 make start-postserve
+# Start monitoring postserve (stop with Ctrl+C)
+docker logs openmaptiles_postserve_1  -f
+# Now open https://maputnik.github.io/editor/#12.83/43.73757/7.42704
+# Click `Data Sources`, and **at the very TOP** modify TileJSON URL to `http://localhost:8090`, and click the `X` in the upper right corner.
 ```
