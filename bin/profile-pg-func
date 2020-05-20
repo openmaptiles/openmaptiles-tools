@@ -3,17 +3,25 @@
 Compare execution time of PostgreSQL functions
 
 Usage:
-  profile-pg-func [--file <file>]... <func>...
+  profile-pg-func [--file <file>]... <func>... [--raw]
                   [--calls <calls>] [--runs <runs>] [--trim <trim>]
                   [--verbose] [--pghost=<host>] [--pgport=<port>] [--dbname=<db>]
                   [--user=<user>] [--password=<password>]
   profile-pg-func --help
   profile-pg-func --version
 
-  <func>          A SQL function call that should be tested, e.g. 'random()'
+  <func>          A SQL function call that should be tested, e.g. 'random()'.
+                  The func code can use call_idx column -- it will be set to  1..{calls}
+                  If --raw is used, the <func> must be a complete query.
+                  These magical values will be substituted in <func> before running:
+                  * {calls} will be replaced with --calls value
+                  * {run_idx}  will be replaced with the current RUN number (1..{runs})
+                  * {random_geopoint} will be replaced with a function call to generate
+                    a random geo point.
 
 Options:
   -f --file <file>      Import this file(s) into PostgreSQL before profiling.
+  --raw                 Treat <func> as a complete SQL statement.
   -c --calls <calls>    How many times to call each test function. [default: 100000]
   -r --runs <runs>      How many runs to do (each run executes N calls). [default: 10]
   -t --trim <trim>      How many of the highest and lowest runs to ignore. [default: 1]
@@ -31,6 +39,8 @@ PostgreSQL Options:
 These legacy environment variables should not be used, but they are still supported:
   POSTGRES_HOST, POSTGRES_PORT, POSTGRES_DB, POSTGRES_USER, POSTGRES_PASSWORD
 """
+from dataclasses import dataclass, field
+
 from pathlib import Path
 
 import asyncio
@@ -39,6 +49,7 @@ import statistics
 from datetime import datetime as dt, timedelta
 from docopt import docopt, DocoptExit
 from tabulate import tabulate
+from typing import List
 
 import openmaptiles
 from openmaptiles.pgutils import parse_pg_args, PgWarnings
@@ -55,10 +66,43 @@ def get_int(args, param, min_val) -> int:
         raise DocoptExit(f"{param} must be an integer, but '{args[param]}' was given")
 
 
+@dataclass
+class Stat:
+    index: int
+    function: str
+    perf_delta: List[timedelta] = field(default_factory=list)
+    perf_seconds: List[float] = None
+    mean: timedelta = None
+    min: timedelta = None
+    max: timedelta = None
+    stdev: float = None
+    position: int = None
+    slower_by: float = None
+
+    def finalize(self, trim):
+        """Get rid of the N fastest and N slowest tests, populate perf_seconds"""
+        self.perf_delta.sort()
+        if trim > 0:
+            self.perf_delta = self.perf_delta[trim:-trim]
+        self.perf_seconds = [v.total_seconds() for v in self.perf_delta]
+        self.mean = timedelta(seconds=statistics.mean(self.perf_seconds))
+        self.min = timedelta(seconds=min(self.perf_seconds))
+        self.max = timedelta(seconds=max(self.perf_seconds))
+        self.stdev = statistics.stdev(self.perf_seconds)
+
+    def format_func(self, verbose):
+        if verbose or len(self.function) < 50:
+            res = self.function
+        else:
+            res = self.function[:50] + "…"
+        return f"{self.index}) {res}"
+
+
 async def main(args):
     pghost, pgport, dbname, user, password = parse_pg_args(args)
     functions = args['<func>']
     files = args['--file']
+    raw = args['--raw']
     runs = get_int(args, '--runs', 1)
     calls = get_int(args, '--calls', 1)
     trim = get_int(args, '--trim', 0)
@@ -77,22 +121,32 @@ async def main(args):
         await conn.execute(Path(file).read_text("utf-8"))
 
     print(f"Running {len(functions)} functions x {runs} runs x {calls:,} each...")
-    stats = [[] for _ in range(len(functions))]
+    stats = [Stat(idx, func) for idx, func in enumerate(functions, start=1)]
     for run in range(runs):
-        for idx, func in enumerate(functions):
-            query = f"""\
-SELECT count(*) FROM
-  (SELECT {func} FROM generate_series(1, {calls})) q"""
+        for stat in stats:
+            if raw:
+                query = stat.function
+            else:
+                query = f"\
+SELECT count(*) FROM (SELECT {stat.function} FROM generate_series(1, {calls})) call_idx"
+
+            for k, v in {
+                "{calls}": str(calls),
+                "{run_idx}": str(run),
+                "{random_geopoint}": "st_setsrid(st_makepoint(random()*40000000-20000000, random()*40000000-20000000), 3857)",
+            }.items():
+                query = query.replace(k, v)
+
             if verbose:
                 print(f'Running: {query}')
 
             start = dt.utcnow()
             try:
-                await conn.fetchval(query)
+                await conn.execute(query)
                 took = dt.utcnow() - start
             except asyncpg.PostgresError as err:
                 took = dt.utcnow() - start
-                msg = f"####### ERROR running {func} ({took:.2f}s) #######"
+                msg = f"####### ERROR running {stat.function} ({took:.2f}s) #######"
                 line = '#' * len(msg)
                 print(f"{line}\n{msg}\n{line}\n{err.__class__.__name__}: {err}")
                 if hasattr(err, "context") and err.context:
@@ -103,27 +157,34 @@ SELECT count(*) FROM
                 print(f"{line}\n")
                 return
 
-            stats[idx].append(took)
+            stat.perf_delta.append(took)
             pg_warnings.print()
             if verbose:
                 print(f'Done in {round_td(took)}')
-        print(f'Finished run #{run+1}')
+        print(f'Finished run #{run + 1}')
 
-    stats = [list(sorted(vals)) for vals in stats]
     if trim > 0:
         print(f'Dropping {trim} fastest and {trim} slowest runs')
-        stats = [vals[trim:-trim] for vals in stats]
+    for stat in stats:
+        stat.finalize(trim)
+
+    stats_by_speed = list(sorted(stats, key=lambda s: s.mean))
+    for idx, stat in enumerate(stats_by_speed):
+        stat.position = idx + 1
+        if idx > 0:
+            first_mean = stats_by_speed[0].mean
+            stat.slower_by = (stat.mean - first_mean) / first_mean
 
     print()
     mean_hdr = f"AVG of {runs - trim * 2} runs"
     results = [{
-        "Function": functions[idx],
-        mean_hdr:
-            timedelta(seconds=statistics.mean([v.total_seconds() for v in vals])),
-        "MIN": timedelta(seconds=min([v.total_seconds() for v in vals])),
-        "MAX": timedelta(seconds=max([v.total_seconds() for v in vals])),
-        "STDEV": statistics.stdev([v.total_seconds() for v in vals]),
-    } for idx, vals in enumerate(stats)]
+        "% slower": "" if stat.slower_by is None else f"{stat.slower_by:,.1%}",
+        "Function": stat.format_func(verbose),
+        mean_hdr: stat.mean,
+        "MIN": stat.min,
+        "MAX": stat.max,
+        "STDEV": stat.stdev,
+    } for stat in stats_by_speed]
 
     print(tabulate(results, headers="keys"))
 
