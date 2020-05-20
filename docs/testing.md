@@ -1,4 +1,4 @@
-## Evaluating System Performance
+## Creating Test Environment in GCP
 This document describes how to set up a system for evaluating overall tile generation performance using one-system docker-based setup, i.e. in Google Cloud.
 
 #### Prerequisites
