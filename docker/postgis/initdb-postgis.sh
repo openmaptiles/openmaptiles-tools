@@ -4,6 +4,13 @@ set -o pipefail
 set -o nounset
 
 echo "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
+echo "  Pre-configuring PostgreSQL"
+echo "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
+PGUSER="$POSTGRES_USER" psql --dbname="postgres" <<-'EOSQL'
+    ALTER SYSTEM SET jit = 'off';
+EOSQL
+
+echo "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
 echo "  Loading OMT postgis extensions"
 echo "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
 
