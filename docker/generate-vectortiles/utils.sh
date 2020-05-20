@@ -47,6 +47,14 @@ function replace_db_connection() {
 #   filter_deprecation tilelive-copy ...
 #
 function filter_deprecation()(
+  set -e
+  if [[ -z "${FILTER_MAPNIK_OUTPUT:-}" ]]; then
+    # if FILTER_MAPNIK_OUTPUT is not set, execute as is, without any filtering
+    "$@"
+    return 0
+  fi
+
+  echo "Filtering deprecation warnings from the Mapnik's output."
   (
     # Swap stdin and stderr
     "$@" 3>&2- 2>&1- 1>&3- | (
