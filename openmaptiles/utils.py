@@ -6,6 +6,8 @@ import re
 import sys
 from asyncio.futures import Future
 from datetime import timedelta
+
+from betterproto import which_one_of
 from docopt import DocoptExit
 from typing import List, Callable, Any, Dict, Awaitable, Iterable, TypeVar
 
@@ -190,15 +192,10 @@ def parse_tags(feature: TileFeature, layer: TileLayer, show_names: bool) -> dict
             'GeoType': TileGeomType(feature.type).name,
             **{
                 layer.keys[feature.tags[i]]:
-                    parse_tag_value(layer.values[feature.tags[i + 1]])
+                    which_one_of(layer.values[feature.tags[i + 1]], "val")[1]
                 for i in range(0, len(feature.tags), 2)
                 if show_names or not layer.keys[feature.tags[i]].startswith("name:")
             }}
-
-
-def parse_tag_value(t):
-    return t.string_value or t.int_value or t.float_value or t.double_value or \
-           t.bool_value or t.uint_value or t.sint_value
 
 
 def print_tile(tile_gzipped: bytes, zoom: int, x: int, y: int,

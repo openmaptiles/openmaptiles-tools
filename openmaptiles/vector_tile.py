@@ -27,13 +27,13 @@ class TileValue(betterproto.Message):
     """
 
     # Exactly one of these values must be present in a valid message
-    string_value: str = betterproto.string_field(1)
-    float_value: float = betterproto.float_field(2)
-    double_value: float = betterproto.double_field(3)
-    int_value: int = betterproto.int64_field(4)
-    uint_value: int = betterproto.uint64_field(5)
-    sint_value: int = betterproto.sint64_field(6)
-    bool_value: bool = betterproto.bool_field(7)
+    string_val: str = betterproto.string_field(1, group="val")
+    float_val: float = betterproto.float_field(2, group="val")
+    double_val: float = betterproto.double_field(3, group="val")
+    int_val: int = betterproto.int64_field(4, group="val")
+    uint_val: int = betterproto.uint64_field(5, group="val")
+    sint_val: int = betterproto.sint64_field(6, group="val")
+    bool_val: bool = betterproto.bool_field(7, group="val")
 
 
 @dataclass
