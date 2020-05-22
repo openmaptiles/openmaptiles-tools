@@ -16,6 +16,7 @@ RUN set -eux ;\
         libgeos-dev \
         libleveldb-dev \
         libprotobuf-dev \
+        protobuf-compiler \
         ;\
     \
     apt list --installed ;\
