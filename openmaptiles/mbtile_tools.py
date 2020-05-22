@@ -250,9 +250,10 @@ class Metadata:
             print(row[0])
 
     def set_value(self, name, value):
-        _, is_valid = validate(name, value)
-        if not is_valid:
-            raise ValueError(f"Invalid {name}={value}")
+        if value is not None:
+            _, is_valid = validate(name, value)
+            if not is_valid:
+                raise ValueError(f"Invalid {name}={value}")
         with sqlite3.connect(self.mbtiles) as conn:
             cursor = conn.cursor()
             if value is None:
