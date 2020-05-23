@@ -108,7 +108,7 @@ PREPARE {fname}(integer, integer, integer) AS
 
         extras = ''
         if self.test_geometry:
-            extras += f', SUM(COALESCE(bad_geos, 0)) as bad_geos'
+            extras += f', SUM(COALESCE(_bad_geos_, 0)) as _bad_geos_'
 
         concatenate_layers = "STRING_AGG(mvtl, '')"
         # Handle when gzip is True or a number
@@ -132,7 +132,7 @@ SELECT {concatenate_layers} AS mvt{extras} FROM (
 
         if self.key_column:
             query = f"SELECT mvt, md5(mvt) AS key" \
-                    f"{', bad_geos' if self.test_geometry else ''} " \
+                    f"{', _bad_geos_' if self.test_geometry else ''} " \
                     f"FROM ({query}) AS mvt_data"
 
         return query + '\n'
@@ -143,7 +143,7 @@ SELECT {concatenate_layers} AS mvt{extras} FROM (
         """
         columns = None
         if self.test_geometry:
-            columns = f"(1-ST_IsValid({layer.geometry_field})::int) as bad_geos"
+            columns = f"(1-ST_IsValid({layer.geometry_field})::int) as _bad_geos_"
         query = self.layer_to_query(layer, extra_columns=columns)
 
         extras = ''
@@ -151,8 +151,8 @@ SELECT {concatenate_layers} AS mvt{extras} FROM (
             # Count the number of invalid regular & mvt geometries (should always be 0)
             extras += f', SUM((1' \
                       f'-COALESCE(ST_IsValid(mvtgeometry)::int, 1))' \
-                      f'+COALESCE(bad_geos, 0)' \
-                      f') as bad_geos'
+                      f'+COALESCE(_bad_geos_, 0)' \
+                      f') as _bad_geos_'
         if order_layers:
             extras += f', {layer.index} as _layer_index'
 

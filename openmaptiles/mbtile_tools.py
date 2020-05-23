@@ -355,12 +355,12 @@ class Metadata:
         print("The metadata now contains these values:")
         self.print_all()
 
-    def show_tile(self, zoom, x, y, show_names):
+    def show_tile(self, zoom, x, y, show_names, summary):
         with sqlite3.connect(self.mbtiles) as conn:
             sql = "SELECT tile_data FROM tiles " \
                   "WHERE zoom_level=? AND tile_column=? AND tile_row=?"
             for row in query(conn, sql, [zoom, x, y]):
-                print_tile(row[0], zoom, x, y, show_names)
+                print_tile(row[0], show_names, summary, f"{zoom}/{x}/{y}")
                 break
             else:
                 print(f"Tile {zoom}/{x}/{y} not found")

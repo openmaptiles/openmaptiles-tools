@@ -1,0 +1,14 @@
+Uncompressed tile from http://localhost:8555/osm_10_598_297.mvt size=145,569 bytes, gzipped=68,145 bytes, 11 layers
+Layer                  Extent    Ver    Features                        GeoType    GeoSize  AVG GeoSize    Fields (percentage only if not all features have it)                                          name:* fields
+-------------------  --------  -----  ----------  -----------------------------  ---------  -------------  --------------------------------------------------------------------------------------------  ---------------
+water                    4096      2          63                        POLYGON      2,877  45.7           class, intermittent(98%)
+waterway                 4096      2          23                     LINESTRING        792  34.4           name, name_en, name_de, class                                                                 19 languages
+landcover                4096      2         176                        POLYGON      6,692  38.0           class, subclass
+landuse                  4096      2         419                        POLYGON      6,768  16.2           class
+park                     4096      2          10       POLYGON(50%), POINT(50%)        742  74.2           class, name, name_en, name_de, name_int, rank(50%)                                            8 languages
+boundary                 4096      2         261                     LINESTRING      1,886  7.2            admin_level, disputed, maritime
+aeroway                  4096      2           2  LINESTRING(50%), POLYGON(50%)         43  21.5           ref, class
+transportation           4096      2       4,505                     LINESTRING     27,688  6.1            class, foot(73%), ramp(17%), subclass(12%), oneway(12%), layer(8%), brunnel(3%), bicycle(0%)
+transportation_name      4096      2           8                     LINESTRING        226  28.2           name, name_en, name_de, name_int, class, ref(75%), ref_length(75%), network(75%)              6 languages
+place                    4096      2          33                          POINT         99  3.0            name, name_en, name_de, name_int, class, rank                                                 40 languages
+aerodrome_label          4096      2           2                          POINT          6  3.0            name, name_en, name_de, name_int, class, iata(50%), ele(50%), ele_ft(50%)                     11 languages

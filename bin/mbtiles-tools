@@ -16,7 +16,7 @@ Usage:
                 [--user=<user>] [--password=<password>]
   mbtiles-tools meta-copy <mbtiles-file> <target-mbtiles-file>
                 [--reset] [--auto-minmax]
-  mbtiles-tools tile <mbtiles-file> <tile_zxy> [--show-names]
+  mbtiles-tools tile <mbtiles-file> <tile_zxy> [--show-names] [--summary]
   mbtiles-tools --help
   mbtiles-tools --version
 
@@ -59,6 +59,7 @@ Options:
   --reset               For meta-generate and meta-copy, clear all existing metadata first.
   -a --auto-minmax      For meta-generate and meta-copy, query data tables for available min/max zoom.
   --show-names          if set, includes all localized names when showing tile content
+  --summary             if set, show just the content summary when showing tile content
   --help                Show this screen.
   --version             Show version.
 
@@ -109,7 +110,8 @@ def main():
     elif args['tile']:
         Metadata(args['<mbtiles-file>']).show_tile(
             *parse_zxy_param(args['<tile_zxy>']),
-            show_names=args['--show-names'])
+            show_names=args['--show-names'],
+            summary=args['--summary'])
     else:
         raise DocoptExit('Invalid command')
 

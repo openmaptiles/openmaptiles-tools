@@ -80,6 +80,12 @@ download-osm geofabrik monaco-test \
 diff --brief "$HTTPDIR/monaco-20150428.osm.pbf" "$TEMP_DIR/monaco-20150428.osm.pbf"
 rm "$TEMP_DIR/monaco-20150428.osm.pbf"
 
+debug-mvt dump "$HTTPDIR/osm_10_598_297.mvt" > "$BUILD/debug_mvt_dump.out"
+debug-mvt dump "$HTTPDIR/osm_10_598_297.mvt" --summary > "$BUILD/debug_mvt_dump_summary.out"
+debug-mvt dump "$HTTPDIR/osm_10_598_297.mvt" --show-names > "$BUILD/debug_mvt_dump_show_names.out"
+debug-mvt dump "$HTTPDIR/osm_10_598_297.mvt" --summary --show-names > "$BUILD/debug_mvt_dump_summary_show_names.out"
+debug-mvt dump "http://localhost:8555/osm_10_598_297.mvt" --summary > "$BUILD/debug_mvt_URL_dump_summary.out"
+debug-mvt dump - --summary < "$HTTPDIR/osm_10_598_297.mvt" > "$BUILD/debug_mvt_STDIN_dump_summary.out"
 
 { set +x ;} 2> /dev/null
 echo "-----------------------------------------------------------"
