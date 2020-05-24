@@ -98,28 +98,25 @@ RUN set -eux ;\
         curl \
         wget \
         git  \
-        less ;\
-    # Run as a separate install command because open-jdk fails to install for some reason
+        less \
+        gnupg2  `# TODO: not sure why gnupg2 is needed`  ;\
+    curl https://www.postgresql.org/media/keys/ACCC4CF8.asc | apt-key add - ;\
+    /bin/bash -c 'source /etc/os-release && echo "deb http://apt.postgresql.org/pub/repos/apt/ ${VERSION_CODENAME:?}-pgdg main ${PG_MAJOR:?}" > /etc/apt/sources.list.d/pgdg.list' ;\
+    DEBIAN_FRONTEND=noninteractive apt-get update ;\
     DEBIAN_FRONTEND=noninteractive apt-get install  -y --no-install-recommends \
-        # Requirements for the OMT-tools and geo-specific extra tools
-        gnupg2    `# TODO: not sure why gnupg2 is needed` \
         aria2     `# multi-stream file downloader - used by download-osm` \
         graphviz  `# used by layer mapping graphs` \
         sqlite3   `# mbtiles file manipulations`   \
         gdal-bin  `# contains ogr2ogr` \
         osmctools `# osmconvert and other OSM tools` \
         osmosis   `# useful toolset - https://wiki.openstreetmap.org/wiki/Osmosis` \
+        postgresql-client-${PG_MAJOR:?}  `# psql` \
         \
         # imposm dependencies
         libgeos-dev \
         libleveldb-dev \
-        libprotobuf-dev  ;\
-    # Install PostgreSQL client - requires a separate package repo
-    curl https://www.postgresql.org/media/keys/ACCC4CF8.asc | apt-key add - ;\
-    /bin/bash -c 'source /etc/os-release && echo "deb http://apt.postgresql.org/pub/repos/apt/ ${VERSION_CODENAME:?}-pgdg main ${PG_MAJOR:?}" > /etc/apt/sources.list.d/pgdg.list' ;\
-    DEBIAN_FRONTEND=noninteractive apt-get update ;\
-    DEBIAN_FRONTEND=noninteractive apt-get install  -y --no-install-recommends \
-        postgresql-client-${PG_MAJOR:?}  `# psql` ;\
+        libprotobuf-dev \
+        ;\
     \
     /bin/bash -c 'echo ""; echo ""; echo "##### Cleaning up"' >&2 ;\
     rm -rf /var/lib/apt/lists/*
