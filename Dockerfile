@@ -98,10 +98,11 @@ RUN set -eux ;\
         curl \
         wget \
         git  \
-        less \
-        gnupg2    `# TODO: not sure why gnupg2 is needed` \
-        \
+        less ;\
+    # Run as a separate install command because open-jdk fails to install for some reason
+    DEBIAN_FRONTEND=noninteractive apt-get install  -y --no-install-recommends \
         # Requirements for the OMT-tools and geo-specific extra tools
+        gnupg2    `# TODO: not sure why gnupg2 is needed` \
         aria2     `# multi-stream file downloader - used by download-osm` \
         graphviz  `# used by layer mapping graphs` \
         sqlite3   `# mbtiles file manipulations`   \
