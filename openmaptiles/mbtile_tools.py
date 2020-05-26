@@ -10,7 +10,7 @@ from openmaptiles.pgutils import get_postgis_version, get_vector_layers
 from openmaptiles.sqlite_utils import query
 from openmaptiles.sqltomvt import MvtGenerator
 from openmaptiles.tileset import Tileset
-from openmaptiles.utils import print_err, Bbox
+from openmaptiles.utils import print_err, Bbox, print_tile
 
 
 class KeyFinder:
@@ -234,7 +234,8 @@ class Metadata:
             data = list(query(conn, "SELECT name, value FROM metadata", []))
         if data:
             width = max((len(v[0]) for v in data))
-            for name, value in sorted(data, key=lambda v: v[0] if v[0] != 'json' else 'zz'):
+            for name, value in sorted(data,
+                                      key=lambda v: v[0] if v[0] != 'json' else 'zz'):
                 print(f"{name:{width}} {validate(name, value)[0]}")
         else:
             print(f"There are no values present in {self.mbtiles} metadata table")
@@ -250,9 +251,10 @@ class Metadata:
             print(row[0])
 
     def set_value(self, name, value):
-        _, is_valid = validate(name, value)
-        if not is_valid:
-            raise ValueError(f"Invalid {name}={value}")
+        if value is not None:
+            _, is_valid = validate(name, value)
+            if not is_valid:
+                raise ValueError(f"Invalid {name}={value}")
         with sqlite3.connect(self.mbtiles) as conn:
             cursor = conn.cursor()
             if value is None:
@@ -265,7 +267,8 @@ class Metadata:
     async def generate(self, tileset, reset, auto_minmax,
                        pghost, pgport, dbname, user, password):
         ts = Tileset.parse(tileset)
-        print(f'Connecting to PostgreSQL at {pghost}:{pgport}, db={dbname}, user={user}...')
+        print(
+            f'Connecting to PostgreSQL at {pghost}:{pgport}, db={dbname}, user={user}...')
         try:
             async with asyncpg.create_pool(
                 database=dbname, host=pghost, port=pgport, user=user,
@@ -351,3 +354,13 @@ class Metadata:
             update_metadata(cursor, metadata, reset)
         print("The metadata now contains these values:")
         self.print_all()
+
+    def show_tile(self, zoom, x, y, show_names):
+        with sqlite3.connect(self.mbtiles) as conn:
+            sql = "SELECT tile_data FROM tiles " \
+                  "WHERE zoom_level=? AND tile_column=? AND tile_row=?"
+            for row in query(conn, sql, [zoom, x, y]):
+                print_tile(row[0], zoom, x, y, show_names)
+                break
+            else:
+                print(f"Tile {zoom}/{x}/{y} not found")

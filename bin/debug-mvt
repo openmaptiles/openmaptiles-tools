@@ -47,10 +47,9 @@ PostgreSQL Options:
 """
 import asyncio
 import gzip
-import re
 
 import asyncpg
-from docopt import docopt, DocoptExit
+from docopt import docopt
 from tabulate import tabulate
 from time import time
 
@@ -58,6 +57,7 @@ import openmaptiles
 from openmaptiles.pgutils import parse_pg_args, get_postgis_version, PgWarnings
 from openmaptiles.sqltomvt import MvtGenerator
 from openmaptiles.tileset import Tileset
+from openmaptiles.utils import parse_zxy_param
 
 
 async def main(args):
@@ -72,10 +72,7 @@ async def main(args):
     test_geometry = not args['--no-geom-test']
     verbose = args['--verbose']
     tileset_path = args['<tileset>']
-    zxy = args['<tile_zxy>'].strip()
-    if not re.match(r'^\d+[/, ]+\d+[/, ]+\d+$', zxy):
-        raise DocoptExit('Invalid <tile_zxy> - must be in the form "zoom/x/y"')
-    zoom, x, y = [int(v) for v in re.split(r'[/, ]+', zxy)]
+    zoom, x, y = parse_zxy_param(args['<tile_zxy>'])
 
     tileset = Tileset.parse(tileset_path)
     conn = await asyncpg.connect(
@@ -186,11 +183,8 @@ async def main(args):
             geom_fld: 'zzz4',
         }
 
-        result = []
-        fields = ','.join(columns) if columns else '*'
-        has_names = False
-
         try:
+            fields = ','.join(columns) if columns else '*'
             query_result = await conn.fetch(f"SELECT {fields} FROM {query}")
         except asyncpg.PostgresError as err:
             msg = f"####### ERROR in {layer_id} layer #######"
@@ -205,6 +199,7 @@ async def main(args):
             print(f"{line}\n")
             continue
 
+        result = []
         for row in query_result:
             vals = list(row.items())
             if not columns:
@@ -218,8 +213,7 @@ async def main(args):
         layer_mvt = len(await conn.fetchval(layer_sql))
 
         if result:
-            info = ' (extra name columns are hidden by default) ' if has_names else ''
-            print(f"======= Layer {layer_id}{info}: {layer_mvt:,} bytes in MVT =======")
+            print(f"======= Layer {layer_id}: {layer_mvt:,} bytes in MVT =======")
             pg_warnings.print()
             print(tabulate(result, headers="keys"))
         else:

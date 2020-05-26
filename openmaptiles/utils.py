@@ -1,3 +1,4 @@
+import gzip
 import math
 
 import asyncio
@@ -5,9 +6,15 @@ import re
 import sys
 from asyncio.futures import Future
 from datetime import timedelta
+
+from betterproto import which_one_of
+from docopt import DocoptExit
 from typing import List, Callable, Any, Dict, Awaitable, Iterable, TypeVar
 
+from tabulate import tabulate
+
 from openmaptiles.consts import *
+from openmaptiles.vector_tile import TileFeature, TileLayer, Tile, TileGeomType
 
 T = TypeVar('T')
 T2 = TypeVar('T2')
@@ -169,3 +176,37 @@ def batches(items: Iterable[T], batch_size: int,
             res = []
     if res:
         yield res
+
+
+def parse_zxy_param(param):
+    zxy = param.strip()
+    if not re.match(r'^\d+[/, ]+\d+[/, ]+\d+$', zxy):
+        raise DocoptExit('Invalid <tile_zxy> - must be in the form "zoom/x/y"')
+    zoom, x, y = [int(v) for v in re.split(r'[/, ]+', zxy)]
+    return zoom, x, y
+
+
+def parse_tags(feature: TileFeature, layer: TileLayer, show_names: bool) -> dict:
+    return {'*ID*': feature.id,
+            'GeoSize': f"{len(feature.geometry):,}",
+            'GeoType': TileGeomType(feature.type).name,
+            **{
+                layer.keys[feature.tags[i]]:
+                    which_one_of(layer.values[feature.tags[i + 1]], "val")[1]
+                for i in range(0, len(feature.tags), 2)
+                if show_names or not layer.keys[feature.tags[i]].startswith("name:")
+            }}
+
+
+def print_tile(tile_gzipped: bytes, zoom: int, x: int, y: int,
+               show_names: bool) -> None:
+    tile_raw = gzip.decompress(tile_gzipped)
+    tile = Tile().parse(tile_raw)
+    print(f"Tile {zoom}/{x}/{y} -- raw size={len(tile_raw):,} bytes, "
+          f"gzipped={len(tile_gzipped):,} bytes, {len(tile.layers)} layers")
+    for layer in tile.layers:
+        print(f"\n======= Layer {layer.name}: "
+              f"{len(layer.features)} features, extent={layer.extent}, "
+              f"version={layer.version} =======")
+        tags = [parse_tags(f, layer, show_names) for f in layer.features]
+        print(tabulate(tags, headers="keys"))
