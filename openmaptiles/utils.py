@@ -209,8 +209,7 @@ def parse_tags(feature: TileFeature, layer: TileLayer, show_names: bool,
 
 
 def print_tile(data: bytes, show_names: bool, summary: bool, info: str) -> None:
-    if len(info) > 60:
-        info = info[:60] + "…"
+    info = shorten_str(info, 60)
     try:
         tile_raw = gzip.decompress(data)
         gzipped_size = len(data)
@@ -284,3 +283,7 @@ def print_tile(data: bytes, show_names: bool, summary: bool, info: str) -> None:
     if summary:
         print(tabulate(res, headers="keys", disable_numparse=True,
                        colalign=['left', 'right', 'right', 'right', 'right', 'right']))
+
+
+def shorten_str(value: str, length: int) -> str:
+    return value if len(value) < length else value[:length] + "…"

@@ -7,7 +7,7 @@ Usage:
   mbtiles-tools impute <mbtiles-file> --zoom=<zoom>
                 [--key=<hash>... | --keyfile=<file>] [--output=<file>]
                 [--verbose]
-  mbtiles-tools meta-all <mbtiles-file>
+  mbtiles-tools meta-all <mbtiles-file> [--show-json] [--show-ranges]
   mbtiles-tools meta-get <mbtiles-file> <metakey>
   mbtiles-tools meta-set <mbtiles-file> <metakey> [<newvalue>]
   mbtiles-tools meta-generate <mbtiles-file> <tileset>
@@ -55,6 +55,8 @@ Options:
   -k --key=<hash>       Key of the tile (i.e. an MD5 hash). Could be multiple.
   -f --keyfile=<file>   A file with tile Keys, one per line.
   -o --output=<file>    Write a list of tiles to this file. Use '-' for stdout.
+  -j --show-json        For meta-all, print out the entire JSON field (compact-pretty-printed)
+  -r --show-ranges      Showing available ranges for each zoom in mbtiles.
   -v --verbose          Print additional debugging information.
   --reset               For meta-generate and meta-copy, clear all existing metadata first.
   -a --auto-minmax      For meta-generate and meta-copy, query data tables for available min/max zoom.
@@ -91,7 +93,8 @@ def main():
     elif args['impute']:
         impute(args)
     elif args['meta-all']:
-        Metadata(args['<mbtiles-file>']).print_all()
+        Metadata(args['<mbtiles-file>']).print_all(
+            show_json=args['--show-json'], show_ranges=args['--show-ranges'])
     elif args['meta-get']:
         Metadata(args['<mbtiles-file>']).get_value(args['<metakey>'])
     elif args['meta-set']:

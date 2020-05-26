@@ -5,12 +5,13 @@ from datetime import datetime
 from pathlib import Path
 
 import asyncpg
+from tabulate import tabulate
 
 from openmaptiles.pgutils import get_postgis_version, get_vector_layers
 from openmaptiles.sqlite_utils import query
 from openmaptiles.sqltomvt import MvtGenerator
 from openmaptiles.tileset import Tileset
-from openmaptiles.utils import print_err, Bbox, print_tile
+from openmaptiles.utils import print_err, Bbox, print_tile, shorten_str
 
 
 class KeyFinder:
@@ -184,25 +185,62 @@ class Imputer:
             yield with_key, without_key
 
 
-def validate(name, value):
+def validate(name, value, show_json=False):
+    is_valid = True
     if name == 'mtime':
         try:
             val = datetime.fromtimestamp(int(value) / 1000.0)
-            return f'{value} ({val.isoformat()})', True
+            value = f'{value} ({val.isoformat()})'
         except ValueError:
-            return f'{value} (invalid)', False
+            is_valid = False
+            value = f'{value} (invalid)'
     elif name in ('filesize', 'maskLevel', 'minzoom', 'maxzoom'):
         try:
-            return f'{int(value):,}', True
+            value = f'{int(value):,}'
         except ValueError:
-            return f'{value} (invalid)', False
+            is_valid = False
+            value = f'{value} (invalid)'
     elif name == 'json':
         try:
-            json.loads(value)
-            return f'(ok)\n{value}', True
+            val = json.loads(value)
+            if show_json:
+                value = f'(valid JSON value)'
+            else:
+                value = '(The value is a valid JSON, use --show-json for raw dump)'
+
+            res = []
+            for v in val["vector_layers"]:
+                desc = ""
+                if "description" in v:
+                    desc = shorten_str(v["description"], 40)
+                fields = []
+                names = []
+                for fld in v["fields"].keys():
+                    if fld.startswith("name:"):
+                        names.append(fld[5:])
+                    else:
+                        fields.append(fld)
+                fields_str = ", ".join(v for v in fields)
+                if names:
+                    fields_str += ", " + "name:* (" + shorten_str(",".join(names), 20) + ")"
+                res.append({
+                    "layer": v["id"],
+                    "minZ": v["minzoom"],
+                    "maxZ": v["maxzoom"],
+                    "fields": fields_str,
+                    "description": desc
+                })
+            value += "\n\n" + tabulate(res, headers="keys")
+            if show_json:
+                value += "\n\n" + json.dumps(val, ensure_ascii=False, indent=2, sort_keys=True)
+
         except ValueError:
-            return f'(invalid)\n{value}', False
-    return value, True
+            is_valid = False
+            if show_json:
+                value = f'(invalid JSON value)\n{value}'
+            else:
+                value = f'(invalid JSON value, use --show-json to see it)'
+    return value, is_valid
 
 
 def get_minmax(cursor):
@@ -229,16 +267,32 @@ class Metadata:
     def __init__(self, mbtiles) -> None:
         self.mbtiles = mbtiles
 
-    def print_all(self):
+    def print_all(self, show_json: bool, show_ranges: bool):
         with sqlite3.connect(self.mbtiles) as conn:
             data = list(query(conn, "SELECT name, value FROM metadata", []))
         if data:
             width = max((len(v[0]) for v in data))
             for name, value in sorted(data,
                                       key=lambda v: v[0] if v[0] != 'json' else 'zz'):
-                print(f"{name:{width}} {validate(name, value)[0]}")
+                print(f"{name:{width}} {validate(name, value, show_json)[0]}")
         else:
             print(f"There are no values present in {self.mbtiles} metadata table")
+
+        if show_ranges:
+            with sqlite3.connect(self.mbtiles) as conn:
+                sql = """\
+SELECT zoom_level,
+       MIN(tile_column) AS min_column, MAX(tile_column) AS max_column,
+       MIN(tile_row) AS min_row, MAX(tile_row) AS max_row
+FROM map
+GROUP BY zoom_level
+"""
+                res = []
+                for zoom, min_x, max_x, min_y, max_y in sorted(query(conn, sql, [])):
+                    res.append({
+                        "Zoom": zoom,
+                        "Range": f"{min_x},{min_y} x {max_x},{max_y}"})
+                print("\n" + tabulate(res, headers="keys"))
 
     def get_value(self, name):
         with sqlite3.connect(self.mbtiles) as conn:
