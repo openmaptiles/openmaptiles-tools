@@ -6,6 +6,7 @@ from pathlib import Path
 
 import asyncpg
 from tabulate import tabulate
+from typing import Dict
 
 from openmaptiles.pgutils import get_postgis_version, get_vector_layers
 from openmaptiles.sqlite_utils import query
@@ -15,6 +16,7 @@ from openmaptiles.utils import print_err, Bbox, print_tile, shorten_str
 
 
 class KeyFinder:
+    """Search mbtiles for frequently used duplicate tiles"""
 
     def __init__(self,
                  mbtiles,
@@ -22,9 +24,16 @@ class KeyFinder:
                  show_examples=None,
                  outfile: str = None,
                  zoom=None,
+                 min_dup_count=None,
                  verbose=False) -> None:
         self.mbtiles = mbtiles
-        self.min_dup_count = 50 if zoom and zoom > 12 else 20
+        if min_dup_count is not None:
+            min_dup_count = int(min_dup_count)
+            if min_dup_count < 2:
+                raise ValueError(f"min_dup_count must be an integer ≥ 2")
+            self.min_dup_count = min_dup_count
+        else:
+            self.min_dup_count = 50 if zoom and zoom > 12 else 20
         self.use_stdout = outfile == '-'
         self.zoom = zoom
         self.verbose = verbose
@@ -44,7 +53,7 @@ class KeyFinder:
             if self.show_size:
                 sql = "SELECT cnt, dups.tile_id, LENGTH(tile_data) FROM (" \
                       "  SELECT tile_id, COUNT(*) as cnt FROM map " \
-                      "  GROUP BY tile_id HAVING cnt > ?" \
+                      "  GROUP BY tile_id HAVING cnt >= ?" \
                       ") dups JOIN images ON images.tile_id = dups.tile_id"
                 sql_opts = [self.min_dup_count]
                 if self.zoom:
@@ -56,7 +65,7 @@ class KeyFinder:
                 if self.zoom:
                     sql += f" WHERE zoom_level=?"
                     sql_opts.append(self.zoom)
-                sql += " GROUP BY tile_id HAVING cnt > ?"
+                sql += " GROUP BY tile_id HAVING cnt >= ?"
                 sql_opts.append(self.min_dup_count)
             for vals in query(conn, sql, sql_opts):
                 results.append(vals)
@@ -222,7 +231,7 @@ def validate(name, value, show_json=False):
                         fields.append(fld)
                 fields_str = ", ".join(v for v in fields)
                 if names:
-                    fields_str += ", " + "name:* (" + shorten_str(",".join(names), 20) + ")"
+                    fields_str += f", name:* ({shorten_str(','.join(names), 20)})"
                 res.append({
                     "layer": v["id"],
                     "minZ": v["minzoom"],
@@ -232,7 +241,8 @@ def validate(name, value, show_json=False):
                 })
             value += "\n\n" + tabulate(res, headers="keys")
             if show_json:
-                value += "\n\n" + json.dumps(val, ensure_ascii=False, indent=2, sort_keys=True)
+                value += "\n\n"
+                value += json.dumps(val, ensure_ascii=False, indent=2)
 
         except ValueError:
             is_valid = False
@@ -241,14 +251,6 @@ def validate(name, value, show_json=False):
             else:
                 value = f'(invalid JSON value, use --show-json to see it)'
     return value, is_valid
-
-
-def get_minmax(cursor):
-    cursor.execute("SELECT MIN(zoom_level), MAX(zoom_level) FROM map")
-    min_z, max_z = cursor.fetchone()
-    if min_z is None:
-        raise ValueError("Unable to get min/max zoom - tile data is empty")
-    return min_z, max_z
 
 
 def update_metadata(cursor, metadata, reset):
@@ -267,31 +269,34 @@ class Metadata:
     def __init__(self, mbtiles) -> None:
         self.mbtiles = mbtiles
 
-    def print_all(self, show_json: bool, show_ranges: bool):
-        with sqlite3.connect(self.mbtiles) as conn:
-            data = list(query(conn, "SELECT name, value FROM metadata", []))
+    def print_all(self, show_json: bool = False, show_ranges: bool = False,
+                  file: str = None):
+        file = file or self.mbtiles
+        data = self._get_metadata(file)
         if data:
-            width = max((len(v[0]) for v in data))
-            for name, value in sorted(data,
+            width = max((len(v) for v in data.keys()))
+            for name, value in sorted(data.items(),
                                       key=lambda v: v[0] if v[0] != 'json' else 'zz'):
                 print(f"{name:{width}} {validate(name, value, show_json)[0]}")
         else:
-            print(f"There are no values present in {self.mbtiles} metadata table")
+            print(f"There are no values present in {file} metadata table")
 
         if show_ranges:
-            with sqlite3.connect(self.mbtiles) as conn:
+            with sqlite3.connect(file) as conn:
                 sql = """\
-SELECT zoom_level,
+SELECT zoom_level, COUNT(*) as count,
        MIN(tile_column) AS min_column, MAX(tile_column) AS max_column,
-       MIN(tile_row) AS min_row, MAX(tile_row) AS max_row
+       MIN(tile_row) AS min_row, MAX(tile_row) AS max_row       
 FROM map
 GROUP BY zoom_level
 """
                 res = []
-                for zoom, min_x, max_x, min_y, max_y in sorted(query(conn, sql, [])):
+                for z, cnt, min_x, max_x, min_y, max_y in sorted(query(conn, sql, [])):
                     res.append({
-                        "Zoom": zoom,
-                        "Found tile ranges": f"{min_x},{min_y} x {max_x},{max_y}"})
+                        "Zoom": z,
+                        "Tile count": f"{cnt:,}",
+                        "Found tile ranges": f"{min_x},{min_y} x {max_x},{max_y}",
+                    })
                 print("\n" + tabulate(res, headers="keys"))
 
     def get_value(self, name):
@@ -343,43 +348,39 @@ GROUP BY zoom_level
         # https://github.com/mapbox/mbtiles-spec/blob/master/1.3/spec.md#content
         metadata = dict(
             # MUST
-            name=os.environ.get('METADATA_NAME', ts.name),
+            name=ts.name,
             format="pbf",
             json=json.dumps(json_data, ensure_ascii=False, separators=(',', ':')),
             # SHOULD
             bounds=",".join((str(v) for v in ts.bounds)),
             center=",".join((str(v) for v in ts.center)),
-            minzoom=os.environ.get('MIN_ZOOM', str(ts.minzoom)),
-            maxzoom=os.environ.get('MAX_ZOOM', str(ts.maxzoom)),
+            minzoom=str(ts.minzoom),
+            maxzoom=str(ts.maxzoom),
             # MAY
-            attribution=os.environ.get('METADATA_ATTRIBUTION', ts.attribution),
-            description=os.environ.get('METADATA_DESCRIPTION', ts.description),
-            version=os.environ.get('METADATA_VERSION', ts.version),
+            attribution=ts.attribution,
+            description=ts.description,
+            version=ts.version,
             # EXTRAS
-            filesize=os.path.getsize(self.mbtiles),
+            id=ts.id,
         )
 
-        bbox_str = os.environ.get('BBOX')
-        if bbox_str:
-            bbox = Bbox(bbox=bbox_str,
-                        center_zoom=os.environ.get('CENTER_ZOOM', ts.center[2]))
-            metadata["bounds"] = bbox.bounds_str()
-            metadata["center"] = bbox.center_str()
-
-        with sqlite3.connect(self.mbtiles) as conn:
-            cursor = conn.cursor()
-            if auto_minmax:
-                metadata["minzoom"], metadata["maxzoom"] = get_minmax(cursor)
-            update_metadata(cursor, metadata, reset)
-
-        print("The metadata now contains these values:")
-        self.print_all()
+        self._update_metadata(metadata, auto_minmax, reset, self.mbtiles, ts.center[2])
 
     def copy(self, target_mbtiles, reset, auto_minmax):
-        with sqlite3.connect(self.mbtiles) as conn:
-            metadata = {k: v for k, v in
-                        query(conn, "SELECT name, value FROM metadata", [])}
+        metadata = self._get_metadata(self.mbtiles)
+        self._update_metadata(metadata, auto_minmax, reset, target_mbtiles)
 
+    def show_tile(self, zoom, x, y, show_names, summary):
+        with sqlite3.connect(self.mbtiles) as conn:
+            sql = "SELECT tile_data FROM tiles " \
+                  "WHERE zoom_level=? AND tile_column=? AND tile_row=?"
+            for row in query(conn, sql, [zoom, x, y]):
+                print_tile(row[0], show_names, summary, f"{zoom}/{x}/{y}")
+                break
+            else:
+                print(f"Tile {zoom}/{x}/{y} not found")
+
+    def _update_metadata(self, metadata, auto_minmax, reset, file, center_zoom=None):
         def update_from_env(param, env_var):
             val = os.environ.get(env_var)
             if val is not None:
@@ -392,29 +393,32 @@ GROUP BY zoom_level
         update_from_env('description', 'METADATA_DESCRIPTION')
         update_from_env('version', 'METADATA_VERSION')
 
-        metadata['filesize'] = os.path.getsize(target_mbtiles)
+        metadata['filesize'] = os.path.getsize(file)
 
         bbox_str = os.environ.get('BBOX')
         if bbox_str:
             bbox = Bbox(bbox=bbox_str,
-                        center_zoom=os.environ.get('CENTER_ZOOM'))
+                        center_zoom=os.environ.get('CENTER_ZOOM', center_zoom))
             metadata["bounds"] = bbox.bounds_str()
             metadata["center"] = bbox.center_str()
 
-        with sqlite3.connect(target_mbtiles) as conn:
+        with sqlite3.connect(file) as conn:
             cursor = conn.cursor()
             if auto_minmax:
-                metadata["minzoom"], metadata["maxzoom"] = get_minmax(cursor)
+                cursor.execute("SELECT MIN(zoom_level), MAX(zoom_level) FROM map")
+                min_z, max_z = cursor.fetchone()
+                if min_z is None:
+                    raise ValueError("Unable to get min/max zoom - tile data is empty")
+                metadata["minzoom"] = min_z
+                metadata["maxzoom"] = max_z
             update_metadata(cursor, metadata, reset)
-        print("The metadata now contains these values:")
-        self.print_all()
+            conn.commit()
 
-    def show_tile(self, zoom, x, y, show_names, summary):
-        with sqlite3.connect(self.mbtiles) as conn:
-            sql = "SELECT tile_data FROM tiles " \
-                  "WHERE zoom_level=? AND tile_column=? AND tile_row=?"
-            for row in query(conn, sql, [zoom, x, y]):
-                print_tile(row[0], show_names, summary, f"{zoom}/{x}/{y}")
-                break
-            else:
-                print(f"Tile {zoom}/{x}/{y} not found")
+        print(f"New metadata values in {file}")
+        self.print_all(file=file)
+
+    @staticmethod
+    def _get_metadata(file) -> Dict[str, str]:
+        with sqlite3.connect(file) as conn:
+            return {k: v for k, v in
+                    query(conn, "SELECT name, value FROM metadata", [])}
