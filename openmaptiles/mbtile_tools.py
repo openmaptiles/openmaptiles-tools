@@ -291,7 +291,7 @@ GROUP BY zoom_level
                 for zoom, min_x, max_x, min_y, max_y in sorted(query(conn, sql, [])):
                     res.append({
                         "Zoom": zoom,
-                        "Range": f"{min_x},{min_y} x {max_x},{max_y}"})
+                        "Found tile ranges": f"{min_x},{min_y} x {max_x},{max_y}"})
                 print("\n" + tabulate(res, headers="keys"))
 
     def get_value(self, name):
