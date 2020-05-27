@@ -84,6 +84,7 @@ ENV TOOLS_DIR="$TOOLS_DIR" \
     IMPOSM_MAPPING_FILE=/mapping/mapping.yaml \
     IMPOSM_CACHE_DIR=/cache \
     IMPOSM_DIFF_DIR=/import \
+    EXPIRETILES_DIR=/import \
     PBF_DATA_DIR=/import \
     SQL_DIR=/sql \
     SQL_TOOLS_DIR="${TOOLS_DIR}/sql"
