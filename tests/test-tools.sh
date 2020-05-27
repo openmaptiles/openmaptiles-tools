@@ -49,6 +49,10 @@ generate-etlgraph "$TESTLAYERS/housenumber/housenumber.yaml" "$DEVDOC" --keep -f
 generate-mapping-graph "$TESTLAYERS/testmaptiles.yaml" "$DEVDOC" --keep -f png -f svg
 generate-mapping-graph "$TESTLAYERS/housenumber/housenumber.yaml" "$DEVDOC/mapping_diagram" --keep -f png -f svg
 
+echo "++++++++++++++++++++++++"
+echo "Testing download-osm"
+echo "++++++++++++++++++++++++"
+
 # Using a fake cache/geofabrik.json so that downloader wouldn't need to download the real one from Geofabrik site
 download-osm planet --imposm-cfg "$BUILD/planet-cfg.json" --dry-run
 download-osm michigan --imposm-cfg "$BUILD/michigan-cfg.json" --dry-run
@@ -80,12 +84,17 @@ download-osm geofabrik monaco-test \
 diff --brief "$HTTPDIR/monaco-20150428.osm.pbf" "$TEMP_DIR/monaco-20150428.osm.pbf"
 rm "$TEMP_DIR/monaco-20150428.osm.pbf"
 
-debug-mvt dump "$HTTPDIR/osm_10_598_297.mvt" > "$BUILD/debug_mvt_dump.out"
-debug-mvt dump "$HTTPDIR/osm_10_598_297.mvt" --summary > "$BUILD/debug_mvt_dump_summary.out"
-debug-mvt dump "$HTTPDIR/osm_10_598_297.mvt" --show-names > "$BUILD/debug_mvt_dump_show_names.out"
-debug-mvt dump "$HTTPDIR/osm_10_598_297.mvt" --summary --show-names > "$BUILD/debug_mvt_dump_summary_show_names.out"
-debug-mvt dump "http://localhost:8555/osm_10_598_297.mvt" --summary > "$BUILD/debug_mvt_URL_dump_summary.out"
-debug-mvt dump - --summary < "$HTTPDIR/osm_10_598_297.mvt" > "$BUILD/debug_mvt_STDIN_dump_summary.out"
+
+echo "++++++++++++++++++++++++"
+echo "Testing debug-mvt"
+echo "++++++++++++++++++++++++"
+
+debug-mvt dump "$HTTPDIR/osm_13_4388_2568.mvt" > "$BUILD/debug_mvt_dump.out"
+debug-mvt dump "$HTTPDIR/osm_13_4388_2568.mvt" --summary > "$BUILD/debug_mvt_dump_summary.out"
+debug-mvt dump "$HTTPDIR/osm_13_4388_2568.mvt" --show-names > "$BUILD/debug_mvt_dump_show_names.out"
+debug-mvt dump "$HTTPDIR/osm_13_4388_2568.mvt" --summary --show-names > "$BUILD/debug_mvt_dump_summary_show_names.out"
+debug-mvt dump "http://localhost:8555/osm_13_4388_2568.mvt" --summary > "$BUILD/debug_mvt_URL_dump_summary.out"
+gzip < "$HTTPDIR/osm_13_4388_2568.mvt" | debug-mvt dump - --summary > "$BUILD/debug_mvt_STDIN_dump_summary.out"
 
 { set +x ;} 2> /dev/null
 echo "-----------------------------------------------------------"

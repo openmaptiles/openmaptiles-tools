@@ -4,9 +4,10 @@ A toolbox to manage the mbtiles file.
 
 Usage:
   mbtiles-tools find-dups <mbtiles-file> [--output=<file>] [--verbose]
+                [--zoom=<zoom>] [--min-dups=<count>]
   mbtiles-tools impute <mbtiles-file> --zoom=<zoom>
                 [--key=<hash>... | --keyfile=<file>] [--output=<file>]
-                [--verbose]
+                [--min-dups=<count>] [--verbose]
   mbtiles-tools meta-all <mbtiles-file> [--show-json] [--show-ranges]
   mbtiles-tools meta-get <mbtiles-file> <metakey>
   mbtiles-tools meta-set <mbtiles-file> <metakey> [<newvalue>]
@@ -25,13 +26,18 @@ Usage:
   <tileset>      Tileset definition yaml file
 
 Actions:
-  find-dups      Get a list of duplicate tile keys at a given zoom levels (optional),
-                 limiting by the tile size (optional).
-  impute         Look at the zoom level one less than <zoom>, and find all tiles that match
-                 the given keys (md5 hashes as strings or a file). For each found tile,
-                 add tiles at the higher zooms with the same content as the found ones.
-                 For example, given a key for an empty water tile, one could clone all such
-                 water tiles from zoom 13 to zoom 14 by using --zoom=14 --key=<hash>
+  find-dups      Get a list of duplicate tile keys at a given zoom levels (optional).
+                 By default requires at least 20 (50 for z13+) duplicates to be shown.
+  impute         Find all duplicate tiles at zoom "<zoom> - 1" (same as find-dups), or
+                 use given keys (md5 hashes as strings or a file). For each found tile,
+                 add tiles at the <zoom> level with the same content as the found ones.
+                 Example: given a key (hash) for an empty water tile, one could copy all
+                 such water tiles from zoom 13 to zoom 14 by using --zoom=14 --key=<hash>.
+                 Alternatively, without the --key/--keyfile param, all tiles used more
+                 than 50 times will be copied from z13 to z14 with just --zoom=14 param.
+                 Use --output to record all tiles that were NOT imputed (i.e. still need
+                 to be generated) to a tile text file ("z/x/y" - one per line).
+                 By default requires at least 20 (50 for z13+) duplicates.
   meta-all       validates and prints all values in the metadata table
   meta-get       Gets a single value from metadata table
   meta-set       Sets a single value in the metadata table, or deletes it if no value.
@@ -49,7 +55,8 @@ Actions:
 
 
 Options:
-  -z --zoom=<zoom>      Process a single zoom. If set, ignores min/max.
+  -z --zoom=<zoom>      Process a single zoom. For impute, if set, ignores min/max.
+  -i --min-dups=<count> Number of times a tile is repeated before considering it a dup.
   -m --minzoom=<min>    Process all zooms beginning with this one (inclusive).
   -n --maxzoom=<max>    Process all zooms ending at this one (inclusive).
   -k --key=<hash>       Key of the tile (i.e. an MD5 hash). Could be multiple.
@@ -123,6 +130,8 @@ def find_dups(args):
     KeyFinder(
         mbtiles=args['<mbtiles-file>'],
         outfile=args['--output'] or '-',
+        zoom=args['--zoom'],
+        min_dup_count=args['--min-dups'],
         verbose=args['--verbose'] or (args['--output'] and args['--output'] != '-'),
     ).run()
 
@@ -140,7 +149,8 @@ def impute(args):
     elif args['--key']:
         keys = args['--key']
     else:
-        keys = KeyFinder(file, show_size=False, zoom=zoom - 1).run()
+        keys = KeyFinder(file, show_size=False, zoom=zoom - 1,
+                         min_dup_count=args['--min-dups']).run()
     Imputer(file, keys, zoom, outfile, verbose).run()
 
 

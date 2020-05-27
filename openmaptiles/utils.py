@@ -49,7 +49,11 @@ class Bbox:
         self.min_lat = float(bottom)
         self.max_lon = float(right)
         self.max_lat = float(top)
-        self.center_zoom = center_zoom
+        try:
+            # Allow both integer and float center zooms
+            self.center_zoom = int(center_zoom)
+        except ValueError:
+            self.center_zoom = float(center_zoom)
 
     def bounds_str(self):
         return ','.join(map(str, self.bounds()))
@@ -57,8 +61,8 @@ class Bbox:
     def bounds(self):
         return self.min_lon, self.min_lat, self.max_lon, self.max_lat
 
-    def center_str(self):
-        return ','.join(map(str, self.center()))
+    def center_str(self, precision=1):
+        return ','.join(map(lambda v: str(round(v, precision)), self.center()))
 
     def center(self):
         return (
