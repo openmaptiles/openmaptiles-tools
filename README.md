@@ -390,20 +390,14 @@ import-wikidata openmaptiles.yaml
 
 ### Mbtiles file tools
 This command allows users to examine and manipulate mbtiles file:
+* generate metadata based on the layers definition
 * get, set, and delete individual metadata values
-* validate and print all metadata values
+* validate and print all metadata values and mbtiles file statistics
 * list all tile keys (hashes) that are used many times (usually indicates empty tiles)
 * copy zooms, e.g. copy all empty tiles z13 to z14, and create a list of all tiles that needs to be generated.
 ```
 mbtiles-tools --help
 mbtiles-tools ./data/tiles.mbtiles meta-all
-```
-
-### Add simple metadata to mbtiles file
-Updates `metadata` table in the mbtiles file. See [mbtiles-tools](#mbtiles-file-tools) for other tools.
-Example:
-```
-generate-metadata ./data/tiles.mbtiles
 ```
 
 ### Generate TM2Source Projects for Mapbox Studio Classic
