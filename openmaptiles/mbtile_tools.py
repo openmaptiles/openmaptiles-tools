@@ -255,6 +255,7 @@ def validate(name, value, show_json=False):
 
 def update_metadata(cursor, metadata, reset):
     if reset:
+        # noinspection SqlWithoutWhere
         cursor.execute("DELETE FROM metadata;")
     for name, value in metadata.items():
         _, is_valid = validate(name, value)
@@ -323,7 +324,7 @@ GROUP BY zoom_level
                     "INSERT OR REPLACE INTO  metadata(name, value) VALUES (?, ?);",
                     [name, value])
 
-    async def generate(self, tileset, reset, auto_minmax,
+    async def generate(self, tileset, reset, auto_minmax, show_ranges,
                        pghost, pgport, dbname, user, password):
         ts = Tileset.parse(tileset)
         print(
@@ -364,11 +365,12 @@ GROUP BY zoom_level
             id=ts.id,
         )
 
-        self._update_metadata(metadata, auto_minmax, reset, self.mbtiles, ts.center[2])
+        self._update_metadata(metadata, auto_minmax, reset, self.mbtiles, show_ranges,
+                              ts.center[2])
 
-    def copy(self, target_mbtiles, reset, auto_minmax):
+    def copy(self, target_mbtiles, reset, auto_minmax, show_ranges):
         metadata = self._get_metadata(self.mbtiles)
-        self._update_metadata(metadata, auto_minmax, reset, target_mbtiles)
+        self._update_metadata(metadata, auto_minmax, reset, target_mbtiles, show_ranges)
 
     def show_tile(self, zoom, x, y, show_names, summary):
         with sqlite3.connect(self.mbtiles) as conn:
@@ -380,7 +382,8 @@ GROUP BY zoom_level
             else:
                 print(f"Tile {zoom}/{x}/{y} not found")
 
-    def _update_metadata(self, metadata, auto_minmax, reset, file, center_zoom=None):
+    def _update_metadata(self, metadata, auto_minmax, reset, file, show_ranges,
+                         center_zoom=None):
         def update_from_env(param, env_var):
             val = os.environ.get(env_var)
             if val is not None:
@@ -415,7 +418,7 @@ GROUP BY zoom_level
             conn.commit()
 
         print(f"New metadata values in {file}")
-        self.print_all(file=file)
+        self.print_all(file=file, show_ranges=show_ranges)
 
     @staticmethod
     def _get_metadata(file) -> Dict[str, str]:
