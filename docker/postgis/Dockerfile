@@ -7,15 +7,17 @@ FROM postgis/postgis:$BASE_POSTGIS_VER
 
 LABEL maintainer="Yuri Astrakhan <YuriAstrakhan@gmail.com>"
 
-
 # https://github.com/pramsey/pgsql-gzip/releases
 ARG PGSQL_GZIP_TAG=v1.0.0
+ARG PGSQL_GZIP_REPO=https://github.com/pramsey/pgsql-gzip.git
 
 # https://github.com/JuliaLang/utf8proc/releases
 ARG UTF8PROC_TAG=v2.5.0
+ARG UTF8PROC_REPO=https://github.com/JuliaLang/utf8proc.git
 
 # osml10n - https://github.com/giggls/mapnik-german-l10n/releases
 ARG MAPNIK_GERMAN_L10N_TAG=v2.5.9
+ARG MAPNIK_GERMAN_L10N_REPO=https://github.com/giggls/mapnik-german-l10n.git
 
 
 RUN set -eux  ;\
@@ -37,7 +39,7 @@ RUN set -eux  ;\
     ##
     ## gzip extension
     cd /opt/  ;\
-    git clone --quiet --depth 1 -b $PGSQL_GZIP_TAG https://github.com/pramsey/pgsql-gzip.git  ;\
+    git clone --quiet --depth 1 -b $PGSQL_GZIP_TAG $PGSQL_GZIP_REPO  ;\
     cd pgsql-gzip  ;\
     make  ;\
     make install  ;\
@@ -45,7 +47,7 @@ RUN set -eux  ;\
     ##
     ## UTF8Proc
     cd /opt/  ;\
-    git clone --quiet --depth 1 -b $UTF8PROC_TAG https://github.com/JuliaLang/utf8proc.git  ;\
+    git clone --quiet --depth 1 -b $UTF8PROC_TAG $UTF8PROC_REPO  ;\
     cd utf8proc  ;\
     make  ;\
     make install  ;\
@@ -54,7 +56,7 @@ RUN set -eux  ;\
     ##
     ## osml10n extension (originally Mapnik German)
     cd /opt/  ;\
-    git clone --quiet --depth 1 -b $MAPNIK_GERMAN_L10N_TAG https://github.com/giggls/mapnik-german-l10n.git  ;\
+    git clone --quiet --depth 1 -b $MAPNIK_GERMAN_L10N_TAG $MAPNIK_GERMAN_L10N_REPO  ;\
     cd mapnik-german-l10n  ;\
     make  ;\
     make install  ;\
