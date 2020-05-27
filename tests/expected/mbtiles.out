@@ -122,6 +122,11 @@ layer          minZ    maxZ  fields                                             
 -----------  ------  ------  -----------------------------------------------------  -----------------------------------------
 housenumber       0      10  housenumber, name_int, name:* (en,de,cs,latin,nonla…)  Everything in OpenStreetMap which contai…
 enumfield         0      10  osm_id                                                 Test for converting enumfields
+
+  Zoom    Tile count  Found tile ranges
+------  ------------  -------------------
+     0             1  0,0 x 0,0
+     1             4  0,0 x 1,1
 attribution set attr
 bounds      12.2403,35.8223,23.3262,45.8046
 center      17.8,40.8,6
@@ -247,6 +252,10 @@ layer          minZ    maxZ  fields                                             
 -----------  ------  ------  -----------------------------------------------------  -----------------------------------------
 housenumber       0      10  housenumber, name_int, name:* (en,de,cs,latin,nonla…)  Everything in OpenStreetMap which contai…
 enumfield         0      10  osm_id                                                 Test for converting enumfields
+
+  Zoom    Tile count  Found tile ranges
+------  ------------  -------------------
+     0             1  0,0 x 0,0
 0
 0
 ----------------------- mbtiles-tools tile 1/1/0

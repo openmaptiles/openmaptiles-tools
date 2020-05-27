@@ -12,11 +12,11 @@ Usage:
   mbtiles-tools meta-get <mbtiles-file> <metakey>
   mbtiles-tools meta-set <mbtiles-file> <metakey> [<newvalue>]
   mbtiles-tools meta-generate <mbtiles-file> <tileset>
-                [--reset] [--auto-minmax]
+                [--reset] [--auto-minmax] [--show-ranges]
                 [--pghost=<host>] [--pgport=<port>] [--dbname=<db>]
                 [--user=<user>] [--password=<password>]
   mbtiles-tools meta-copy <mbtiles-file> <target-mbtiles-file>
-                [--reset] [--auto-minmax]
+                [--reset] [--auto-minmax] [--show-ranges]
   mbtiles-tools tile <mbtiles-file> <tile_zxy> [--show-names] [--summary]
   mbtiles-tools --help
   mbtiles-tools --version
@@ -63,7 +63,7 @@ Options:
   -f --keyfile=<file>   A file with tile Keys, one per line.
   -o --output=<file>    Write a list of tiles to this file. Use '-' for stdout.
   -j --show-json        For meta-all, print out the entire JSON field (compact-pretty-printed)
-  -r --show-ranges      Showing available ranges for each zoom in mbtiles.
+  -r --show-ranges      Show tile counts and ranges statistics for each zoom in mbtiles.
   -v --verbose          Print additional debugging information.
   --reset               For meta-generate and meta-copy, clear all existing metadata first.
   -a --auto-minmax      For meta-generate and meta-copy, query data tables for available min/max zoom.
@@ -110,13 +110,13 @@ def main():
     elif args['meta-generate']:
         pghost, pgport, dbname, user, password = parse_pg_args(args)
         asyncio.run(Metadata(args['<mbtiles-file>']).generate(
-            args['<tileset>'], reset=args['--reset'], auto_minmax=args['--auto-minmax'],
+            args['<tileset>'], reset=args['--reset'],
+            auto_minmax=args['--auto-minmax'], show_ranges=args['--show-ranges'],
             pghost=pghost, pgport=pgport, dbname=dbname, user=user, password=password))
     elif args['meta-copy']:
         Metadata(args['<mbtiles-file>']).copy(
-            args['<target-mbtiles-file>'],
-            reset=args['--reset'],
-            auto_minmax=args['--auto-minmax'])
+            args['<target-mbtiles-file>'], reset=args['--reset'],
+            auto_minmax=args['--auto-minmax'], show_ranges=args['--show-ranges'])
     elif args['tile']:
         Metadata(args['<mbtiles-file>']).show_tile(
             *parse_zxy_param(args['<tile_zxy>']),

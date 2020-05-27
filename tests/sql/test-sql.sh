@@ -119,7 +119,7 @@ EOT
   export METADATA_VERSION="set ver"
   export BBOX="12.2403,35.8223,23.3262,45.8046"
   export CENTER_ZOOM=6
-  mbtiles-tools meta-generate "$MBTILES_FILE" /omt/tests/testlayers/testmaptiles.yaml --reset --auto-minmax
+  mbtiles-tools meta-generate "$MBTILES_FILE" /omt/tests/testlayers/testmaptiles.yaml --reset --auto-minmax --show-ranges
   unset METADATA_ATTRIBUTION METADATA_DESCRIPTION METADATA_NAME METADATA_VERSION MIN_ZOOM MAX_ZOOM BBOX CENTER_ZOOM
   mbtiles-tools meta-all "$MBTILES_FILE" --show-json --show-ranges
   echo "----------------------- mbtiles-tools meta-copy"
@@ -141,7 +141,7 @@ EOT
   unset METADATA_ATTRIBUTION METADATA_DESCRIPTION METADATA_NAME METADATA_VERSION MIN_ZOOM MAX_ZOOM BBOX CENTER_ZOOM
   mbtiles-tools meta-all "$MBTILES_FILE"
   echo "----------------------- mbtiles-tools meta-copy with auto-minmax"
-  mbtiles-tools meta-copy "$MBTILES_FILE" "$MBTILES2_FILE" --auto-minmax
+  mbtiles-tools meta-copy "$MBTILES_FILE" "$MBTILES2_FILE" --auto-minmax --show-ranges
   mbtiles-tools meta-get "$MBTILES2_FILE" minzoom
   mbtiles-tools meta-get "$MBTILES2_FILE" maxzoom
   echo "----------------------- mbtiles-tools tile 1/1/0"
