@@ -13,6 +13,9 @@ BUILD_DIR    ?= build
 # runs as the current user rather than root (so that created files are not root-owned)
 DOCKER_OPTS  ?= -i --rm -u $$(id -u $${USER}):$$(id -g $${USER})
 
+# Optionally pass in extra parameters to the docker build command
+DOCKER_BUILD_EXTRAS ?=
+
 # Current dir is shared with the docker, allowing scripts to write to the dir as a current user
 WORKDIR      ?= $$( pwd -P )
 RUN_CMD := docker run ${DOCKER_OPTS} -v "$(WORKDIR):/tileset"
@@ -50,31 +53,31 @@ prepare:
 
 .PHONY: build-docker
 build-docker:
-	docker build \
+	docker build $(DOCKER_BUILD_EXTRAS) \
 		$(foreach ver, $(VERSION), --tag $(IMAGE_NAME):$(ver)) \
 		.
 
 .PHONY: build-generate-vectortiles
 build-generate-vectortiles:
-	docker build \
+	docker build $(DOCKER_BUILD_EXTRAS) \
 		$(foreach ver, $(VERSION), --tag $(IMAGE_REPO)/generate-vectortiles:$(ver)) \
 		docker/generate-vectortiles
 
 .PHONY: build-postgis
 build-postgis:
-	docker build \
+	docker build $(DOCKER_BUILD_EXTRAS) \
 		$(foreach ver, $(VERSION), --tag $(IMAGE_REPO)/postgis:$(ver)) \
 		docker/postgis
 
 .PHONY: build-import-data
 build-import-data:
-	docker build \
+	docker build $(DOCKER_BUILD_EXTRAS) \
 		$(foreach ver, $(VERSION), --tag $(IMAGE_REPO)/import-data:$(ver)) \
 		docker/import-data
 
 .PHONY: build-postgis-preloaded
 build-postgis-preloaded: build-postgis build-import-data
-	docker build \
+	docker build $(DOCKER_BUILD_EXTRAS) \
 		--build-arg "OMT_TOOLS_VERSION=$(word 1,$(VERSION))" \
 		$(foreach ver, $(VERSION), --tag $(IMAGE_REPO)/postgis-preloaded:$(ver)) \
 		docker/postgis-preloaded

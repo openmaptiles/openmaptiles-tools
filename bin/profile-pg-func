@@ -53,7 +53,7 @@ from typing import List
 
 import openmaptiles
 from openmaptiles.pgutils import parse_pg_args, PgWarnings
-from openmaptiles.utils import round_td
+from openmaptiles.utils import round_td, shorten_str
 
 
 def get_int(args, param, min_val) -> int:
@@ -91,10 +91,9 @@ class Stat:
         self.stdev = statistics.stdev(self.perf_seconds)
 
     def format_func(self, verbose):
-        if verbose or len(self.function) < 50:
-            res = self.function
-        else:
-            res = self.function[:50] + "…"
+        res = self.function
+        if not verbose:
+            res = shorten_str(res, 50)
         return f"{self.index}) {res}"
 
 

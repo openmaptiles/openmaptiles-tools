@@ -77,7 +77,7 @@ class GetTile(RequestHandledWithCors):
                     row = await connection.fetchrow(query, zoom, x, y)
                     tile = row['mvt']
                     key = row['key'] if self.key_column else None
-                    bad_geos = row['bad_geos'] if self.test_geometry else 0
+                    bad_geos = row['_bad_geos_'] if self.test_geometry else 0
                 else:
                     tile = await connection.fetchval(query, zoom, x, y)
                     key = None

@@ -1,4 +1,6 @@
 import gzip
+from collections import defaultdict
+
 import math
 
 import asyncio
@@ -13,7 +15,6 @@ from typing import List, Callable, Any, Dict, Awaitable, Iterable, TypeVar
 
 from tabulate import tabulate
 
-from openmaptiles.consts import *
 from openmaptiles.vector_tile import TileFeature, TileLayer, Tile, TileGeomType
 
 T = TypeVar('T')
@@ -39,15 +40,19 @@ def deg2num(lat_deg, lon_deg, zoom):
 
 class Bbox:
     def __init__(self, bbox=None,
-                 left=BBOX_LEFT, bottom=BBOX_BOTTOM, right=BBOX_RIGHT, top=BBOX_TOP,
-                 center_zoom=CENTER_ZOOM) -> None:
+                 left=-180.0, bottom=-85.0511, right=180.0, top=85.0511,
+                 center_zoom=5) -> None:
         if bbox:
             left, bottom, right, top = bbox.split(',')
         self.min_lon = float(left)
         self.min_lat = float(bottom)
         self.max_lon = float(right)
         self.max_lat = float(top)
-        self.center_zoom = center_zoom
+        try:
+            # Allow both integer and float center zooms
+            self.center_zoom = int(center_zoom)
+        except ValueError:
+            self.center_zoom = float(center_zoom)
 
     def bounds_str(self):
         return ','.join(map(str, self.bounds()))
@@ -55,8 +60,8 @@ class Bbox:
     def bounds(self):
         return self.min_lon, self.min_lat, self.max_lon, self.max_lat
 
-    def center_str(self):
-        return ','.join(map(str, self.center()))
+    def center_str(self, precision=1):
+        return ','.join(map(lambda v: str(round(v, precision)), self.center()))
 
     def center(self):
         return (
@@ -186,27 +191,102 @@ def parse_zxy_param(param):
     return zoom, x, y
 
 
-def parse_tags(feature: TileFeature, layer: TileLayer, show_names: bool) -> dict:
-    return {'*ID*': feature.id,
-            'GeoSize': f"{len(feature.geometry):,}",
-            'GeoType': TileGeomType(feature.type).name,
-            **{
-                layer.keys[feature.tags[i]]:
-                    which_one_of(layer.values[feature.tags[i + 1]], "val")[1]
-                for i in range(0, len(feature.tags), 2)
-                if show_names or not layer.keys[feature.tags[i]].startswith("name:")
-            }}
+def parse_tags(feature: TileFeature, layer: TileLayer, show_names: bool,
+               summary: bool) -> dict:
+    if summary:
+        show_names = True
+    geo_size = len(feature.geometry)
+    res = {'*ID*': feature.id,
+           'GeoSize': f"{geo_size :,}" if not summary else geo_size,
+           'GeoType': TileGeomType(feature.type).name}
+    tags = {
+        layer.keys[feature.tags[i]]:
+            which_one_of(layer.values[feature.tags[i + 1]], "val")[1] for i in
+        range(0, len(feature.tags), 2) if
+        show_names or not layer.keys[feature.tags[i]].startswith("name:")}
+    if summary:
+        res['tags'] = tags
+    else:
+        res.update(tags)
+    return res
 
 
-def print_tile(tile_gzipped: bytes, zoom: int, x: int, y: int,
-               show_names: bool) -> None:
-    tile_raw = gzip.decompress(tile_gzipped)
+def print_tile(data: bytes, show_names: bool, summary: bool, info: str) -> None:
+    info = shorten_str(info, 60)
+    try:
+        tile_raw = gzip.decompress(data)
+        gzipped_size = len(data)
+        info = "Tile " + info
+    except gzip.BadGzipFile:
+        tile_raw = data
+        gzipped_size = len(gzip.compress(data))
+        info = "Uncompressed tile " + info
     tile = Tile().parse(tile_raw)
-    print(f"Tile {zoom}/{x}/{y} -- raw size={len(tile_raw):,} bytes, "
-          f"gzipped={len(tile_gzipped):,} bytes, {len(tile.layers)} layers")
+    print(f"{info} size={len(tile_raw):,} bytes, "
+          f"gzipped={gzipped_size:,} bytes, {len(tile.layers)} layers")
+    res = []
     for layer in tile.layers:
-        print(f"\n======= Layer {layer.name}: "
-              f"{len(layer.features)} features, extent={layer.extent}, "
-              f"version={layer.version} =======")
-        tags = [parse_tags(f, layer, show_names) for f in layer.features]
-        print(tabulate(tags, headers="keys"))
+        tags = [parse_tags(f, layer, show_names, summary) for f in layer.features]
+        features = len(layer.features)
+        if summary:
+            geo_size = sum((int(v['GeoSize']) for v in tags))
+            geo_stats = defaultdict(int)
+            tag_stats = defaultdict(int)
+            name_stats = defaultdict(int)
+            for tag in tags:
+                geo_stats[tag['GeoType']] += 1
+                for key in tag['tags'].keys():
+                    if key.startswith("name:"):
+                        name_stats[key[5:]] += 1
+                    else:
+                        tag_stats[key] += 1
+
+            def format_stats(stats, show100=False):
+                # First show those with 100%, then the rest, keep the order
+                stats = sorted(stats.items(), key=lambda v: -v[1] / features)
+                return ", ".join(
+                    (k + (f"({v / features:.0%})" if show100 or v < features else '')
+                     for k, v in stats))
+
+            entry = {
+                "Layer": layer.name,
+                "Extent": layer.extent,
+                "Ver": layer.version,
+                "Features": f"{features :,}",
+                "GeoType": format_stats(geo_stats),
+                "GeoSize": f"{geo_size:,}",
+                "AVG GeoSize": f"{geo_size / features:,.1f}",
+                "Fields (percentage only if not all features have it)":
+                    format_stats(tag_stats),
+            }
+            if name_stats:
+                if show_names:
+                    entry[
+                        "name:* fields (percentage of features with that language)"] = format_stats(
+                        name_stats, True)
+                else:
+                    entry["name:* fields"] = f"{len(name_stats)} languages"
+            res.append(entry)
+        else:
+            extra = ''
+            if not show_names:
+                hidden_names = list(sorted({
+                    layer.keys[f.tags[i]][5:]
+                    for f in layer.features
+                    for i in range(0, len(f.tags), 2)
+                    if layer.keys[f.tags[i]].startswith("name:")
+                }))
+                if hidden_names:
+                    extra = f", hiding {len(hidden_names)} name:* languages: " + \
+                            ','.join(hidden_names)
+            print(f"\n======= Layer {layer.name}: "
+                  f"{features} features, extent={layer.extent}, "
+                  f"version={layer.version}{extra} =======")
+            print(tabulate(tags, headers="keys"))
+    if summary:
+        print(tabulate(res, headers="keys", disable_numparse=True,
+                       colalign=['left', 'right', 'right', 'right', 'right', 'right']))
+
+
+def shorten_str(value: str, length: int) -> str:
+    return value if len(value) < length else value[:length] + "…"
