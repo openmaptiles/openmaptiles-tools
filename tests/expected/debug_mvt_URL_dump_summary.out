@@ -1,0 +1,6 @@
+Uncompressed tile from http://localhost:8555/osm_13_4388_2568.mvt size=2,222 bytes, gzipped=1,248 bytes, 3 layers
+Layer                  Extent    Ver    Features                       GeoType    GeoSize  AVG GeoSize    Fields (percentage only if not all features have it)              name:* fields
+-------------------  --------  -----  ----------  ----------------------------  ---------  -------------  ----------------------------------------------------------------  ---------------
+water                    4096      2           1                       POLYGON        304  304.0          class
+transportation           4096      2          11  LINESTRING(91%), POLYGON(9%)        237  21.5           class, oneway, ramp, brunnel, layer, subclass(55%), surface(36%)
+transportation_name      4096      2           2                    LINESTRING         72  36.0           name_en, name_de, ref, ref_length, network, class                 1 languages

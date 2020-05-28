@@ -16,6 +16,7 @@ RUN set -eux ;\
         libgeos-dev \
         libleveldb-dev \
         libprotobuf-dev \
+        protobuf-compiler \
         ;\
     \
     apt list --installed ;\
@@ -83,6 +84,7 @@ ENV TOOLS_DIR="$TOOLS_DIR" \
     IMPOSM_MAPPING_FILE=/mapping/mapping.yaml \
     IMPOSM_CACHE_DIR=/cache \
     IMPOSM_DIFF_DIR=/import \
+    EXPIRETILES_DIR=/import \
     PBF_DATA_DIR=/import \
     SQL_DIR=/sql \
     SQL_TOOLS_DIR="${TOOLS_DIR}/sql"
@@ -97,12 +99,14 @@ RUN set -eux ;\
         curl \
         wget \
         git  \
+        less \
+        nano \
         gnupg2  `# TODO: not sure why gnupg2 is needed`  ;\
     curl https://www.postgresql.org/media/keys/ACCC4CF8.asc | apt-key add - ;\
     /bin/bash -c 'source /etc/os-release && echo "deb http://apt.postgresql.org/pub/repos/apt/ ${VERSION_CODENAME:?}-pgdg main ${PG_MAJOR:?}" > /etc/apt/sources.list.d/pgdg.list' ;\
     DEBIAN_FRONTEND=noninteractive apt-get update ;\
     DEBIAN_FRONTEND=noninteractive apt-get install  -y --no-install-recommends \
-        aria2     `# multi-stream file downloader` \
+        aria2     `# multi-stream file downloader - used by download-osm` \
         graphviz  `# used by layer mapping graphs` \
         sqlite3   `# mbtiles file manipulations`   \
         gdal-bin  `# contains ogr2ogr` \
@@ -110,7 +114,7 @@ RUN set -eux ;\
         osmosis   `# useful toolset - https://wiki.openstreetmap.org/wiki/Osmosis` \
         postgresql-client-${PG_MAJOR:?}  `# psql` \
         \
-        `# imposm dependencies` \
+        # imposm dependencies
         libgeos-dev \
         libleveldb-dev \
         libprotobuf-dev \

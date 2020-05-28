@@ -44,7 +44,7 @@ EOF
 
   echo "------------- Installing required packages..."
   DEBIAN_FRONTEND=noninteractive apt-get update -qq
-  DEBIAN_FRONTEND=noninteractive apt-get install -y docker.io docker-compose htop linux-tools-common make tmux
+  DEBIAN_FRONTEND=noninteractive apt-get install -y docker.io docker-compose htop linux-tools-common make tmux python3-pip aria2
   echo "------------- Starting docker daemon and allowing all users to access it"
   service docker start
   chmod 666 /var/run/docker.sock

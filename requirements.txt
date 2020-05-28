@@ -3,9 +3,10 @@
 aiohttp==3.6.2
 ascii_graph==1.5.1
 asyncpg==0.20.1
-beautifulsoup4==4.9.0
-dataclasses-json==0.4.2
-deprecated==1.2.9
+betterproto==1.2.3
+beautifulsoup4==4.9.1
+dataclasses-json==0.4.3
+deprecated==1.2.10
 docopt-ng==0.7.2
 graphviz==0.14
 psycopg2-binary==2.8.5
