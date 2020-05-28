@@ -6,7 +6,6 @@ from asyncpg import Connection
 # noinspection PyProtectedMember
 from docopt import DocoptExit
 
-from openmaptiles.consts import PIXEL_SCALE
 from openmaptiles.tileset import Tileset, Layer
 from openmaptiles.utils import find_duplicates
 
@@ -26,8 +25,8 @@ class MvtGenerator:
         else:
             self.tileset = tileset
         self.extent = extent
-        self.pixel_width = PIXEL_SCALE
-        self.pixel_height = PIXEL_SCALE
+        self.pixel_width = self.tileset.pixel_scale
+        self.pixel_height = self.tileset.pixel_scale
         self.key_column = key_column
         self.gzip = gzip
         self.test_geometry = test_geometry

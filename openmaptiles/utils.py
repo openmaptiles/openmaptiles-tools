@@ -15,7 +15,6 @@ from typing import List, Callable, Any, Dict, Awaitable, Iterable, TypeVar
 
 from tabulate import tabulate
 
-from openmaptiles.consts import *
 from openmaptiles.vector_tile import TileFeature, TileLayer, Tile, TileGeomType
 
 T = TypeVar('T')
@@ -41,8 +40,8 @@ def deg2num(lat_deg, lon_deg, zoom):
 
 class Bbox:
     def __init__(self, bbox=None,
-                 left=BBOX_LEFT, bottom=BBOX_BOTTOM, right=BBOX_RIGHT, top=BBOX_TOP,
-                 center_zoom=CENTER_ZOOM) -> None:
+                 left=-180.0, bottom=-85.0511, right=180.0, top=85.0511,
+                 center_zoom=5) -> None:
         if bbox:
             left, bottom, right, top = bbox.split(',')
         self.min_lon = float(left)
