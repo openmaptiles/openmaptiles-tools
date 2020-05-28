@@ -5,7 +5,7 @@ This adds significant size to *z14*. For buildings the centroid of the building 
 
 ### housenumber
 
-Value of the [`addr:housenumber`](http://wiki.openstreetmap.org/wiki/Key:addr) tag.
+Value of the [`addr:housenumber`](http://wiki.openstreetmap.org/wiki/Key:addr) tag (Faked from current zoom).
 
 
 

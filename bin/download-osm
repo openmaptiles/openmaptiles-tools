@@ -2,18 +2,20 @@
 """
 Usage:
   download-osm list <service> [-l] [-c]
-  download-osm planet [-l] [-p] [-n] [-v] [-j <file> [-k <kv>]...] [-d <file> [-i <z>] [-a <z>] [-x <v>]] [--] [<args>...]
-  download-osm url       <url>  [-n] [-v] [-j <file> [-k <kv>]...] [-d <file> [-i <z>] [-a <z>] [-x <v>] [--id <id>]] [--] [<args>...]
-  download-osm (geofabrik|osmfr|bbbike) <id> [-l] [-c] [-n] [-v] [-s <file>] [-j <file> [-k <kv>]...] [-d <file> [-i <z>] [-a <z>] [-x <v>]] [--] [<args>...]
+  download-osm planet [-o <file> [-f]] [-j <file> [-k <kv>]...] [-d <file> [-i <z>]
+               [-l] [-p] [-n] [-v] [-a <z>] [-x <v>]] [--] [<aria2c_args>...]
+  download-osm [url|geofabrik|osmfr|bbbike] <area_or_url> [-o <file> [-f]] [-s <file>]
+               [-j <file> [-k <kv>]...] [-l] [-c] [-n] [-v]
+               [-d <file> [-i <z>] [-a <z>] [-x <v>] [--id <id>]] [--] [<aria2c_args>...]
   download-osm make-dc <pbf-file> -d <file> [-i <z>] [-a <z>] [-x <v>] [--id <id>]
   download-osm --help
   download-osm --version
 
 Download types:
   planet           Loads latest planet file (50+ GB) from all known mirrors
+  list <service>   Show available areas for a service. For now only 'geofabrik'.
   url <url>        Loads file from the specific <url>.
                    If <url>.md5 is available, download-osm will use it to validate.
-  list <service>   Show available areas for a service. For now only 'geofabrik'.
   geofabrik <id>   Loads file from Geofabrik by ID, where the ID is either
                    "australia-oceania/new-zealand" or just "new-zealand".
                    See https://download.geofabrik.de/
@@ -27,11 +29,15 @@ Download types:
                    the area downloads by setting the -d <file> parameter.
 
 Options:
+  -o --output <file>    Configure aria2c to save downloaded file under a given name.
+                        If directory does not exist, it will be created.
+                        If the file already exists, exits with an error, unless --force.
+  -f --force            If set and file already exists, will delete it before downloading.
   -p --include-primary  If set, will download from the main osm.org (please avoid
                         using this parameter to reduce the load on the primary server)
   -l --force-latest     Always download the very latest available planet file,
                         even if there are too few mirrors that have it.
-                        For Geofabrik, forces catalog re-download.
+                        For area services, forces catalog re-download.
   -c --no-cache         Do not cache downloaded list of extracts
   -s --state <file>     Download state file and save it to the <file>
   -j --imposm-cfg <f>   Create an imposm configuration json file, and write
@@ -72,19 +78,19 @@ import os
 import re
 import subprocess
 import sys
-from asyncio import sleep
+from asyncio import sleep, Future
 from collections import defaultdict
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import List, Dict, Tuple
+from typing import List, Dict, Tuple, Iterable, Union
 
 import aiohttp
 import yaml
 from aiohttp import ClientSession
 from bs4 import BeautifulSoup
 # noinspection PyProtectedMember
-from docopt import docopt, DocoptExit, __all__ as docopt_funcs
+from docopt import docopt, __all__ as docopt_funcs
 from tabulate import tabulate
 
 import openmaptiles
@@ -96,33 +102,44 @@ USER_AGENT = f'OpenMapTiles download-osm {openmaptiles.__version__} ' \
 
 class Catalog:
     def __init__(self):
-        self.sites = [
-            Site('GB', 'https://planet.openstreetmap.org/pbf/', avoid_by_default=True),
-            Site('DE', 'https://download.bbbike.org/osm/planet/'),
-            Site('DE', 'https://ftp.spline.de/pub/openstreetmap/pbf/'),
-            Site('DE', 'https://ftp5.gwdg.de'
-                       '/pub/misc/openstreetmap/planet.openstreetmap.org/pbf/'),
-            Site('JP', 'https://planet.passportcontrol.net/pbf/'),
-            Site('NL', 'https://ftp.nluug.nl/maps/planet.openstreetmap.org/pbf/'),
-            Site('NL', 'https://ftp.snt.utwente.nl/pub/misc/openstreetmap/'),
-            Site('TW', 'https://free.nchc.org.tw/osm.planet/pbf/'),
-            Site('US', 'https://ftp.osuosl.org/pub/openstreetmap/pbf/'),
-            Site('US', 'https://ftpmirror.your.org/pub/openstreetmap/pbf/'),
+        self.mirrors = [
+            MirrorMult('GB', 'https://planet.openstreetmap.org/pbf/', is_primary=True),
+            Mirror('DE',
+                   'https://download.bbbike.org/osm/planet/planet-latest.osm.pbf'),
+            MirrorMult('DE', 'https://ftp.spline.de/pub/openstreetmap/pbf/'),
+            MirrorMult('DE', 'https://ftp5.gwdg.de'
+                             '/pub/misc/openstreetmap/planet.openstreetmap.org/pbf/'),
+            # https://planet.passportcontrol.net/pbf/ redirects to broken SSL cert
+            # when used from some locations.
+            # See https://twitter.com/IchikawaYukko/status/1261541590566223872
+            MirrorMult('JP', 'https://planet.passportcontrol.net/pbf/'),
+            MirrorMult('DE', 'https://ftp.fau.de/osm-planet/pbf/'),
+            Mirror('NL', 'https://ftp.nluug.nl/maps/planet.openstreetmap.org'
+                         '/pbf/planet-latest.osm.pbf'),
+            Mirror('NL', 'https://ftp.snt.utwente.nl'
+                         '/pub/misc/openstreetmap/planet-latest.osm.pbf'),
+            MirrorMult('TW', 'https://free.nchc.org.tw/osm.planet/pbf/'),
+            Mirror('US', 'https://ftp.osuosl.org'
+                         '/pub/openstreetmap/pbf/planet-latest.osm.pbf'),
+            MirrorMult('US', 'https://ftpmirror.your.org/pub/openstreetmap/pbf/'),
+
+            # Internet archive is a bit tricky, so ignoring for now. PRs welcome.
+            #   https://archive.org/details/osmdata
         ]
 
     async def init(self,
                    session: ClientSession, verbose: bool,
                    use_primary: bool, force_latest: bool) -> Tuple[List[str], str]:
-        """Load the list of all available sources from all mirror sites,
+        """Load the list of all available sources from all mirrors,
         and pick the most recent file that is widely available.
         Returns a list of urls and the expected md5 hash.
         """
         print("Retrieving available files...")
         await sleep(0.01)  # Make sure the above print statement prints first
         sources_by_hash: Dict[str, List[Source]] = defaultdict(list)
-        await asyncio.wait([v.init(session, verbose) for v in self.sites])
-        for site in self.sites:
-            for s in site.sources:
+        await asyncio.wait([v.init(session, verbose) for v in self.mirrors])
+        for mirror in self.mirrors:
+            for s in mirror.sources:
                 sources_by_hash[s.hash].append(s)
         # Remove "latest" from sources if they have no md5 hash
         # noinspection PyTypeChecker
@@ -164,7 +181,7 @@ class Catalog:
 
         print("\nLatest available files:\n")
         info = [dict(date=f"{s[0]:%Y-%m-%d}" if s[0] < datetime.max else "Unknown",
-                     number_of_sites=s[1], md5=s[2].hash,
+                     mirror_count=s[1], md5=s[2].hash,
                      size=s[2].size_str())
                 for s in stats]
         print(tabulate(info, headers="keys") + '\n')
@@ -181,15 +198,16 @@ class Catalog:
         ts = f"{ts:%Y-%m-%d}" if ts else "latest (unknown date)"
 
         if len(src_list) > 2 and not use_primary:
-            src_list = [v for v in src_list if not v.site.avoid_by_default]
+            src_list = [v for v in src_list if not v.mirror.is_primary]
             info = ' (will not use primary)' + info
 
         print(f"Will download planet published on {ts}, "
               f"size={src_list[0].size_str()}, md5={src_list[0].hash}, "
               f"using {len(src_list)} sources{info}")
         if verbose:
-            print(tabulate([dict(country=s.site.country, url=s.url) for s in src_list],
-                           headers="keys") + '\n')
+            print(
+                tabulate([dict(country=s.mirror.country, url=s.url) for s in src_list],
+                         headers="keys") + '\n')
 
         return [s.url for s in src_list], hash_to_download
 
@@ -215,33 +233,42 @@ class Catalog:
         return attr_to_hash
 
 
-class Site:
+class Mirror:
     re_name = re.compile(r'^planet-(\d{6}|latest)\.osm\.pbf(\.md5)?$')
 
-    def __init__(self, country, url, avoid_by_default=False):
+    def __init__(self, country, url, is_primary=False):
         self.country: str = country
         self.url: str = url
-        self.avoid_by_default: bool = avoid_by_default
+        self.is_primary: bool = is_primary
         self.sources: List[Source] = []
 
     async def init(self, session: ClientSession, verbose: bool):
         """initialize the self.sources with the relevant Source objects
-        by parsing the mirror's site HTML page, and getting all <a> tags"""
+        by parsing the mirror's HTML page, and getting all <a> tags"""
         try:
-            soup = BeautifulSoup(await fetch(session, self.url), 'html.parser')
-            sources = self.parse_hrefs(
-                [(v.text.strip(), v['href'].strip())
-                 for v in soup.find_all('a') if 'href' in v.attrs],
-                verbose)
-            await asyncio.wait([v.load_hash(session, verbose) for v in sources] +
-                               [v.load_metadata(session, verbose) for v in sources])
+            sources = await self.get_sources(session, verbose)
             if not sources:
                 raise ValueError(f"No sources found")
+            await load_sources(sources, session, verbose)
             if len(sources) > 1 and sources[0].hash == sources[1].hash:
                 del sources[0]  # latest is the same as the last one
             self.sources = sources
         except Exception as ex:
             print_err(f"Unable to use {self.country} source {self.url}: {ex}")
+
+    async def get_sources(self, session, verbose):
+        return [Source(name='planet-latest.osm.pbf', url=self.url, mirror=self)]
+
+
+class MirrorMult(Mirror):
+    """A mirror with multiple files"""
+
+    async def get_sources(self, session, verbose):
+        soup = BeautifulSoup(await fetch(session, self.url), 'html.parser')
+        return self.parse_hrefs(
+            [(v.text.strip(), v['href'].strip())
+             for v in soup.find_all('a') if 'href' in v.attrs],
+            verbose)
 
     def parse_hrefs(self, items: List[tuple], verbose) -> List['Source']:
         """Convert a list of (name, href) tuples to a list of valid sources,
@@ -283,15 +310,22 @@ class Source:
     name: str
     url: str
     timestamp: datetime = None
-    site: Site = None
+    mirror: Mirror = None
     url_hash: str = None
     hash: str = None
     file_len: int = None
 
+    def __post_init__(self):
+        if self.url_hash is None:
+            self.url_hash = self.url + ".md5"
+
     def __str__(self):
-        res = f"{self.name} from {self.url}"
-        if self.site:
-            res = f"{res} ({self.site.country})"
+        return self.to_str()
+
+    def to_str(self, use_hash_url=False):
+        res = f"{self.name} from {self.url_hash if use_hash_url else self.url}"
+        if self.mirror:
+            res = f"{res} ({self.mirror.country})"
         return res
 
     async def load_hash(self, session: ClientSession, verbose: bool):
@@ -300,12 +334,12 @@ class Source:
         try:
             if verbose:
                 print(f"Getting md5 checksum from {self.url_hash}")
-            hash = (await fetch(session, self.url_hash)).strip().split(' ')[0]
-            if not re.match(r'^[a-fA-F0-9]{32}$', hash):
-                raise ValueError(f"Invalid md5 hash '{hash}'")
-            self.hash = hash
+            hsh = (await fetch(session, self.url_hash)).strip().split(' ')[0]
+            if not re.match(r'^[a-fA-F0-9]{32}$', hsh):
+                raise ValueError(f"Invalid md5 hash '{hsh}'")
+            self.hash = hsh
         except Exception as ex:
-            print_err(f"Unable to load md5 hash for {self}: {ex}")
+            print_err(f"Unable to load md5 hash for {self.to_str(True)}: {ex}")
 
     async def load_metadata(self, session: ClientSession, verbose: bool):
         if not self.url:
@@ -327,6 +361,11 @@ class Source:
         return f"{self.file_len / 1024.0 / 1024:,.1f} MB ({self.file_len:,})"
 
 
+def load_sources(sources: Iterable[Source], session: ClientSession, verbose: bool):
+    return asyncio.wait([v.load_hash(session, verbose) for v in sources] +
+                        [v.load_metadata(session, verbose) for v in sources])
+
+
 async def fetch(session: ClientSession, url: str):
     async with session.get(url) as resp:
         if resp.status >= 400:
@@ -334,59 +373,176 @@ async def fetch(session: ClientSession, url: str):
         return await resp.text()
 
 
-async def get_geofabrik_list(session: ClientSession, force_latest, no_cache) -> dict:
-    list_path = Path(__file__).parent / 'cache' / 'geofabrik.json'
-    list_path.parent.mkdir(exist_ok=True)
-    data = None
-    if not force_latest:
-        try:
-            data = list_path.read_text(encoding="utf-8")
-        except FileNotFoundError:
-            pass
-    if data is None:
-        print(f"Downloading the list of available Geofabrik areas...")
-        data = await fetch(session,
-                           "https://download.geofabrik.de/index-v1-nogeom.json")
-        if not no_cache:
-            list_path.write_text(data, encoding='utf-8')
-    entries = {v["properties"]["id"]: v["properties"]
-               for v in json.loads(data)["features"]}
-    warnings = []
-    # resolve parents until no more changes are made
-    for entry in entries.values():
-        full_id = entry["id"]
-        try:
-            full_name = entry["name"]
-            current = entry
-            for idx in range(10):  # avoids infinite recursion
-                if "parent" in current:
-                    current = entries[current["parent"]]
-                    full_id = f"{current['id']}/{full_id}"
-                    full_name = f"{current['name']} / {full_name}"
-                else:
-                    break
-            else:
-                raise ValueError(f"Geofabrik data '{entry['id']}' has infinite parent loop")
-            entry["full_id"] = full_id
-            entry["full_name"] = full_name
-            entry["url"] = entry["urls"]["pbf"]
-            entry["url_updates"] = entry["urls"]["updates"]
-        except KeyError as key:
-            warnings.append(
-                f"Unable to parse entry {full_id} - key {key} does not exist")
-    if warnings:
-        print(f"ERRORS parsing Geofabrik catalog file:", file=sys.stderr)
-        for warn in warnings:
-            print(f" * {warn}", file=sys.stderr)
+class AreaSource:
 
-    return {v["full_id"]: v
-            for v in sorted(entries.values(), key=lambda v: v["full_id"])}
+    def __init__(self, session: ClientSession, force_latest: bool, no_cache: bool):
+        self.session = session
+        self.force_latest = force_latest
+        self.no_cache = no_cache
+        self.name = type(self).__name__
+
+    async def search(self, area_id: str, id2: str,
+                     is_guessing: bool) -> Union[None, Tuple[Source, str, str]]:
+        raise ValueError(f"Search is not implemented for {self.name}")
+
+    async def get_catalog(self) -> dict:
+        list_path = Path(__file__).parent / 'cache' / f'{self.name}.json'
+        list_path.parent.mkdir(parents=True, exist_ok=True)
+        data = None
+        if not self.force_latest:
+            try:
+                data = list_path.read_text(encoding="utf-8")
+            except FileNotFoundError:
+                pass
+        if data is None:
+            print(f"Downloading the list of available {self.name} areas...")
+            data = await self.fetch_catalog()
+            if not self.no_cache:
+                list_path.write_text(data, encoding='utf-8')
+        catalog, warnings = await self.parse_catalog(data)
+        if warnings:
+            print(f"ERRORS parsing {self.name} catalog file:", file=sys.stderr)
+            for warn in warnings:
+                print(f" * {warn}", file=sys.stderr)
+        return catalog
+
+    def fetch_catalog(self) -> Future:
+        raise ValueError(f"Catalog is not supported for {self.name}")
+
+    async def parse_catalog(self, data) -> Tuple[Dict[str, str], List[str]]:
+        raise ValueError(f"Catalog is not supported for {self.name}")
+
+
+class Geofabrik(AreaSource):
+    def fetch_catalog(self):
+        return fetch(self.session, "https://download.geofabrik.de/index-v1-nogeom.json")
+
+    async def get_printable_catalog(self):
+        catalog = await self.get_catalog()
+        return [dict(id=v["full_id"], name=v["full_name"]) for v in catalog.values()]
+
+    async def parse_catalog(self, data):
+        entries = {v["properties"]["id"]: v["properties"]
+                   for v in json.loads(data)["features"]}
+        warnings = []
+        # resolve parents until no more changes are made
+        for entry in entries.values():
+            full_id = entry["id"]
+            try:
+                full_name = entry["name"]
+                current = entry
+                for idx in range(10):  # avoids infinite recursion
+                    if "parent" in current:
+                        current = entries[current["parent"]]
+                        full_id = f"{current['id']}/{full_id}"
+                        full_name = f"{current['name']} / {full_name}"
+                    else:
+                        break
+                else:
+                    raise ValueError(
+                        f"Geofabrik data '{entry['id']}' has infinite parent loop")
+                entry["full_id"] = full_id
+                entry["full_name"] = full_name
+                entry["url"] = entry["urls"]["pbf"]
+                entry["url_updates"] = entry["urls"]["updates"]
+            except KeyError as key:
+                warnings.append(
+                    f"Unable to parse entry {full_id} - key {key} does not exist")
+        return {v["full_id"]: v
+                for v in sorted(entries.values(), key=lambda v: v["full_id"])}, warnings
+
+    async def search(self, area_id: str, id2: str, is_guessing: bool):
+        catalog = await self.get_catalog()
+        if area_id not in catalog:
+            # If there is no exact match, find anything that ends with key
+            reg = re.compile(".*" + re.escape("/" + area_id.lstrip("/")) + "$",
+                             re.IGNORECASE)
+            area_urls = [k for k in catalog.keys() if reg.match(k)]
+            if not area_urls:
+                error = f"ID '{area_id}' was not found in Geofabrik."
+                if not is_guessing:
+                    error += "\nUse 'list geofabrik' to see available extract, or try --force-latest to refresh the list of extracts."
+            elif len(area_urls) > 1:
+                variants = [(v, catalog[v]['full_name']) for v in area_urls]
+                error = (f"More than one ID '{area_id}' was found in "
+                         f"Geofabrik, use longer ID:\n{tabulate(variants)}")
+            else:
+                error = None
+                area_id = area_urls[0]
+
+            if error:
+                if is_guessing:
+                    print(error)
+                    return None
+                else:
+                    raise SystemExit(error)
+        url = catalog[area_id]["url"]
+        return (Source(area_id, url),
+                catalog[area_id]["url_updates"],
+                url.replace("-latest.osm.pbf", "-updates/state.txt"))
+
+
+class UrlSrc(AreaSource):
+    async def search(self, val: str, id2: str, is_guessing: bool):
+        if not is_guessing or val.startswith("https://") or val.startswith("http://"):
+            return Source((id2 or "").strip() or "raw url", val), None, None
+        return None
+
+
+class Bbbike(AreaSource):
+    url = "https://download.bbbike.org/osm/bbbike/"
+
+    def fetch_catalog(self):
+        return fetch(self.session, self.url)
+
+    async def get_printable_catalog(self):
+        catalog = await self.get_catalog()
+        # BBBike has a nice info screen for each area
+        return [dict(id=k, info="/".join(v.url.split("/")[:-1]) + "/")
+                for k, v in catalog.items()]
+
+    async def parse_catalog(self, data):
+        soup = BeautifulSoup(data, 'html.parser')
+        return {
+                   v.text: Source(
+                       v.text,
+                       f"{self.url}{v['href']}{v['href'].rstrip('/')}.osm.pbf")
+                   for v in soup.find_all('a')
+                   if 'href' in v.attrs and v.text != ".."
+               }, []
+
+    async def search(self, area_id: str, id2: str, is_guessing: bool):
+        catalog = await self.get_catalog()
+        area_id = area_id.lower()
+        for k, v in catalog.items():
+            if area_id == k.lower():
+                return v, None, None
+        return None
+
+
+class Osmfr(AreaSource):
+    async def search(self, area_id: str, id2: str, is_guessing: bool):
+        url = f"http://download.openstreetmap.fr/extracts/{area_id}-latest.osm.pbf"
+        return (Source(area_id, url),
+                f"http://download.openstreetmap.fr/replication/{area_id}/minute/",
+                url.replace("-latest.osm.pbf", ".state.txt"))
+
+
+area_sources = {
+    # The keys must match the program parameters above.
+    # The sources order is important
+    "url": UrlSrc,
+    "geofabrik": Geofabrik,
+    "bbbike": Bbbike,
+    "osmfr": Osmfr,
+}
 
 
 async def save_state_file(session, state_url, state_file):
     state_file = Path(state_file).resolve()
     print(f"Downloading state file {state_url} to {state_file}")
     data = await fetch(session, state_url)
+    state_file.parent.mkdir(parents=True, exist_ok=True)
     state_file.write_text(data, encoding="utf-8")
 
 
@@ -412,64 +568,47 @@ def save_cfg_file(dry_run, cfg_file, repl_url, extras):
                             encoding="utf-8")
 
 
-async def prepare_area_download(args, session):
-    area_id = (args['<id>'] or args['--id'] or "").strip()
-    area_id = area_id if area_id else None
-    repl_url = None
-    force_latest = args["--force-latest"]
-    no_cache = args['--no-cache']
-    if (force_latest or no_cache) and not args.geofabrik:
-        raise SystemExit(
-            f"--force-latest and --no-cache are only supported with geofabrik service")
-    if args.url:
-        url = args['<url>']
-    elif args.bbbike:
-        url = f"https://download.bbbike.org/osm/bbbike/{area_id}/{area_id}.osm.pbf"
-    elif args.osmfr:
-        url = f"http://download.openstreetmap.fr/" \
-              f"extracts/{area_id}-latest.osm.pbf"
-        if args.state:
-            state_url = url.replace("-latest.osm.pbf", ".state.txt")
-            await save_state_file(session, state_url, args.state)
-        repl_url = f"http://download.openstreetmap.fr/" \
-              f"replication/{area_id}/minute/"
-    elif args.geofabrik:
-        catalog = await get_geofabrik_list(session, force_latest, no_cache)
-        if area_id in catalog:
-            url = catalog[area_id]["url"]
-            repl_url = catalog[area_id]["url_updates"]
+class AreaParamParser:
+
+    def __init__(self, session, force_latest, no_cache, args) -> None:
+        self.args = args
+        self.session = session
+        self.area_id = self.args['<area_or_url>']
+        self.repl_url = None
+        self.state_url = None
+        self.force_latest = force_latest
+        self.no_cache = no_cache
+        # Limit sources to just the one passed in the arguments, or keep all
+        self.sources = {k: v for k, v in area_sources.items() if
+                        self.args[k]} or area_sources
+        self.is_guessing = len(self.sources) > 1
+
+    async def parse(self):
+        if self.is_guessing:
+            print("Area source has not been specified. Auto-detecting...")
+        id2 = self.args["--id"] or os.environ.get("OSM_AREA_NAME")
+        for src_name, src_type in self.sources.items():
+            site = src_type(self.session, self.force_latest, self.no_cache)
+            res = await site.search(self.area_id, id2, self.is_guessing)
+            if res:
+                src, repl_url, state_url = res
+                await self.load_source(src)
+                if src.file_len is not None:
+                    break
         else:
-            # If there is no exact match, find anything that ends with key
-            reg = re.compile(".*" + re.escape("/" + area_id.lstrip("/")) + "$",
-                             re.IGNORECASE)
+            raise SystemExit(f"Unable to auto-detect the source for '{self.area_id}'")
+        if self.is_guessing:
+            print(f"'{src.name}' was found in {src_name}.")
+        print(f"Downloading {src.url} (size={src.size_str()}, md5={src.hash})",
+              flush=True)
+        if self.args.state:
+            if not state_url:
+                raise SystemExit(f"State is not available when using '{src_type}'")
+            await save_state_file(self.session, state_url, self.args.state)
+        return [src.url], src.hash, src.name, repl_url
 
-            def matches(key):
-                return bool(reg.match(key))
-
-            area_urls = [(k, v["url"], v["url_updates"])
-                         for k, v in catalog.items() if matches(k)]
-            if not area_urls:
-                raise SystemExit(
-                    f"Error: ID '{area_id}' was not found in Geofabrik.\n"
-                    "Use 'list geofabrik' to see available extract, "
-                    "or try --force-latest to refresh the list of extracts.")
-            elif len(area_urls) > 1:
-                variants = "\n".join((f"  * {v[0]}" for v in area_urls))
-                raise SystemExit(
-                    f"More than one ID '{area_id}' was found in "
-                    f"Geofabrik, use longer ID:\n{variants}")
-            url = area_urls[0][1]
-            repl_url = area_urls[0][2]
-            if args.state:
-                state_url = url.replace("-latest.osm.pbf", "-updates/state.txt")
-                await save_state_file(session, state_url, args.state)
-    else:
-        raise DocoptExit()
-    src = Source(area_id or 'raw url', url, url_hash=url + '.md5')
-    await asyncio.wait([src.load_hash(session, args.verbose),
-                        src.load_metadata(session, args.verbose)])
-    print(f"Downloading {src.url} (size={src.size_str()}, md5={src.hash})", flush=True)
-    return [src.url], src.hash, area_id, repl_url
+    def load_source(self, source: Source):
+        return load_sources([source], self.session, self.args.verbose)
 
 
 def make_docker_compose_file(pbf_file: Path, dc_file: Path,
@@ -490,17 +629,20 @@ def make_docker_compose_file(pbf_file: Path, dc_file: Path,
         lat_min = res["lat min"]
         lat_max = res["lat max"]
         timestamp_max = res["timestamp max"]
+        env_values = {
+            "environment": {
+                "BBOX": f"{lon_min},{lat_min},{lon_max},{lat_max}",
+                "OSM_MAX_TIMESTAMP": timestamp_max,
+                "OSM_AREA_NAME": area or pbf_file.name.split('.', 1)[0],
+                "MIN_ZOOM": min_zoom,
+                "MAX_ZOOM": max_zoom,
+            }}
         dc_data = {
             "version": str(dc_ver),
             "services": {
-                "generate-vectortiles": {
-                    "environment": {
-                        "BBOX": f"{lon_min},{lat_min},{lon_max},{lat_max}",
-                        "OSM_MAX_TIMESTAMP": timestamp_max,
-                        "OSM_AREA_NAME": area or pbf_file.name.split('.', 1)[0],
-                        "MIN_ZOOM": min_zoom,
-                        "MAX_ZOOM": max_zoom,
-                    }}}}
+                "openmaptiles-tools": env_values,
+                "generate-vectortiles": env_values,
+            }}
         print(f"Saving metadata to {dc_file}...")
         with dc_file.open('w') as yaml_file:
             yaml.dump(dc_data, yaml_file, sort_keys=False)
@@ -527,32 +669,38 @@ async def main_async(args):
     urls, md5, repl_url = None, None, None
     exit_code = 0
     async with aiohttp.ClientSession(headers={'User-Agent': USER_AGENT}) as session:
+        force_latest = args['--force-latest']
+        no_cache = args['--no-cache']
         if args.list:
-            if args.service != "geofabrik":
-                raise SystemExit('List only supports geofabrik service for now')
-            catalog = await get_geofabrik_list(session, args['--force-latest'],
-                                               args['--no-cache'])
-            info = [dict(id=v["full_id"], name=v["full_name"]) for v in
-                    catalog.values()]
+            if args.service not in area_sources or args.service == "url":
+                raise SystemExit(f'Unknown service name {args.service}')
+            site = area_sources[args.service](session, force_latest, no_cache)
+            try:
+                info = await site.get_printable_catalog()
+            except AttributeError:
+                raise SystemExit(
+                    f"Service {args.service} does not support listings.\n"
+                    f"Please ask service maintainers to publish a catalog similar to Geofabrik's.")
             print(tabulate(info, headers="keys") + '\n')
             return
 
         if args.planet:
             use_primary = args['--include-primary']
             urls, md5 = await Catalog().init(session, args.verbose, use_primary,
-                                             args['--force-latest'])
+                                             force_latest)
             area_id = "planet"
             repl_url = "http://planet.openstreetmap.org/replication/day/"
         else:
-            urls, md5, area_id, repl_url = await prepare_area_download(args, session)
+            urls, md5, area_id, repl_url = await AreaParamParser(
+                session, force_latest, no_cache, args).parse()
 
     dry_run = args['--dry-run']
     if urls:
-        exit_code = await run_aria2c(args.args, dry_run, md5, urls, args,
+        exit_code = await run_aria2c(args['<aria2c_args>'], dry_run, md5, urls, args,
                                      area_id)
     if args['--imposm-cfg']:
         if not repl_url:
-            raise SystemExit(f"Imposm config file cannot be generated in this mode")
+            raise SystemExit(f"Imposm config file cannot be generated from this source")
         save_cfg_file(dry_run, args['--imposm-cfg'], repl_url, args['--kv'])
 
     return exit_code
@@ -573,13 +721,21 @@ async def run_aria2c(aria2c_args, dry_run, md5, urls, args, area_id):
     if not any((v for v in aria2c_args if v == '-U' or v.startswith('--user-agent'))):
         # user has not set a custom user agent, set one
         params.append(f'--user-agent={USER_AGENT}')
+    if args.output:
+        assert_conflict_args(
+            "--output", aria2c_args, '-d', '--dir', '-o', '--out', '-i', '--input-file',
+            '--auto-file-renaming', '-Z', '--force-sequential', '--allow-overwrite')
+        out_path = Path(args.output).resolve()
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        params.append(f'--dir={out_path.parent}')
+        params.append(f'--out={out_path.name}')
+        params.append('--auto-file-renaming=false')
+        if args.force:
+            params.append('--allow-overwrite=true')
 
     extra_env = None
     if args['--make-dc']:
-        for flag in ('--on-download-complete',):
-            if any((v for v in aria2c_args if v.startswith(flag))):
-                raise ValueError("Unable to use --make-dc together with "
-                                 f"the {flag} aria2c parameter")
+        assert_conflict_args("--make-dc", aria2c_args, '--on-download-complete')
         area_id, min_zoom, max_zoom, dc_ver = normalize_make_dc(
             area_id, args['--minzoom'], args['--maxzoom'], args['--dc-ver'])
         extra_env = {
@@ -639,6 +795,13 @@ async def run_aria2c(aria2c_args, dry_run, md5, urls, args, area_id):
         if args['--make-dc']:
             print("docker-compose file generation was skipped")
         return 0
+
+
+def assert_conflict_args(info, aria2c_args, *conflicted_args):
+    for flag in conflicted_args:
+        if any((v for v in aria2c_args if v.startswith(flag))):
+            raise ValueError(f"Unable to use {info} together with "
+                             f"the {flag} aria2c parameter")
 
 
 def main():

@@ -7,6 +7,7 @@ set -o nounset  # -u
 TESTS=tests
 TESTLAYERS="$TESTS/testlayers"
 HTTPDIR="$TESTS/http"
+TEMP_DIR="/tmp"
 DEVDOC=${BUILD:?}/devdoc
 mkdir -p "$DEVDOC"
 
@@ -48,9 +49,13 @@ generate-etlgraph "$TESTLAYERS/housenumber/housenumber.yaml" "$DEVDOC" --keep -f
 generate-mapping-graph "$TESTLAYERS/testmaptiles.yaml" "$DEVDOC" --keep -f png -f svg
 generate-mapping-graph "$TESTLAYERS/housenumber/housenumber.yaml" "$DEVDOC/mapping_diagram" --keep -f png -f svg
 
+echo "++++++++++++++++++++++++"
+echo "Testing download-osm"
+echo "++++++++++++++++++++++++"
+
 # Using a fake cache/geofabrik.json so that downloader wouldn't need to download the real one from Geofabrik site
 download-osm planet --imposm-cfg "$BUILD/planet-cfg.json" --dry-run
-download-osm geofabrik michigan --imposm-cfg "$BUILD/michigan-cfg.json" --dry-run
+download-osm michigan --imposm-cfg "$BUILD/michigan-cfg.json" --dry-run
 
 
 # Run background http server, and stop it when this script exits
@@ -60,7 +65,7 @@ python -m http.server 8555 -d "$HTTPDIR" &
 trap "kill $!" EXIT
 
 download-osm url http://localhost:8555/monaco-20150428.osm.pbf \
-  --verbose --make-dc "$BUILD/monaco-dc.yml" --id raw-url --minzoom 0 --maxzoom 10 -- --dir /tmp
+  --verbose --make-dc "$BUILD/monaco-dc.yml" --id raw-url --minzoom 0 --maxzoom 10 -- --dir "$TEMP_DIR"
 
 # Test downloader support for env vars
 export OSM_AREA_NAME=monaco-test2
@@ -68,9 +73,30 @@ export MIN_ZOOM=3
 export MAX_ZOOM=5
 export MAKE_DC_VERSION=2.2
 download-osm url http://localhost:8555/monaco-20150428.osm.pbf \
-  --verbose --make-dc "$BUILD/monaco-dc2.yml" -- --dir /tmp
+  --verbose --make-dc "$BUILD/monaco-dc2.yml" --output "$TEMP_DIR/delete_me.pbf"
+diff --brief "$HTTPDIR/monaco-20150428.osm.pbf" "$TEMP_DIR/delete_me.pbf"
+rm "$TEMP_DIR/delete_me.pbf"
 unset OSM_AREA_NAME MIN_ZOOM MAX_ZOOM MAKE_DC_VERSION
 
 download-osm geofabrik monaco-test \
   --verbose --imposm-cfg "$BUILD/monaco-cfg.json" --kv foo=bar --kv replication_interval=4h \
-  --make-dc "$BUILD/monaco-dc3.yml" --minzoom 5 --maxzoom 6 --dc-ver 2.1 -- --dir /tmp
+  --make-dc "$BUILD/monaco-dc3.yml" --minzoom 5 --maxzoom 6 --dc-ver 2.1 -- --dir "$TEMP_DIR"
+diff --brief "$HTTPDIR/monaco-20150428.osm.pbf" "$TEMP_DIR/monaco-20150428.osm.pbf"
+rm "$TEMP_DIR/monaco-20150428.osm.pbf"
+
+
+echo "++++++++++++++++++++++++"
+echo "Testing debug-mvt"
+echo "++++++++++++++++++++++++"
+
+debug-mvt dump "$HTTPDIR/osm_13_4388_2568.mvt" > "$BUILD/debug_mvt_dump.out"
+debug-mvt dump "$HTTPDIR/osm_13_4388_2568.mvt" --summary > "$BUILD/debug_mvt_dump_summary.out"
+debug-mvt dump "$HTTPDIR/osm_13_4388_2568.mvt" --show-names > "$BUILD/debug_mvt_dump_show_names.out"
+debug-mvt dump "$HTTPDIR/osm_13_4388_2568.mvt" --summary --show-names > "$BUILD/debug_mvt_dump_summary_show_names.out"
+debug-mvt dump "http://localhost:8555/osm_13_4388_2568.mvt" --summary > "$BUILD/debug_mvt_URL_dump_summary.out"
+gzip < "$HTTPDIR/osm_13_4388_2568.mvt" | debug-mvt dump - --summary > "$BUILD/debug_mvt_STDIN_dump_summary.out"
+
+{ set +x ;} 2> /dev/null
+echo "-----------------------------------------------------------"
+echo "-------- Finished $0 --------"
+echo "-----------------------------------------------------------"

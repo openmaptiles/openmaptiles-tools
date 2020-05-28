@@ -54,7 +54,7 @@ layer:
     key_field: osm_id
     key_field_as_attribute: no
     srid: 900913
-    query: (SELECT osm_id, geometry, enumfield FROM layer_enumfields(!bbox!, z(!scale_denominator!))) AS t
+    query: (SELECT !bbox! as geometry, z(!scale_denominator!) AS osm_id, 'foo' AS class) AS t
 schema:
   - ./enumfield.sql
 datasources: []

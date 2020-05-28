@@ -1,9 +1,9 @@
 name: Build and publish to Docker
 
+# Push seems to be triggered for both refs/heads/... and refs/tags/...
+# So there is no need to trigger on  release: { types: [published] }
 on:
   push:
-  release:
-    types: [published]
 
 jobs:
 
@@ -26,25 +26,31 @@ jobs:
             exit 0
           fi
 
-          unset VERSION
-          if [[ "$GITHUB_REF" == "refs/heads/master" ]]; then
+          unset VERSION VERSION_IMP10
+          set -eux
+          if [[ "${GITHUB_REF:?}" == "refs/heads/master" ]]; then
             # Master branch -- builds latest image
             export VERSION="latest"
-          elif [[ "$GITHUB_REF" =~ ^refs/heads/v([0-9]+\.[0-9]+(-.*)?)$ ]]; then
-            # Any vNNN.NNN branch -- builds "NNN.NNN-dev" image
-            # Also allows vNNN.NNN-XXX  -- where XXX could be anything (builds NNN.NNN-XXX-dev)
-            export VERSION="${BASH_REMATCH[1]}-dev"
-          elif [[ "$GITHUB_REF" =~ ^refs/tags/v([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
+            export VERSION_IMP10="latest-imposm10"
+          elif [[ "${GITHUB_REF:?}" =~ ^refs/heads/v([0-9]+\.[0-9]+(-.*)?)$ ]]; then
+            # Any vNNN.NNN branch -- builds "test-NNN.NNN" image
+            # Also allows vNNN.NNN-XXX  -- where XXX could be anything (builds test-NNN.NNN-XXX)
+            export VERSION="test-${BASH_REMATCH[1]}"
+            # Do not build Imposm10 images for the test builds
+            export VERSION_IMP10=
+          elif [[ "${GITHUB_REF:?}" =~ ^refs/tags/v([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
             # Any vNNN.NNN.NNN tag (not branch!) -- builds "NNN.NNN.NNN" and "NNN.NNN" images
             # This means that the two-part version image will always point to latest patch.
             export VERSION="${BASH_REMATCH[1]}.${BASH_REMATCH[2]}.${BASH_REMATCH[3]} \
                             ${BASH_REMATCH[1]}.${BASH_REMATCH[2]}"
+            export VERSION_IMP10="${BASH_REMATCH[1]}.${BASH_REMATCH[2]}.${BASH_REMATCH[3]}-imposm10 \
+                                  ${BASH_REMATCH[1]}.${BASH_REMATCH[2]}-imposm10"
           else
             echo "Unrecognized ref ${GITHUB_REF}, no docker images are built or uploaded"
             exit 0
           fi
 
-          echo "Building and publishing tags $VERSION"
+          echo "Building and publishing tags $VERSION $VERSION_IMP10"
           echo "Authenticating to Docker Hub..."
           echo "${DOCKERHUB_PASSWORD}" | docker login -u "${DOCKERHUB_USERNAME}" --password-stdin
 
@@ -62,13 +68,20 @@ jobs:
 
           df -h .
           make build-docker
+          if [ ! -z "$VERSION_IMP10" ]; then
+            make build-docker VERSION="$VERSION_IMP10" \
+                DOCKER_BUILD_EXTRAS="--build-arg IMPOSM_REPO=https://github.com/omniscale/imposm3.git --build-arg IMPOSM_VERSION=v0.10.0"
+          fi
+
+          # Publish all built image versions, and do it for all other
+          export VERSION="$VERSION $VERSION_IMP10"
           push_docker openmaptiles-tools
 
           df -h .
           make build-generate-vectortiles
           push_docker generate-vectortiles
 
-          # Github has a very low disk limit, so prune docker images often
+          # Github has a very low disk limit, get rid of some data
           df -h .
           sudo docker system prune --all --force
           df -h .

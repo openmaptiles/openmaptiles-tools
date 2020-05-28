@@ -1,9 +1,26 @@
-# OpenMapTiles Tools [![Build Status](https://api.travis-ci.org/openmaptiles/openmaptiles-tools.svg?branch=master)](https://travis-ci.org/openmaptiles/openmaptiles-tools) [![Docker Automated build](https://img.shields.io/docker/automated/openmaptiles/openmaptiles-tools.svg)](https://hub.docker.com/r/openmaptiles/openmaptiles-tools) [![](https://images.microbadger.com/badges/image/openmaptiles/openmaptiles-tools.svg)](https://microbadger.com/images/openmaptiles/openmaptiles-tools)
+# OpenMapTiles Tools ![Build and publish to Docker](https://github.com/openmaptiles/openmaptiles-tools/workflows/Build%20and%20publish%20to%20Docker/badge.svg)
 
-The OpenMapTiles toolbox for generating TM2Source projects, imposm3 mappings and SQL instructions
-from OpenMapTiles layers. We encourage other people to use this for their vector tile projects as well since this approach works well for us.
+The OpenMapTiles toolbox for generating map vector tiles.
+It includes tools to prepare Imposm mappings and SQL files based on layers defined in [OpenMapTiles](https://github.com/openmaptiles/openmaptiles) or similar projects. It also includes map data downloading, parsing, debugging, and performance evaluation tools. 
+We encourage other people to use this for their vector tile projects as well since this approach works well for us.
 
-Check out the [OpenMapTiles project](https://github.com/openmaptiles/openmaptiles/) for a real world example.
+## Docker Images
+##### openmaptiles-tools [![](https://img.shields.io/microbadger/layers/openmaptiles/openmaptiles-tools)](https://hub.docker.com/r/openmaptiles/openmaptiles-tools) [![](https://img.shields.io/microbadger/image-size/openmaptiles/openmaptiles-tools?label=size)](https://hub.docker.com/r/openmaptiles/openmaptiles-tools) [![](https://img.shields.io/docker/pulls/openmaptiles/openmaptiles-tools?label=downloads)](https://hub.docker.com/r/openmaptiles/openmaptiles-tools) [![](https://img.shields.io/docker/stars/openmaptiles/openmaptiles-tools?label=stars)](https://hub.docker.com/r/openmaptiles/openmaptiles-tools)
+A collection of tools for downloading, parsing, and generating map tiles described below.
+
+##### import-data [![](https://img.shields.io/microbadger/layers/openmaptiles/import-data)](https://hub.docker.com/r/openmaptiles/import-data) [![](https://img.shields.io/microbadger/image-size/openmaptiles/import-data?label=size)](https://hub.docker.com/r/openmaptiles/import-data) [![](https://img.shields.io/docker/pulls/openmaptiles/import-data?label=downloads)](https://hub.docker.com/r/openmaptiles/import-data) [![](https://img.shields.io/docker/stars/openmaptiles/import-data?label=stars)](https://hub.docker.com/r/openmaptiles/import-data)
+Multiple data sources packaged for import into PostgreSQL DB, includes data from [Natural Earth](http://www.naturalearthdata.com/), [water polygons](http://osmdata.openstreetmap.de), and [lake centerlines](https://github.com/lukasmartinelli/osm-lakelines).
+
+##### postgis [![](https://img.shields.io/microbadger/layers/openmaptiles/postgis)](https://hub.docker.com/r/openmaptiles/postgis) [![](https://img.shields.io/microbadger/image-size/openmaptiles/postgis?label=size)](https://hub.docker.com/r/openmaptiles/postgis) [![](https://img.shields.io/docker/pulls/openmaptiles/postgis?label=downloads)](https://hub.docker.com/r/openmaptiles/postgis) [![](https://img.shields.io/docker/stars/openmaptiles/postgis?label=stars)](https://hub.docker.com/r/openmaptiles/postgis)
+An image with PostgreSQL database, Postgis, and several other extensions, custom built for OpenMapTiles project.
+
+##### postgis-preloaded [![](https://img.shields.io/microbadger/layers/openmaptiles/postgis-preloaded)](https://hub.docker.com/r/openmaptiles/postgis-preloaded) [![](https://img.shields.io/microbadger/image-size/openmaptiles/postgis-preloaded?label=size)](https://hub.docker.com/r/openmaptiles/postgis-preloaded) [![](https://img.shields.io/docker/pulls/openmaptiles/postgis-preloaded?label=downloads)](https://hub.docker.com/r/openmaptiles/postgis-preloaded) [![](https://img.shields.io/docker/stars/openmaptiles/postgis-preloaded?label=stars)](https://hub.docker.com/r/openmaptiles/postgis-preloaded)
+The above `postgis` image pre-loaded with the `import-data`. This image is mostly used for testing, and may not be appropriate for production. The image has hardcoded user `openmaptiles` and password `openmaptiles`.
+
+
+##### generate-vectortiles [![](https://img.shields.io/microbadger/layers/openmaptiles/generate-vectortiles)](https://hub.docker.com/r/openmaptiles/generate-vectortiles) [![](https://img.shields.io/microbadger/image-size/openmaptiles/generate-vectortiles?label=size)](https://hub.docker.com/r/openmaptiles/generate-vectortiles) [![](https://img.shields.io/docker/pulls/openmaptiles/generate-vectortiles?label=downloads)](https://hub.docker.com/r/openmaptiles/generate-vectortiles) [![](https://img.shields.io/docker/stars/openmaptiles/generate-vectortiles?label=stars)](https://hub.docker.com/r/openmaptiles/generate-vectortiles)
+Legacy Mapnik-based image that simplifies `tilelive-copy` tile generation.  Eventually will be replaced with PostgreSQL-based [ST_AsMVT](https://postgis.net/docs/ST_AsMVT.html) approach. 
+
 
 ## Usage
 
@@ -236,6 +253,9 @@ $ debug-mvt openmaptiles.yaml 4/7/6 -l place
         ...
 ```
 
+### Profile PostgreSQL functions
+Use `profile-pg-func` to compare PostgreSQL function execution speed. Each function is called thousands of times in several runs. The fastest and slowest runs are discarded.  `profile-pg-func` can import SQL files before running the test, e.g. to add the latest developer versions of the function(s).
+
 ## Tools
 
 ### Environment variables
@@ -370,20 +390,14 @@ import-wikidata openmaptiles.yaml
 
 ### Mbtiles file tools
 This command allows users to examine and manipulate mbtiles file:
+* generate metadata based on the layers definition
 * get, set, and delete individual metadata values
-* validate and print all metadata values
+* validate and print all metadata values and mbtiles file statistics
 * list all tile keys (hashes) that are used many times (usually indicates empty tiles)
 * copy zooms, e.g. copy all empty tiles z13 to z14, and create a list of all tiles that needs to be generated.
 ```
 mbtiles-tools --help
 mbtiles-tools ./data/tiles.mbtiles meta-all
-```
-
-### Add simple metadata to mbtiles file
-Updates `metadata` table in the mbtiles file. See [mbtiles-tools](#mbtiles-file-tools) for other tools.
-Example:
-```
-generate-metadata ./data/tiles.mbtiles
 ```
 
 ### Generate TM2Source Projects for Mapbox Studio Classic
@@ -412,7 +426,7 @@ This utility requires PostgreSQL's PG* environment variables, and optionally use
 The `import-sql` script can execute a single SQL file in Postgres when the file is given as the first parameter.
 
 If ran without any arguments, `import-sql` executes all of the following:
-* SQL files from `$SQL_TOOLS_DIR`  - contains all SQL files to be imported before the ones generated by OpenMapTiles project. By default, contains OMT fork of the Mapbox's [postgis-vt-util.sql](https://github.com/openmaptiles/postgis-vt-util) helper functions and contains the [sql/language.sql](./sql/language.sql) script. (as `10_postgis-vt-util.sql` - the file name has to be imported before files in `/sql`)
+* SQL files from `$SQL_TOOLS_DIR`  - contains all SQL files to be imported before the ones generated by OpenMapTiles project. By default, contains OMT fork of the Mapbox's [postgis-vt-util.sql](https://github.com/openmaptiles/postgis-vt-util) helper functions and contains the [sql/language.sql](sql/zzz_language.sql) script. (as `10_postgis-vt-util.sql` - the file name has to be imported before files in `/sql`)
 * SQL files from `$SQL_DIR`  - defaults to `/sql` -- this directory should contain the results of the `generate-sql --dir ...` script and possibly other user-defined sql scripts. If this directory contains `parallel/` subdirectory, `import-sql` will assume the parallel/*.sql files are safe to execute in parallel, up to `MAX_PARALLEL_PSQL` at a time (defaults to 5). The script will also execute `run_first.sql` before, and `run_last.sql` after the files in `parallel/` dir (if they exist).
 
 Generating and importing SQL could be done in a single step with `&&`, e.g.

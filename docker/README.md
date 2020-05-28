@@ -1,44 +1,19 @@
-# Docker Images / Importers
+## Docker Images
 
-Each subdir here creates a docker image that either generates some data, or is built with some pre-computed dataset. For example, the `import-natural-earth` image downloads and cleans up data from the [Natural Earth project](https://www.naturalearthdata.com/). When ran, the image injects the packaged data into PostgreSQL database, without additional downloading and preprocessing.
+##### import-data [![](https://img.shields.io/microbadger/layers/openmaptiles/import-data)](https://hub.docker.com/r/openmaptiles/import-data) [![](https://img.shields.io/microbadger/image-size/openmaptiles/import-data?label=size)](https://hub.docker.com/r/openmaptiles/import-data) [![](https://img.shields.io/docker/pulls/openmaptiles/import-data?label=downloads)](https://hub.docker.com/r/openmaptiles/import-data) [![](https://img.shields.io/docker/stars/openmaptiles/import-data?label=stars)](https://hub.docker.com/r/openmaptiles/import-data)
+Multiple data sources packaged for import into PostgreSQL DB, includes data from [Natural Earth](http://www.naturalearthdata.com/), [water polygons](http://osmdata.openstreetmap.de), and [lake centerlines](https://github.com/lukasmartinelli/osm-lakelines).
 
-## [import-data](import-data)
-[![](https://img.shields.io/docker/cloud/build/openmaptiles/import-data?&logo=OpenStreetMap&label=build)](https://hub.docker.com/r/openmaptiles/import-data)
-[![](https://img.shields.io/docker/automated/openmaptiles/import-data?label=build)](https://hub.docker.com/r/openmaptiles/import-data/builds)
-[![](https://img.shields.io/microbadger/layers/openmaptiles/import-data)](https://hub.docker.com/r/openmaptiles/import-data)
-[![](https://img.shields.io/microbadger/image-size/openmaptiles/import-data?label=size)](https://hub.docker.com/r/openmaptiles/import-data)
-[![](https://img.shields.io/docker/pulls/openmaptiles/import-data?label=downloads)](https://hub.docker.com/r/openmaptiles/import-data)
-[![](https://img.shields.io/docker/stars/openmaptiles/import-data?label=stars)](https://hub.docker.com/r/openmaptiles/import-data)
-
-# Tools
-
-## [generate-vectortiles](generate-vectortiles)
-[![](https://img.shields.io/docker/cloud/build/openmaptiles/generate-vectortiles?&logo=OpenStreetMap&label=build)](https://hub.docker.com/r/openmaptiles/generate-vectortiles)
-[![](https://img.shields.io/docker/automated/openmaptiles/generate-vectortiles?label=build)](https://hub.docker.com/r/openmaptiles/generate-vectortiles/builds)
-[![](https://img.shields.io/microbadger/layers/openmaptiles/generate-vectortiles)](https://hub.docker.com/r/openmaptiles/generate-vectortiles)
-[![](https://img.shields.io/microbadger/image-size/openmaptiles/generate-vectortiles?label=size)](https://hub.docker.com/r/openmaptiles/generate-vectortiles)
-[![](https://img.shields.io/docker/pulls/openmaptiles/generate-vectortiles?label=downloads)](https://hub.docker.com/r/openmaptiles/generate-vectortiles)
-[![](https://img.shields.io/docker/stars/openmaptiles/generate-vectortiles?label=stars)](https://hub.docker.com/r/openmaptiles/generate-vectortiles)
-<br><small>Migrated from [generate-vectortiles](https://github.com/openmaptiles/generate-vectortiles) repo (archived)</small>
-
-## [postgis](postgis)
-[![](https://img.shields.io/docker/cloud/build/openmaptiles/postgis?&logo=OpenStreetMap&label=build)](https://hub.docker.com/r/openmaptiles/postgis)
-[![](https://img.shields.io/docker/automated/openmaptiles/postgis?label=build)](https://hub.docker.com/r/openmaptiles/postgis/builds)
-[![](https://img.shields.io/microbadger/layers/openmaptiles/postgis)](https://hub.docker.com/r/openmaptiles/postgis)
-[![](https://img.shields.io/microbadger/image-size/openmaptiles/postgis?label=size)](https://hub.docker.com/r/openmaptiles/postgis)
-[![](https://img.shields.io/docker/pulls/openmaptiles/postgis?label=downloads)](https://hub.docker.com/r/openmaptiles/postgis)
-[![](https://img.shields.io/docker/stars/openmaptiles/postgis?label=stars)](https://hub.docker.com/r/openmaptiles/postgis)
+##### postgis [![](https://img.shields.io/microbadger/layers/openmaptiles/postgis)](https://hub.docker.com/r/openmaptiles/postgis) [![](https://img.shields.io/microbadger/image-size/openmaptiles/postgis?label=size)](https://hub.docker.com/r/openmaptiles/postgis) [![](https://img.shields.io/docker/pulls/openmaptiles/postgis?label=downloads)](https://hub.docker.com/r/openmaptiles/postgis) [![](https://img.shields.io/docker/stars/openmaptiles/postgis?label=stars)](https://hub.docker.com/r/openmaptiles/postgis)
+An image with PostgreSQL database, Postgis, and several other extensions, custom built for OpenMapTiles project.
 <br><small>Migrated from [postgis](https://github.com/openmaptiles/postgis) repo (archived)</small>
 
-## [postgis-preloaded](postgis-preloaded)
-[![](https://img.shields.io/docker/cloud/build/openmaptiles/postgis-preloaded?&logo=OpenStreetMap&label=build)](https://hub.docker.com/r/openmaptiles/postgis-preloaded)
-[![](https://img.shields.io/docker/automated/openmaptiles/postgis-preloaded?label=build)](https://hub.docker.com/r/openmaptiles/postgis-preloaded/builds)
-[![](https://img.shields.io/microbadger/layers/openmaptiles/postgis-preloaded)](https://hub.docker.com/r/openmaptiles/postgis-preloaded)
-[![](https://img.shields.io/microbadger/image-size/openmaptiles/postgis-preloaded?label=size)](https://hub.docker.com/r/openmaptiles/postgis-preloaded)
-[![](https://img.shields.io/docker/pulls/openmaptiles/postgis-preloaded?label=downloads)](https://hub.docker.com/r/openmaptiles/postgis-preloaded)
-[![](https://img.shields.io/docker/stars/openmaptiles/postgis-preloaded?label=stars)](https://hub.docker.com/r/openmaptiles/postgis-preloaded)
+##### postgis-preloaded [![](https://img.shields.io/microbadger/layers/openmaptiles/postgis-preloaded)](https://hub.docker.com/r/openmaptiles/postgis-preloaded) [![](https://img.shields.io/microbadger/image-size/openmaptiles/postgis-preloaded?label=size)](https://hub.docker.com/r/openmaptiles/postgis-preloaded) [![](https://img.shields.io/docker/pulls/openmaptiles/postgis-preloaded?label=downloads)](https://hub.docker.com/r/openmaptiles/postgis-preloaded) [![](https://img.shields.io/docker/stars/openmaptiles/postgis-preloaded?label=stars)](https://hub.docker.com/r/openmaptiles/postgis-preloaded)
+The above `postgis` image pre-loaded with the `import-data`. This image is mostly used for testing, and may not be appropriate for production. The image has hardcoded user `openmaptiles` and password `openmaptiles`.
 
-A data-preloaded database image used mostly for testing. The image is based on the `postgis` image above, initialized with the `openmaptiles` database (user=openmaptiles, password=openmaptiles), preloaded with water, lakelines, and natural-earth data.
+##### generate-vectortiles [![](https://img.shields.io/microbadger/layers/openmaptiles/generate-vectortiles)](https://hub.docker.com/r/openmaptiles/generate-vectortiles) [![](https://img.shields.io/microbadger/image-size/openmaptiles/generate-vectortiles?label=size)](https://hub.docker.com/r/openmaptiles/generate-vectortiles) [![](https://img.shields.io/docker/pulls/openmaptiles/generate-vectortiles?label=downloads)](https://hub.docker.com/r/openmaptiles/generate-vectortiles) [![](https://img.shields.io/docker/stars/openmaptiles/generate-vectortiles?label=stars)](https://hub.docker.com/r/openmaptiles/generate-vectortiles)
+Legacy Mapnik-based image that simplifies `tilelive-copy` tile generation.  Eventually will be replaced with PostgreSQL-based [ST_AsMVT](https://postgis.net/docs/ST_AsMVT.html) approach. 
+<br><small>Migrated from [generate-vectortiles](https://github.com/openmaptiles/generate-vectortiles) repo (archived)</small>
+
 
 # Deprecated Legacy Tools
 These Docker images are no longer maintained or published, and should not be used.
@@ -52,10 +27,10 @@ Use [import-wikidata](../README.md#import-wikidata-localized-names) in the `open
 ## [import-lakelines](https://hub.docker.com/r/openmaptiles/import-lakelines)
 Use `openmaptiles-data` image instead.  Originally migrated from  [import-lakelines](https://github.com/openmaptiles/import-lakelines) repo.
 
-## [import-natural-earth](import-natural-earth)
+## [import-natural-earth](https://hub.docker.com/r/openmaptiles/import-natural-earth)
 Use `openmaptiles-data` image instead.  Originally migrated from [import-natural-earth](https://github.com/openmaptiles/import-natural-earth) repo.
 
-## [import-water](import-water)
+## [import-water](https://hub.docker.com/r/openmaptiles/import-water)
 Use `openmaptiles-data` image instead.  Originally migrated from [import-water](https://github.com/openmaptiles/import-water) repo.
 
 ## [generate-osmborder](https://hub.docker.com/r/openmaptiles/generate-osmborder) and [import-osmborder](https://hub.docker.com/r/openmaptiles/import-osmborder)

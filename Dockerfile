@@ -4,18 +4,21 @@ ARG IMPOSM_VERSION="v0.10.0"
 
 # Build imposm
 RUN set -eux ;\
-    go version ;\
-    go get github.com/tools/godep ;\
-    mkdir /build-bin ;\
-    \
     DEBIAN_FRONTEND=noninteractive apt-get update ;\
-    DEBIAN_FRONTEND=noninteractive apt-get install  -y --no-install-recommends \
+    DEBIAN_FRONTEND=noninteractive apt-get install  -y \
         `# installing imposm dependencies` \
         libgeos-dev \
         libleveldb-dev \
         libprotobuf-dev \
-        protobuf-compiler `# sporadically protoc does not get installed somehow` \
+        protobuf-compiler \
         ;\
+    \
+    apt list --installed ;\
+    \
+    go version ;\
+    go get github.com/tools/godep ;\
+    mkdir /build-bin ;\
+    \
     /bin/bash -c 'echo ""; echo ""; echo "##### Build imposm3 -- https://github.com/osm2vectortiles/imposm3"' >&2 ;\
     #
     # get and build specific version of imposm
@@ -61,14 +64,13 @@ FROM python:3.8-slim
 LABEL maintainer="Yuri Astrakhan <YuriAstrakhan@gmail.com>"
 
 ARG PG_MAJOR=12
-ARG VT_UTIL_VERSION=v2.0.0
 ARG TOOLS_DIR=/usr/src/app
 
 WORKDIR ${TOOLS_DIR}
 
 #
 # IMPOSM_CONFIG_FILE can be used to provide custom IMPOSM config file
-# SQL_TOOLS_DIR can be used to provide custom SQL files instead of vt_utils and other files from /sql
+# SQL_TOOLS_DIR can be used to provide custom SQL files instead of the files from /sql
 #
 ENV TOOLS_DIR="$TOOLS_DIR" \
     PATH="${TOOLS_DIR}:${PATH}" \
@@ -76,6 +78,7 @@ ENV TOOLS_DIR="$TOOLS_DIR" \
     IMPOSM_MAPPING_FILE=/mapping/mapping.yaml \
     IMPOSM_CACHE_DIR=/cache \
     IMPOSM_DIFF_DIR=/import \
+    EXPIRETILES_DIR=/import \
     PBF_DATA_DIR=/import \
     SQL_DIR=/sql \
     SQL_TOOLS_DIR="${TOOLS_DIR}/sql"
@@ -90,12 +93,14 @@ RUN set -eux ;\
         curl \
         wget \
         git  \
+        less \
+        nano \
         gnupg2  `# TODO: not sure why gnupg2 is needed`  ;\
     curl https://www.postgresql.org/media/keys/ACCC4CF8.asc | apt-key add - ;\
     /bin/bash -c 'source /etc/os-release && echo "deb http://apt.postgresql.org/pub/repos/apt/ ${VERSION_CODENAME:?}-pgdg main ${PG_MAJOR:?}" > /etc/apt/sources.list.d/pgdg.list' ;\
     DEBIAN_FRONTEND=noninteractive apt-get update ;\
     DEBIAN_FRONTEND=noninteractive apt-get install  -y --no-install-recommends \
-        aria2     `# multi-stream file downloader` \
+        aria2     `# multi-stream file downloader - used by download-osm` \
         graphviz  `# used by layer mapping graphs` \
         sqlite3   `# mbtiles file manipulations`   \
         gdal-bin  `# contains ogr2ogr` \
@@ -103,7 +108,7 @@ RUN set -eux ;\
         osmosis   `# useful toolset - https://wiki.openstreetmap.org/wiki/Osmosis` \
         postgresql-client-${PG_MAJOR:?}  `# psql` \
         \
-        `# imposm dependencies` \
+        # imposm dependencies
         libgeos-dev \
         libleveldb-dev \
         libprotobuf-dev \
@@ -114,12 +119,7 @@ RUN set -eux ;\
 
 # Copy requirements.txt first to avoid pip install on every code change
 COPY ./requirements.txt .
-
-RUN set -eux ;\
-    pip install --no-cache-dir -r requirements.txt ;\
-    mkdir -p "${SQL_TOOLS_DIR:?}" ;\
-    wget --quiet --progress=bar:force:noscroll --show-progress -O "${SQL_TOOLS_DIR}/10_postgis-vt-util.sql" \
-       https://raw.githubusercontent.com/openmaptiles/postgis-vt-util/${VT_UTIL_VERSION}/postgis-vt-util.sql
+RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy tools, imposm, and osmborder into the app dir
 COPY --from=go-builder /build-bin/* ./
@@ -130,7 +130,8 @@ RUN set -eux ;\
     mv bin/* . ;\
     rm -rf bin ;\
     rm requirements.txt ;\
-    ./download-osm list geofabrik
+    ./download-osm list geofabrik ;\
+    ./download-osm list bbbike
 
 WORKDIR /tileset
 
