@@ -629,17 +629,20 @@ def make_docker_compose_file(pbf_file: Path, dc_file: Path,
         lat_min = res["lat min"]
         lat_max = res["lat max"]
         timestamp_max = res["timestamp max"]
+        env_values = {
+            "environment": {
+                "BBOX": f"{lon_min},{lat_min},{lon_max},{lat_max}",
+                "OSM_MAX_TIMESTAMP": timestamp_max,
+                "OSM_AREA_NAME": area or pbf_file.name.split('.', 1)[0],
+                "MIN_ZOOM": min_zoom,
+                "MAX_ZOOM": max_zoom,
+            }}
         dc_data = {
             "version": str(dc_ver),
             "services": {
-                "generate-vectortiles": {
-                    "environment": {
-                        "BBOX": f"{lon_min},{lat_min},{lon_max},{lat_max}",
-                        "OSM_MAX_TIMESTAMP": timestamp_max,
-                        "OSM_AREA_NAME": area or pbf_file.name.split('.', 1)[0],
-                        "MIN_ZOOM": min_zoom,
-                        "MAX_ZOOM": max_zoom,
-                    }}}}
+                "openmaptiles-tools": env_values,
+                "generate-vectortiles": env_values,
+            }}
         print(f"Saving metadata to {dc_file}...")
         with dc_file.open('w') as yaml_file:
             yaml.dump(dc_data, yaml_file, sort_keys=False)

@@ -1,9 +1,10 @@
 version: '2.2'
 services:
-  generate-vectortiles:
+  openmaptiles-tools: &id001
     environment:
       BBOX: 7.3830115,43.5163330,7.5003330,43.7543525
       OSM_MAX_TIMESTAMP: '2015-04-27T19:32:23Z'
       OSM_AREA_NAME: monaco-test2
       MIN_ZOOM: 3
       MAX_ZOOM: 5
+  generate-vectortiles: *id001
