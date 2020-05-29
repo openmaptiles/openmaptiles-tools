@@ -549,6 +549,8 @@ async def save_state_file(session, state_url, state_file):
 def save_cfg_file(dry_run, cfg_file, repl_url, extras):
     cfg_file = Path(cfg_file).resolve()
     print(f"{'Would create' if dry_run else 'Creating'} Imposm config file {cfg_file}:")
+    if not repl_url.endswith("/"):
+        repl_url += '/'
     if repl_url.endswith("/minute/"):
         interval = "1m"
     elif repl_url.endswith("/hour/"):
