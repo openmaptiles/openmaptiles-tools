@@ -2,12 +2,12 @@
 """
 Usage:
   download-osm list <service> [-l] [-c]
+  download-osm make-dc <pbf-file> -d <file> [-i <z>] [-a <z>] [-x <v>] [--id <id>]
   download-osm planet [-o <file> [-f]] [-j <file> [-k <kv>]...] [-d <file> [-i <z>]
                [-l] [-p] [-n] [-v] [-a <z>] [-x <v>]] [--] [<aria2c_args>...]
   download-osm [url|geofabrik|osmfr|bbbike] <area_or_url> [-o <file> [-f]] [-s <file>]
                [-j <file> [-k <kv>]...] [-l] [-c] [-n] [-v]
                [-d <file> [-i <z>] [-a <z>] [-x <v>] [--id <id>]] [--] [<aria2c_args>...]
-  download-osm make-dc <pbf-file> -d <file> [-i <z>] [-a <z>] [-x <v>] [--id <id>]
   download-osm --help
   download-osm --version
 
