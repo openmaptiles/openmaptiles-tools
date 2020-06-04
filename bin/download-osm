@@ -628,7 +628,7 @@ def make_docker_compose_file(pbf_file: Path, dc_file: Path,
         lon_max = res["lon max"]
         lat_min = res["lat min"]
         lat_max = res["lat max"]
-        timestamp_max = res["timestamp max"]
+        timestamp_max = res["timestamp max"] if "timestamp max" in res else None
         env_values = {
             "environment": {
                 "BBOX": f"{lon_min},{lat_min},{lon_max},{lat_max}",
@@ -637,6 +637,9 @@ def make_docker_compose_file(pbf_file: Path, dc_file: Path,
                 "MIN_ZOOM": min_zoom,
                 "MAX_ZOOM": max_zoom,
             }}
+        if timestamp_max is None:
+            # Deleting is better than adding because it keeps key ordering intact
+            del env_values["environment"]["OSM_MAX_TIMESTAMP"]
         dc_data = {
             "version": str(dc_ver),
             "services": {
