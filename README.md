@@ -1,7 +1,7 @@
 # OpenMapTiles Tools ![Build and publish to Docker](https://github.com/openmaptiles/openmaptiles-tools/workflows/Build%20and%20publish%20to%20Docker/badge.svg)
 
 The OpenMapTiles toolbox for generating map vector tiles.
-It includes tools to prepare Imposm mappings and SQL files based on layers defined in [OpenMapTiles](https://github.com/openmaptiles/openmaptiles) or similar projects. It also includes map data downloading, parsing, debugging, and performance evaluation tools. 
+It includes tools to prepare Imposm mappings and SQL files based on layers defined in [OpenMapTiles](https://github.com/openmaptiles/openmaptiles) or similar projects. It also includes map data downloading, parsing, debugging, and performance evaluation tools.
 We encourage other people to use this for their vector tile projects as well since this approach works well for us.
 
 ## Docker Images
@@ -19,7 +19,7 @@ The above `postgis` image pre-loaded with the `import-data`. This image is mostl
 
 
 ##### generate-vectortiles [![](https://img.shields.io/microbadger/layers/openmaptiles/generate-vectortiles)](https://hub.docker.com/r/openmaptiles/generate-vectortiles) [![](https://img.shields.io/microbadger/image-size/openmaptiles/generate-vectortiles?label=size)](https://hub.docker.com/r/openmaptiles/generate-vectortiles) [![](https://img.shields.io/docker/pulls/openmaptiles/generate-vectortiles?label=downloads)](https://hub.docker.com/r/openmaptiles/generate-vectortiles) [![](https://img.shields.io/docker/stars/openmaptiles/generate-vectortiles?label=stars)](https://hub.docker.com/r/openmaptiles/generate-vectortiles)
-Legacy Mapnik-based image that simplifies `tilelive-copy` tile generation.  Eventually will be replaced with PostgreSQL-based [ST_AsMVT](https://postgis.net/docs/ST_AsMVT.html) approach. 
+Legacy Mapnik-based image that simplifies `tilelive-copy` tile generation.  Eventually will be replaced with PostgreSQL-based [ST_AsMVT](https://postgis.net/docs/ST_AsMVT.html) approach.
 
 
 ## Usage
@@ -291,7 +291,7 @@ download-osm planet -- -d ./downloads
 # download New Zealand extract from Geofabrik, together with the state file
 download-osm geofabrik new-zealand --state state.txt
 
-# List all extracts available from Geofabrik 
+# List all extracts available from Geofabrik
 download-osm list geofabrik
 ```
 

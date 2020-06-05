@@ -1,13 +1,13 @@
 ## Creating PostgreSQL database
 There are several ways to create a PostgreSQL database for OpenStreetMap data. The simplest is to run it in a Docker container on your local machine. The more involved is to use one of the cloud providers, such as Google Cloud.
- 
+
 All of the examples here use these environment variables (the values can be changed):
 
 ```bash
 export POSTGRES_DB=openmaptiles
 export POSTGRES_USER=openmaptiles
 export POSTGRES_PASSWORD=openmaptiles
-``` 
+```
 
 Once PostgreSQL is running, you can test connection with
 
@@ -41,7 +41,7 @@ For the PostgreSQL versions 11+, make sure to use `postgres -c 'jit=off'` as the
 
 ### Google Cloud (GCP)
 
-To run PostgreSQL in Google cloud, you need install `gcloud` utility, and login into your Google account. You will need to set up a firewall rule to enable inbound access. 
+To run PostgreSQL in Google cloud, you need install `gcloud` utility, and login into your Google account. You will need to set up a firewall rule to enable inbound access.
 
 Additional notes:
 * See [GCP machine types](https://cloud.google.com/compute/docs/machine-types) for the `MACHINE_TYPE` setting. The `n1-highmem-2` uses an older 2-CPU machine with max memory. Full planet should use a bigger machine.
@@ -51,8 +51,8 @@ Additional notes:
 #### Set required env variables
 
 ```bash
-export GOOGLE_PROJECT_ID=<my_project>  # Set to your GCP project name 
-export GOOGLE_ZONE_NAME=us-central1-c  # Which zone to use for the new VM 
+export GOOGLE_PROJECT_ID=<my_project>  # Set to your GCP project name
+export GOOGLE_ZONE_NAME=us-central1-c  # Which zone to use for the new VM
 export PG_VM_NAME=pg1                  # Name of the VM to create
 
 export VM_DISK_SIZE=15GB               # VM disk size
@@ -96,7 +96,7 @@ gcloud compute instances \
 ```
 
 #### Login and Verify
-Login into the newly created VM: 
+Login into the newly created VM:
 ```bash
 gcloud compute ssh --project $GOOGLE_PROJECT_ID $PG_VM_NAME --zone=$GOOGLE_ZONE_NAME
 ```

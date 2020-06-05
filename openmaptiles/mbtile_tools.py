@@ -287,7 +287,7 @@ class Metadata:
                 sql = """\
 SELECT zoom_level, COUNT(*) as count,
        MIN(tile_column) AS min_column, MAX(tile_column) AS max_column,
-       MIN(tile_row) AS min_row, MAX(tile_row) AS max_row       
+       MIN(tile_row) AS min_row, MAX(tile_row) AS max_row
 FROM map
 GROUP BY zoom_level
 """
