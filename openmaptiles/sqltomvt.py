@@ -14,8 +14,11 @@ class MvtGenerator:
     layer_ids: Set[str]
     exclude_layers: bool  # if True, inverses layer_ids to use all except them
 
-    def __init__(self, tileset: Union[str, Tileset], postgis_ver: str,
-                 zoom: Union[str, int], x: Union[str, int], y: Union[str, int],
+    def __init__(self,
+                 tileset: Union[str, Tileset],
+                 postgis_ver: str,
+                 zoom: Union[None, str, int],
+                 x: Union[None, str, int], y: Union[None, str, int],
                  layer_ids: List[str] = None, exclude_layers=False,
                  key_column=False, gzip: Union[int, bool] = False,
                  use_feature_id: bool = None, test_geometry=False,
@@ -188,9 +191,11 @@ as mvtl{extras} FROM {query}"""
                        mvt_geometry_wrapper: Callable[[str], str] = None,
                        extra_columns: str = None) -> str:
         query = layer.query
-        if self.zoom is not None:
-            query = self.substitute_sql(query, layer, self.zoom, self.x, self.y)
+        if self.zoom is None:
+            return query
 
+        bbox = self.tile_to_bbox(layer, self.zoom, self.x, self.y)
+        query = self.substitute_sql(query, self.zoom, bbox)
         replacement = ''
         if to_mvt_geometry:
             replacement = f"ST_AsMVTGeom(" \
@@ -217,24 +222,25 @@ as mvtl{extras} FROM {query}"""
 
         return query
 
-    def bbox(self, zoom, x, y, margin=None):
-        margin_str = '' if margin is None else f", {margin}"
-        return f"{self.tile_envelope}({zoom}, {x}, {y}{margin_str})"
-
-    def substitute_sql(self, query, layer: Layer, zoom, x, y):
+    def tile_to_bbox(self, layer: Layer, zoom, x, y):
         # A zoom 0 tile has width/height of 40075016.6855785 units
         # Buffer expressed as a percentage of a tile width gives us this formula.
         # Every subsequent zoom divides it by 2
         if layer.buffer_size > 0:
             if not self.tile_envelope_margin:
                 percentage = 40075016.6855785 * layer.buffer_size / self.extent
-                bbox = f"ST_Expand({self.bbox(zoom, x, y)}, {percentage}/2^{zoom})"
+                return f"ST_Expand({self.bbox(zoom, x, y)}, {percentage}/2^{zoom})"
             else:
                 # Once https://github.com/postgis/postgis/pull/514 is merged
-                bbox = self.bbox(zoom, x, y, float(layer.buffer_size) / self.extent)
+                return self.bbox(zoom, x, y, float(layer.buffer_size) / self.extent)
         else:
-            bbox = self.bbox(zoom, x, y)
+            return self.bbox(zoom, x, y)
 
+    def bbox(self, zoom, x, y, margin=None):
+        margin_str = '' if margin is None else f", {margin}"
+        return f"{self.tile_envelope}({zoom}, {x}, {y}{margin_str})"
+
+    def substitute_sql(self, query, zoom, bbox):
         query = (query
                  .replace("!bbox!", bbox)
                  .replace("z(!scale_denominator!)", str(zoom))
@@ -286,7 +292,7 @@ as mvtl{extras} FROM {query}"""
         self, connection: Connection, layer: Layer
     ) -> Dict[str, str]:
         """Get field names => SQL types (oid) by executing a dummy query"""
-        query = self.substitute_sql(layer.query, layer, 0, 0, 0)
+        query = self.substitute_sql(layer.query, 0, self.bbox(0, 0, 0))
         st = await connection.prepare(f"SELECT * FROM {query} WHERE false LIMIT 0")
         return {fld.name: fld.type.oid for fld in st.get_attributes()}
 

@@ -43,11 +43,14 @@ Options:
   --version             Show version.
 
 PostgreSQL Options:
-  -h --pghost=<host>    Postgres hostname. By default uses POSTGRES_HOST env or "localhost" if not set.
-  -P --pgport=<port>    Postgres port. By default uses POSTGRES_PORT env or "5432" if not set.
-  -d --dbname=<db>      Postgres db name. By default uses POSTGRES_DB env or "openmaptiles" if not set.
-  -U --user=<user>      Postgres user. By default uses POSTGRES_USER env or "openmaptiles" if not set.
-  --password=<password> Postgres password. By default uses POSTGRES_PASSWORD env or "openmaptiles" if not set.
+  -h --pghost=<host>    Postgres hostname. By default uses PGHOST env or "localhost" if not set.
+  -P --pgport=<port>    Postgres port. By default uses PGPORT env or "5432" if not set.
+  -d --dbname=<db>      Postgres db name. By default uses PGDATABASE env or "openmaptiles" if not set.
+  -U --user=<user>      Postgres user. By default uses PGUSER env or "openmaptiles" if not set.
+  --password=<password> Postgres password. By default uses PGPASSWORD env or "openmaptiles" if not set.
+
+These legacy environment variables should not be used, but they are still supported:
+  POSTGRES_HOST, POSTGRES_PORT, POSTGRES_DB, POSTGRES_USER, POSTGRES_PASSWORD
 """
 import asyncio
 import gzip
@@ -61,7 +64,8 @@ from tabulate import tabulate
 from time import time
 
 import openmaptiles
-from openmaptiles.pgutils import parse_pg_args, get_postgis_version, PgWarnings
+from openmaptiles.pgutils import parse_pg_args, get_postgis_version, PgWarnings, \
+    print_query_error
 from openmaptiles.sqltomvt import MvtGenerator
 from openmaptiles.tileset import Tileset
 from openmaptiles.utils import parse_zxy_param, print_tile
@@ -136,16 +140,8 @@ async def main(args):
             took = time() - start_ts
         except asyncpg.PostgresError as err:
             took = time() - start_ts
-            msg = f"####### ERROR getting tile {zoom}/{x}/{y} ({took:.2f}s) #######"
-            line = '#' * len(msg)
-            print(f"{line}\n{msg}\n{line}\n{err.__class__.__name__}: {err}")
-            if hasattr(err, "context") and err.context:
-                print(f"context: {err.context}")
-            pg_warnings.print()
-            if not verbose:
-                # Always print failed SQL
-                print(f"\n== FULL QUERY\n{query.strip()}")
-            print(f"{line}\n")
+            print_query_error(f"ERROR getting tile {zoom}/{x}/{y} ({took:.2f}s)",
+                              err, pg_warnings, verbose, query)
             return
         if result:
             mvt_data = result['mvt']
@@ -230,16 +226,8 @@ async def main(args):
             fields = ','.join(columns) if columns else '*'
             query_result = await conn.fetch(f"SELECT {fields} FROM {query}")
         except asyncpg.PostgresError as err:
-            msg = f"####### ERROR in {layer_id} layer #######"
-            line = '#' * len(msg)
-            print(f"{line}\n{msg}\n{line}\n{err.__class__.__name__}: {err}")
-            if hasattr(err, "context") and err.context:
-                print(f"context: {err.context}")
-            pg_warnings.print()
-            if not verbose:
-                # Always print failed SQL
-                print(f"\n== FULL QUERY\n{query.strip()}\n\n== MVT SQL\n{layer_sql}")
-            print(f"{line}\n")
+            print_query_error(f"ERROR in {layer_id} layer", err, pg_warnings, verbose,
+                              query, layer_sql)
             continue
 
         result = []

@@ -148,3 +148,19 @@ async def get_vector_layers(conn, mvt) -> List[dict]:
         ))
 
     return vector_layers
+
+
+def print_query_error(error_msg, err, pg_warnings, verbose, query, layer_sql=None):
+    msg = f"####### {error_msg} #######"
+    line = '#' * len(msg)
+    print(f"{line}\n{msg}\n{line}\n{err.__class__.__name__}: {err}")
+    if hasattr(err, "context") and err.context:
+        print(f"context: {err.context}")
+    pg_warnings.print()
+    if not verbose:
+        # Always print failed SQL if the mode is not verbose
+        query_msg = f"\n== FULL QUERY\n{query.strip()}"
+        if layer_sql:
+            query_msg += f"\n\n== MVT SQL\n{layer_sql}"
+        print(query_msg)
+    print(f"{line}\n")
