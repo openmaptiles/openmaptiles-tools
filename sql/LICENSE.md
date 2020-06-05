@@ -1,5 +1,5 @@
 ## MIT license
-The following files are under MIT license (following).  
+The following files are under MIT license (following).
 
 * language.sql
 * numeric.sql
@@ -31,7 +31,7 @@ SOFTWARE.
 
 ## BSD-3-clause license
 The following files have been copied from [mapbox/postgis-vt-util](https://github.com/mapbox/postgis-vt-util),
-and are licensed under BSD-3-clause license (following).  
+and are licensed under BSD-3-clause license (following).
 
 * CleanNumeric.sql
 * LabelGrid.sql

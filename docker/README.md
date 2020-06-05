@@ -11,7 +11,7 @@ An image with PostgreSQL database, Postgis, and several other extensions, custom
 The above `postgis` image pre-loaded with the `import-data`. This image is mostly used for testing, and may not be appropriate for production. The image has hardcoded user `openmaptiles` and password `openmaptiles`.
 
 ##### generate-vectortiles [![](https://img.shields.io/microbadger/layers/openmaptiles/generate-vectortiles)](https://hub.docker.com/r/openmaptiles/generate-vectortiles) [![](https://img.shields.io/microbadger/image-size/openmaptiles/generate-vectortiles?label=size)](https://hub.docker.com/r/openmaptiles/generate-vectortiles) [![](https://img.shields.io/docker/pulls/openmaptiles/generate-vectortiles?label=downloads)](https://hub.docker.com/r/openmaptiles/generate-vectortiles) [![](https://img.shields.io/docker/stars/openmaptiles/generate-vectortiles?label=stars)](https://hub.docker.com/r/openmaptiles/generate-vectortiles)
-Legacy Mapnik-based image that simplifies `tilelive-copy` tile generation.  Eventually will be replaced with PostgreSQL-based [ST_AsMVT](https://postgis.net/docs/ST_AsMVT.html) approach. 
+Legacy Mapnik-based image that simplifies `tilelive-copy` tile generation.  Eventually will be replaced with PostgreSQL-based [ST_AsMVT](https://postgis.net/docs/ST_AsMVT.html) approach.
 <br><small>Migrated from [generate-vectortiles](https://github.com/openmaptiles/generate-vectortiles) repo (archived)</small>
 
 

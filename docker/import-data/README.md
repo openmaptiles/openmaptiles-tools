@@ -1,6 +1,6 @@
 # Import Prepared Data into PostGIS [![Docker Automated build](https://img.shields.io/docker/automated/openmaptiles/import-data.svg?maxAge=2592000)](https://hub.docker.com/r/openmaptiles/import-data/)
 
-This is a Docker image containing several datasets used in OpenMapTiles project. Prepared data can be imported into PostgreSQL using ogr2ogr utility. 
+This is a Docker image containing several datasets used in OpenMapTiles project. Prepared data can be imported into PostgreSQL using ogr2ogr utility.
 
 ### Lakelines
 Centered linestrings for labelling OpenStreetMap lakes from the [osm-lakelines](https://github.com/lukasmartinelli/osm-lakelines) repo.
