@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """
-Shows per-layer statistics in a database.
+Show per zoom statistics for some column (field) in a single layer.
 
 Usage:
   layer-stats frequency <tileset> <layer> <column>...
@@ -100,39 +100,36 @@ async def main(args):
         raise DocoptExit(f"The 'toplength' and 'variance' methods require "
                          f"a single column, but {len(columns)} was given")
     if args.frequency:
-        method = "field frequency"
-        fields = ','.join(columns) if columns else '*'
+        method = "value occurrence"
+        fields = ','.join(columns)
         query = f"""
-            SELECT {fields}, count(*) AS _count
-            FROM {query}
-            GROUP BY {fields}
-            ORDER BY {fields};
+SELECT {fields}, count(*) AS _result
+FROM {query}
+GROUP BY {fields}
+ORDER BY {fields};
             """.strip()
-        result_column = '_count'
     elif args.toplength:
         method = "longest field values"
         query = f"""
-            SELECT DISTINCT {columns[0]}, length( {columns[0]} ) AS _length
-            FROM {query}
-            WHERE length( {columns[0]} ) > 0
-            ORDER BY length( {columns[0]} ) DESC NULLS LAST
-            LIMIT {max_count};
+SELECT DISTINCT {columns[0]}, length( {columns[0]} ) AS _result
+FROM {query}
+WHERE length( {columns[0]} ) > 0
+ORDER BY length( {columns[0]} ) DESC NULLS LAST
+LIMIT {max_count};
             """.strip()
-        result_column = '_length'
     elif args.variance:
         method = "field value variance"
         query = f"""
-            SELECT
-              'z' || $1                as zoom, 
-              COUNT( {columns[0]} )    as count,
-              MIN( {columns[0]} )      as min,
-              MAX( {columns[0]} )      as max,
-              AVG( {columns[0]} )      as avg,
-              STDDEV( {columns[0]} )   as stddev,
-              VARIANCE( {columns[0]} ) as variance
-            FROM {query};
+SELECT
+  'z' || $1                as zoom,
+  COUNT( {columns[0]} )    as count,
+  MIN( {columns[0]} )      as min,
+  MAX( {columns[0]} )      as max,
+  AVG( {columns[0]} )      as avg,
+  STDDEV( {columns[0]} )   as stddev,
+  VARIANCE( {columns[0]} ) as variance
+FROM {query};
             """.strip()
-        result_column = None  # multiple columns
     else:
         raise DocoptExit("Unknown method used")
 
@@ -157,11 +154,13 @@ async def main(args):
                     results.append(dict(row))
             else:
                 key = tuple(row[v] for v in columns)
-                results[key][zoom] = row[result_column]
+                results[key][zoom] = row['_result']
         if pg_warnings.messages:
             print(f"======= Layer {layer} has warnings at zoom {zoom} =======")
             pg_warnings.print()
 
+    print(f"======= Analyzing {method} in layer '{layer}' "
+          f"for field{'s' if len(columns) > 1 else ''} [{', '.join(columns)}] =======")
     if results:
         if args.variance:
             values = results
@@ -177,12 +176,9 @@ async def main(args):
                 values.append(vals)
             headers = {v: v for v in
                        (columns + [f"z{z}" for z in sorted(existing_zooms)])}
-        print(f"======= Analyzing {method} in layer '{layer}' "
-              f"for [{', '.join(columns)}] =======")
         print(tabulate(values, headers=headers))
     else:
-        print(f"======= Analyzing {method} in layer '{layer}' "
-              f"for [{', '.join(columns)}] found no data =======")
+        print("No results were found")
 
 
 def fmt_val(val):
