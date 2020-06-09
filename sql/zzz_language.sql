@@ -1,3 +1,4 @@
+-- Given an hstore, delete all entries that have empty values
 CREATE OR REPLACE FUNCTION delete_empty_keys(tags hstore) RETURNS hstore AS $$
 DECLARE
   result hstore;

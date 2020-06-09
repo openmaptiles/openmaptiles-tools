@@ -101,6 +101,7 @@ RUN set -eux ;\
         git  \
         less \
         nano \
+        procps  `# ps command` \
         gnupg2  `# TODO: not sure why gnupg2 is needed`  ;\
     curl https://www.postgresql.org/media/keys/ACCC4CF8.asc | apt-key add - ;\
     /bin/bash -c 'source /etc/os-release && echo "deb http://apt.postgresql.org/pub/repos/apt/ ${VERSION_CODENAME:?}-pgdg main ${PG_MAJOR:?}" > /etc/apt/sources.list.d/pgdg.list' ;\
