@@ -63,7 +63,6 @@ class GetTile(RequestHandledWithCors):
 
         self.set_header("Content-Type", "application/x-protobuf")
         self.set_header("Content-Disposition", "attachment")
-        self.set_header("Access-Control-Allow-Origin", "*")
         try:
             async with self.pool.acquire() as connection:
                 connection.add_log_listener(logger)
