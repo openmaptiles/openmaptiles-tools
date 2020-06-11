@@ -1,17 +1,13 @@
-CREATE OR REPLACE FUNCTION delete_empty_keys(tags hstore) RETURNS hstore AS $$
-DECLARE
-  result hstore;
-BEGIN
-  select
-    hstore(array_agg(key), array_agg(value)) into result
-  from
+-- Given an hstore, delete all entries that have empty values
+CREATE OR REPLACE FUNCTION delete_empty_keys(tags hstore) RETURNS hstore AS
+$$
+SELECT hstore(array_agg(key), array_agg(value))
+FROM
     each(hstore(tags))
-  where nullif(value, '') is not null;
-  RETURN result;
-END;
-$$ STRICT
-LANGUAGE plpgsql IMMUTABLE;
-
+WHERE value != '';
+$$ LANGUAGE sql IMMUTABLE
+                STRICT
+                PARALLEL SAFE;
 
 CREATE OR REPLACE FUNCTION remove_latin(text) RETURNS text AS $$
   DECLARE
@@ -160,5 +156,5 @@ BEGIN
   result := merge_wiki_names(result);
   RETURN result;
 END;
-$$ STRICT
-LANGUAGE plpgsql IMMUTABLE;
+$$ LANGUAGE plpgsql IMMUTABLE
+                    STRICT;
