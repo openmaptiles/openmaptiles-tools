@@ -65,22 +65,15 @@ python -m http.server 8555 -d "$HTTPDIR" &
 trap "kill $!" EXIT
 
 download-osm url http://localhost:8555/monaco-20150428.osm.pbf \
-  --verbose --make-dc "$BUILD/monaco-dc.yml" --id raw-url --minzoom 0 --maxzoom 10 -- --dir "$TEMP_DIR"
+  --output "$TEMP_DIR/monaco-20150428.osm.pbf" --verbose --bbox "$BUILD/monaco.bbox.env"
 
-# Test downloader support for env vars
-export OSM_AREA_NAME=monaco-test2
-export MIN_ZOOM=3
-export MAX_ZOOM=5
-export MAKE_DC_VERSION=2.2
-download-osm url http://localhost:8555/monaco-20150428.osm.pbf \
-  --verbose --make-dc "$BUILD/monaco-dc2.yml" --output "$TEMP_DIR/delete_me.pbf"
-diff --brief "$HTTPDIR/monaco-20150428.osm.pbf" "$TEMP_DIR/delete_me.pbf"
-rm "$TEMP_DIR/delete_me.pbf"
-unset OSM_AREA_NAME MIN_ZOOM MAX_ZOOM MAKE_DC_VERSION
+download-osm bbox "$TEMP_DIR/monaco-20150428.osm.pbf" "$BUILD/monaco.bbox.env" --verbose
+diff --brief "$HTTPDIR/monaco-20150428.osm.pbf" "$TEMP_DIR/monaco-20150428.osm.pbf"
+rm "$TEMP_DIR/monaco-20150428.osm.pbf"
 
 download-osm geofabrik monaco-test \
   --verbose --imposm-cfg "$BUILD/monaco-cfg.json" --kv foo=bar --kv replication_interval=4h \
-  --make-dc "$BUILD/monaco-dc3.yml" --minzoom 5 --maxzoom 6 --dc-ver 2.1 -- --dir "$TEMP_DIR"
+  --bbox "$BUILD/monaco2.bbox.yml" --output "$TEMP_DIR/monaco-20150428.osm.pbf"
 diff --brief "$HTTPDIR/monaco-20150428.osm.pbf" "$TEMP_DIR/monaco-20150428.osm.pbf"
 rm "$TEMP_DIR/monaco-20150428.osm.pbf"
 

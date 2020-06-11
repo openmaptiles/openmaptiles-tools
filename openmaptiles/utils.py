@@ -54,6 +54,31 @@ class Bbox:
         except ValueError:
             self.center_zoom = float(center_zoom)
 
+    @staticmethod
+    def from_geometry(geo):
+        """Given GeoJSON geometry, compute the bounding box"""
+        bbox = Bbox()
+        bbox.min_lon, bbox.max_lon = bbox.max_lon, bbox.min_lon
+        bbox.min_lat, bbox.max_lat = bbox.max_lat, bbox.min_lat
+
+        def minmax(vals):
+            if isinstance(vals[0], List):
+                for v in vals:
+                    minmax(v)
+            else:
+                lon, lat = vals
+                if lon < bbox.min_lon:
+                    bbox.min_lon = lon
+                if lon > bbox.max_lon:
+                    bbox.max_lon = lon
+                if lat < bbox.min_lat:
+                    bbox.min_lat = lat
+                if lat > bbox.max_lat:
+                    bbox.max_lat = lat
+
+        minmax(geo)
+        return bbox
+
     def bounds_str(self):
         return ','.join(map(str, self.bounds()))
 
