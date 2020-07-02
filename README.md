@@ -377,7 +377,7 @@ generate-sqlquery layers/landcover/landcover.yaml  14
 ```
 
 ### Import and Update OSM data
-The `import-osm`, `update-osm`, and `import-diff` tools will import and update
+The `import-osm`, `import-update`, and `import-diff` tools will import and update
 PostgreSQL database by running [imposm](https://imposm.org/docs/imposm3/latest/).
 The tools expect these env vars: `PGHOST`, `PGDATABASE`, `PGUSER`, `PGPASSWORD`, and optionally `PGPORT`
 to connect to the PostgreSQL server, and a number of other vars for imposm configuration. See scripts.
