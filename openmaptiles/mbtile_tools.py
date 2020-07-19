@@ -52,7 +52,7 @@ class KeyFinder:
             results = []
             if self.show_size:
                 sql = "SELECT cnt, dups.tile_id, LENGTH(tile_data) FROM (" \
-                      "  SELECT tile_id, COUNT(*) as cnt FROM map " \
+                      "  SELECT tile_id, COUNT(*) AS cnt FROM map " \
                       "  GROUP BY tile_id HAVING cnt >= ?" \
                       ") dups JOIN images ON images.tile_id = dups.tile_id"
                 sql_opts = [self.min_dup_count]
@@ -78,8 +78,8 @@ class KeyFinder:
             else:
                 count, tile_id = vals
             if self.show_examples:
-                example_sql = "select zoom_level, tile_column, tile_row from map " \
-                              "where tile_id = ? limit 5"
+                example_sql = "SELECT zoom_level, tile_column, tile_row FROM map " \
+                              "WHERE tile_id = ? LIMIT 5"
                 examples = [f'{z}/{x}/{y}' for z, x, y in
                             query(conn, example_sql, [tile_id])]
             if self.verbose:
@@ -165,7 +165,7 @@ class Imputer:
         batch_size = 1000000
         zoom = self.zoom
         search_zoom = zoom - 1
-        sql = f"select tile_column, tile_row, tile_id from map where zoom_level=?"
+        sql = f"SELECT tile_column, tile_row, tile_id FROM map WHERE zoom_level=?"
         sql_args = [search_zoom]
         if limit_to_keys:
             sql += f" and tile_id IN ({','.join(('?' * len(self.keys)))})"
@@ -194,98 +194,28 @@ class Imputer:
             yield with_key, without_key
 
 
-def validate(name, value, show_json=False):
-    is_valid = True
-    if name == 'mtime':
-        try:
-            val = datetime.fromtimestamp(int(value) / 1000.0)
-            value = f'{value} ({val.isoformat()})'
-        except ValueError:
-            is_valid = False
-            value = f'{value} (invalid)'
-    elif name in ('filesize', 'maskLevel', 'minzoom', 'maxzoom'):
-        try:
-            value = f'{int(value):,}'
-        except ValueError:
-            is_valid = False
-            value = f'{value} (invalid)'
-    elif name == 'json':
-        try:
-            val = json.loads(value)
-            if show_json:
-                value = f'(valid JSON value)'
-            else:
-                value = '(The value is a valid JSON, use --show-json for raw dump)'
-
-            res = []
-            for v in val["vector_layers"]:
-                desc = ""
-                if "description" in v:
-                    desc = shorten_str(v["description"], 40)
-                fields = []
-                names = []
-                for fld in v["fields"].keys():
-                    if fld.startswith("name:"):
-                        names.append(fld[5:])
-                    else:
-                        fields.append(fld)
-                fields_str = ", ".join(v for v in fields)
-                if names:
-                    fields_str += f", name:* ({shorten_str(','.join(names), 20)})"
-                res.append({
-                    "layer": v["id"],
-                    "minZ": v["minzoom"],
-                    "maxZ": v["maxzoom"],
-                    "fields": fields_str,
-                    "description": desc
-                })
-            value += "\n\n" + tabulate(res, headers="keys")
-            if show_json:
-                value += "\n\n"
-                value += json.dumps(val, ensure_ascii=False, indent=2)
-
-        except ValueError:
-            is_valid = False
-            if show_json:
-                value = f'(invalid JSON value)\n{value}'
-            else:
-                value = f'(invalid JSON value, use --show-json to see it)'
-    return value, is_valid
-
-
-def update_metadata(cursor, metadata, reset):
-    if reset:
-        # noinspection SqlWithoutWhere
-        cursor.execute("DELETE FROM metadata;")
-    for name, value in metadata.items():
-        _, is_valid = validate(name, value)
-        if not is_valid:
-            raise ValueError(f"Invalid {name}={value}")
-        cursor.execute(
-            "INSERT OR REPLACE INTO  metadata(name, value) VALUES (?, ?);",
-            [name, value])
-
-
 class Metadata:
-    def __init__(self, mbtiles) -> None:
+    def __init__(self, mbtiles: str, show_json: bool = False,
+                 show_ranges: bool = False) -> None:
         self.mbtiles = mbtiles
+        self.show_json = show_json
+        self.show_ranges = show_ranges
 
-    def print_all(self, show_json: bool = False, show_ranges: bool = False,
-                  file: str = None):
+    def print_all(self, file: str = None):
         file = file or self.mbtiles
         data = self._get_metadata(file)
         if data:
             width = max((len(v) for v in data.keys()))
             for name, value in sorted(data.items(),
                                       key=lambda v: v[0] if v[0] != 'json' else 'zz'):
-                print(f"{name:{width}} {validate(name, value, show_json)[0]}")
+                print(f"{name:{width}} {self.validate(name, value)[0]}")
         else:
             print(f"There are no values present in {file} metadata table")
 
-        if show_ranges:
+        if self.show_ranges:
             with sqlite3.connect(file) as conn:
                 sql = """\
-SELECT zoom_level, COUNT(*) as count,
+SELECT zoom_level, COUNT(*) AS count,
        MIN(tile_column) AS min_column, MAX(tile_column) AS max_column,
        MIN(tile_row) AS min_row, MAX(tile_row) AS max_row
 FROM map
@@ -312,7 +242,7 @@ GROUP BY zoom_level
 
     def set_value(self, name, value):
         if value is not None:
-            _, is_valid = validate(name, value)
+            _, is_valid = self.validate(name, value)
             if not is_valid:
                 raise ValueError(f"Invalid {name}={value}")
         with sqlite3.connect(self.mbtiles) as conn:
@@ -324,7 +254,7 @@ GROUP BY zoom_level
                     "INSERT OR REPLACE INTO  metadata(name, value) VALUES (?, ?);",
                     [name, value])
 
-    async def generate(self, tileset, reset, auto_minmax, show_ranges,
+    async def generate(self, tileset, reset, auto_minmax,
                        pghost, pgport, dbname, user, password):
         ts = Tileset.parse(tileset)
         print(
@@ -365,12 +295,12 @@ GROUP BY zoom_level
             id=ts.id,
         )
 
-        self._update_metadata(metadata, auto_minmax, reset, self.mbtiles, show_ranges,
+        self._update_metadata(metadata, auto_minmax, reset, self.mbtiles,
                               ts.center[2])
 
-    def copy(self, target_mbtiles, reset, auto_minmax, show_ranges):
+    def copy(self, target_mbtiles, reset, auto_minmax):
         metadata = self._get_metadata(self.mbtiles)
-        self._update_metadata(metadata, auto_minmax, reset, target_mbtiles, show_ranges)
+        self._update_metadata(metadata, auto_minmax, reset, target_mbtiles)
 
     def show_tile(self, zoom, x, y, show_names, summary):
         with sqlite3.connect(self.mbtiles) as conn:
@@ -382,8 +312,7 @@ GROUP BY zoom_level
             else:
                 print(f"Tile {zoom}/{x}/{y} not found")
 
-    def _update_metadata(self, metadata, auto_minmax, reset, file, show_ranges,
-                         center_zoom=None):
+    def _update_metadata(self, metadata, auto_minmax, reset, file, center_zoom=None):
         def update_from_env(param, env_var):
             val = os.environ.get(env_var)
             if val is not None:
@@ -414,14 +343,84 @@ GROUP BY zoom_level
                     raise ValueError("Unable to get min/max zoom - tile data is empty")
                 metadata["minzoom"] = min_z
                 metadata["maxzoom"] = max_z
-            update_metadata(cursor, metadata, reset)
+            self._update_metadata_db(cursor, metadata, reset)
             conn.commit()
 
         print(f"New metadata values in {file}")
-        self.print_all(file=file, show_ranges=show_ranges)
+        self.print_all(file=file)
 
     @staticmethod
     def _get_metadata(file) -> Dict[str, str]:
         with sqlite3.connect(file) as conn:
             return {k: v for k, v in
                     query(conn, "SELECT name, value FROM metadata", [])}
+
+    def _update_metadata_db(self, cursor, metadata, reset):
+        if reset:
+            # noinspection SqlWithoutWhere
+            cursor.execute("DELETE FROM metadata;")
+        for name, value in metadata.items():
+            _, is_valid = self.validate(name, value)
+            if not is_valid:
+                raise ValueError(f"Invalid {name}={value}")
+            cursor.execute(
+                "INSERT OR REPLACE INTO  metadata(name, value) VALUES (?, ?);",
+                [name, value])
+
+    def validate(self, name, value):
+        is_valid = True
+        if name == 'mtime':
+            try:
+                val = datetime.fromtimestamp(int(value) / 1000.0)
+                value = f'{value} ({val.isoformat()})'
+            except ValueError:
+                is_valid = False
+                value = f'{value} (invalid)'
+        elif name in ('filesize', 'maskLevel', 'minzoom', 'maxzoom'):
+            try:
+                value = f'{int(value):,}'
+            except ValueError:
+                is_valid = False
+                value = f'{value} (invalid)'
+        elif name == 'json':
+            try:
+                val = json.loads(value)
+                if self.show_json:
+                    value = f'(valid JSON value)'
+                else:
+                    value = '(The value is a valid JSON, use --show-json for raw dump)'
+
+                res = []
+                for v in val["vector_layers"]:
+                    desc = ""
+                    if "description" in v:
+                        desc = shorten_str(v["description"], 40)
+                    fields = []
+                    names = []
+                    for fld in v["fields"].keys():
+                        if fld.startswith("name:"):
+                            names.append(fld[5:])
+                        else:
+                            fields.append(fld)
+                    fields_str = ", ".join(v for v in fields)
+                    if names:
+                        fields_str += f", name:* ({shorten_str(','.join(names), 20)})"
+                    res.append({
+                        "layer": v["id"],
+                        "minZ": v["minzoom"],
+                        "maxZ": v["maxzoom"],
+                        "fields": fields_str,
+                        "description": desc
+                    })
+                value += "\n\n" + tabulate(res, headers="keys")
+                if self.show_json:
+                    value += "\n\n"
+                    value += json.dumps(val, ensure_ascii=False, indent=2)
+
+            except ValueError:
+                is_valid = False
+                if self.show_json:
+                    value = f'(invalid JSON value)\n{value}'
+                else:
+                    value = f'(invalid JSON value, use --show-json to see it)'
+        return value, is_valid
