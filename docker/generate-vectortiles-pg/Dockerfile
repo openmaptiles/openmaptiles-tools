@@ -1,4 +1,4 @@
-FROM node:8
+FROM node:14
 MAINTAINER Adam Laza <adam.laza@maptiler.com>
 
 RUN mkdir -p /usr/src/app
