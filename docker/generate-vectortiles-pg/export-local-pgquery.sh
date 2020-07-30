@@ -9,7 +9,7 @@ readonly MIN_ZOOM=${MIN_ZOOM:-0}
 readonly MAX_ZOOM=${MAX_ZOOM:-10}
 readonly COPY_CONCURRENCY=${COPY_CONCURRENCY:-20}
 readonly BBOX=${BBOX:-"-180.0,-85.0511,180.0,85.0511"}
-FUNCZXY="gettile"
+FUNCZXY="getmvt"
 
 PQGUERY="pgquery://?database=$PGDATABASE&host=postgres&username=$PGUSER&password=$PGPASSWORD&funcZXY=$FUNCZXY&testOnStartup=false&name=swisstopo"
 echo $PQGUERY
