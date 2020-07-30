@@ -9,9 +9,8 @@ readonly MIN_ZOOM=${MIN_ZOOM:-0}
 readonly MAX_ZOOM=${MAX_ZOOM:-10}
 readonly COPY_CONCURRENCY=${COPY_CONCURRENCY:-20}
 readonly BBOX=${BBOX:-"-180.0,-85.0511,180.0,85.0511"}
-FUNCZXY="getmvt"
 
-PQGUERY="pgquery://?database=$PGDATABASE&host=postgres&username=$PGUSER&password=$PGPASSWORD&funcZXY=$FUNCZXY&testOnStartup=false&name=swisstopo"
+PQGUERY="pgquery://?database=$PGDATABASE&host=postgres&username=$PGUSER&password=$PGPASSWORD&funcZXY=getmvt&testOnStartup=false"
 echo $PQGUERY
 
 function export_local_mbtiles() {
