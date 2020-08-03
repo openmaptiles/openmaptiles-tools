@@ -17,7 +17,7 @@ CPU=16  # number of CPUs per postgres server
 MAXCONNECTIONS=$(( CPU + CPU / 10 ))
 ALL_STREAMS=$(( MAXCONNECTIONS * HOST_COUNT ))
 
-PQGUERY="pgquery://?database=$PGDATABASE&$PGHOSTS_LIST&port=$PGPORT&username=$PGUSER&password=$PGPASSWORD&funcZXY=getmvt&testOnStartup=false&maxpool=$MAXCONNECTIONS"
+PQGUERY="pgquery://?database=$PGDATABASE&$PGHOSTS_LIST&port=$PGPORT&username=$PGUSER&password=$PGPASSWORD&funcZXY=getmvt&testOnStartup=false&maxpool=$MAXCONNECTIONS&nogzip=1"
 echo $PQGUERY
 
 function export_local_mbtiles() {
