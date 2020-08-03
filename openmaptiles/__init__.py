@@ -1,1 +1,1 @@
-__version__ = "5.2.0"
+__version__ = "test-5.0-pg12-3.0"

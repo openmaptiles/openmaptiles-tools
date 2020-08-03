@@ -13,4 +13,5 @@ VOLUME /export
 ENV EXPORT_DIR=/export TILELIVE_BIN=tl
 
 COPY . /usr/src/app/
-CMD ["/usr/src/app/export-local-pgquery.sh"]
+#CMD ["/usr/src/app/export-local-pgquery.sh"]
+CMD ["/usr/src/app/export-local-pgquery-pool.sh"]
