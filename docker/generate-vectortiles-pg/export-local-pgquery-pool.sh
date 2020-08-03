@@ -33,5 +33,5 @@ function export_local_mbtiles() {
 }
 
 #echo "Generating zoom from $MIN_ZOOM to $MAX_ZOOM."
-echo "Generating zoom $START_ZOOM..$MID_ZOOM from $HOST_COUNT servers, using $MAXCONNECTIONS connections per server, $ALL_STREAMS streams"
+echo "Generating zoom $MIN_ZOOM..$MAX_ZOOM from $HOST_COUNT servers, using $MAXCONNECTIONS connections per server, $ALL_STREAMS streams"
 export_local_mbtiles
