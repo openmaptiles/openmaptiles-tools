@@ -7,6 +7,8 @@ import sys
 import yaml
 from deprecated import deprecated
 
+from .utils import print_err
+
 
 def tag_fields_to_sql(fields):
     """Converts a list of fields stored in the tags hstore into a list of SQL fields:
@@ -364,8 +366,8 @@ def parse_file(file: Path) -> dict:
         try:
             return yaml.full_load(stream)
         except yaml.YAMLError as e:
-            print(f'Could not parse {file}')
-            print(e)
+            print_err(f"Could not parse {file}")
+            print_err(e)
             sys.exit(1)
 
 
