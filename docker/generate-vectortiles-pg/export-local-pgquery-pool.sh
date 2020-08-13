@@ -17,7 +17,7 @@ readonly CPU=${CPU:-16}  # number of CPUs per postgres server
 readonly MAXCONNECTIONS=$(( CPU + CPU / 10 ))
 readonly ALL_STREAMS=$(( MAXCONNECTIONS * HOST_COUNT ))
 
-PQGUERY="pgquery://?database=$PGDATABASE&$PGHOSTS_LIST&port=$PGPORT&username=$PGUSER&password=$PGPASSWORD&funcZXY=getmvt&testOnStartup=false&maxpool=$MAXCONNECTIONS&nogzip=1"
+PQGUERY="pgquery://?database=$PGDATABASE&$PGHOSTS_LIST&port=$PGPORT&username=$PGUSER&password=$PGPASSWORD&funcZXY=getmvt&testOnStartup=false&maxpool=$MAXCONNECTIONS&nogzip=1&key=true"
 echo $PQGUERY
 
 function export_local_mbtiles() {
