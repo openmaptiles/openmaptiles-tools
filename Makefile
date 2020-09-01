@@ -63,12 +63,6 @@ build-generate-vectortiles:
 		$(foreach ver, $(VERSION), --tag $(IMAGE_REPO)/generate-vectortiles:$(ver)) \
 		docker/generate-vectortiles
 
-.PHONY: build-generate-vectortiles-pg
-build-generate-vectortiles-pg:
-	docker build $(DOCKER_BUILD_EXTRAS) \
-		$(foreach ver, $(VERSION), --tag $(IMAGE_REPO)/generate-vectortiles-pg:$(ver)) \
-		docker/generate-vectortiles-pg
-
 .PHONY: build-postgis
 build-postgis:
 	docker build $(DOCKER_BUILD_EXTRAS) \
