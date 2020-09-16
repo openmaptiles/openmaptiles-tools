@@ -16,7 +16,7 @@ def collect_sql(tileset_filename, parallel=False, nodata=False
     tileset = Tileset(tileset_filename)
 
     run_first = "-- This SQL code should be executed first\n\n" + \
-                get_slice_language_tags(tileset.languages)
+                get_slice_language_tags(tileset)
     # at this point we don't have any SQL to run at the end
     run_last = "-- This SQL code should be executed last\n"
 
@@ -84,13 +84,29 @@ DO $$ BEGIN RAISE NOTICE 'Finished layer {layer.id}'; END$$;
     return sql.strip() + "\n"
 
 
-def get_slice_language_tags(languages):
-    include_tags = list(map(lambda l: 'name:' + l, languages))
+def get_slice_language_tags(tileset):
+    include_tags = list(map(lambda l: 'name:' + l, tileset.languages))
     include_tags.append('int_name')
     include_tags.append('loc_name')
     include_tags.append('name')
     include_tags.append('wikidata')
     include_tags.append('wikipedia')
+
+    r = re.compile(r'(?:^|[_:])name(?:[_:]|$)')
+    for layer in tileset.layers:
+        for mapping in layer.imposm_mappings:
+            for tags_key, tags_val in mapping.get('tags', {}).items():
+                if tags_key == 'include':
+                    if not isinstance(tags_val, list) or any(
+                        (v for v in tags_val if not v or not isinstance(v, str))
+                    ):
+                        raise ValueError(f"Tileset {tileset.name} mapping's "
+                                         f"tags/include must be a list of strings")
+                    include_tags += (v for v in tags_val if r.search(v) and v not in include_tags)
+                else:
+                    raise ValueError(f"Tileset {tileset.name} mapping tags "
+                                     f"uses an unsupported key '{tags_key}'")
+
 
     tags_sql = "'" + "', '".join(include_tags) + "'"
 
