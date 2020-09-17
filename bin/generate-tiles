@@ -1,0 +1,50 @@
+#!/bin/bash
+set -o errexit
+set -o pipefail
+set -o nounset
+
+# For backward compatibility, allow both PG* and POSTGRES_* forms,
+# with the non-standard POSTGRES_* form taking precedence.
+# An error will be raised if neither form is given, except for the PGPORT
+export PGHOST="${POSTGRES_HOST:-${PGHOST?}}" # "xxx.xxx.xxx.xxx&host=xxx.xxx.xxx.xxx&host=..."
+export PGDATABASE="${POSTGRES_DB:-${PGDATABASE?}}"
+export PGUSER="${POSTGRES_USER:-${PGUSER?}}"
+export PGPASSWORD="${POSTGRES_PASSWORD:-${PGPASSWORD?}}"
+export PGPORT="${POSTGRES_PORT:-${PGPORT:-5432}}"
+
+export FUNCZXY="${FUNCZXY:-getmvt}"
+export CPU=${CPU:-4}  # number of CPUs per postgres server
+export MAXCONNECTIONS=${MAXCONNECTIONS:-${CPU}}
+export NO_GZIP=${NO_GZIP:-1}
+export KEY=${KEY:-"true"}
+
+export EXPORT_DIR=${EXPORT_DIR:-/export}
+export MBTILES_FILE=${MBTILES_FILE:-tiles.mbtiles}
+export RENDER_SCHEME=${RENDER_SCHEME:-pyramid}
+export RETRY=${RETRY:-2}
+export BBOX=${BBOX:-"-180.0,-85.0511,180.0,85.0511"}
+export TIMEOUT=${TIMEOUT:-1800000}
+export MIN_ZOOM=${MIN_ZOOM:-0}
+export MAX_ZOOM=${MAX_ZOOM:-14}
+export HOST_COUNT=${HOST_COUNT:-1}  # number of postgres servers
+export ALL_STREAMS=$(( MAXCONNECTIONS * HOST_COUNT ))
+
+export PGQUERY="pgquery://?database=$PGDATABASE&host=$PGHOST&port=$PGPORT&username=$PGUSER&password=$PGPASSWORD&funcZXY=$FUNCZXY&testOnStartup=false&maxpool=$MAXCONNECTIONS&nogzip=$NO_GZIP&key=$KEY"
+echo $PGQUERY
+
+function export_local_mbtiles() {
+	exec tilelive-copy \
+        --scheme="$RENDER_SCHEME" \
+        --retry="$RETRY" \
+        --bounds="$BBOX" \
+        --timeout="$TIMEOUT" \
+        --minzoom="$MIN_ZOOM" \
+        --maxzoom="$MAX_ZOOM" \
+        --concurrency="$ALL_STREAMS" \
+        "$PGQUERY" \
+        "mbtiles://${EXPORT_DIR}/${MBTILES_FILE}"
+}
+
+#echo "Generating zoom from $MIN_ZOOM to $MAX_ZOOM."
+echo "Generating zoom $MIN_ZOOM..$MAX_ZOOM from $HOST_COUNT servers, using $MAXCONNECTIONS connections per server, $ALL_STREAMS streams"
+export_local_mbtiles
