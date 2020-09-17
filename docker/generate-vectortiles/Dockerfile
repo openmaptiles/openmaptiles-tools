@@ -1,16 +1,25 @@
-FROM node:5
+FROM node:12
 MAINTAINER Lukas Martinelli <me@lukasmartinelli.ch>
+
+# to resolve sqlite3 permission errors
+USER node
+RUN mkdir -p /home/node/.npm-global ; \
+    chown -R node:node /home/node/.npm-global
+ENV PATH=/home/node/.npm-global/bin:$PATH
+ENV NPM_CONFIG_PREFIX=/home/node/.npm-global
 
 WORKDIR /usr/src/app
 RUN npm install -g \
-          tl@0.8.1 \
-          mapnik@3.5.13 \
-          mbtiles@0.8.2 \
-          tilelive@5.12.2 \
-          tilelive-tmsource@0.5.0 \
-          tilelive-vector@3.9.3 \
-          tilelive-bridge@2.3.1 \
-          tilelive-mapnik@0.6.18
+          tl@0.10.2 \
+          mapnik@4.5.2 \
+          git+https://github.com/mapbox/node-mbtiles.git \
+          # bump progress-stream to 2.0.0
+          git+https://github.com/smellman/tilelive#debug2 \
+          # @mapbox/tilelive@6.1.0 \
+          git+https://github.com/smellman/tilelive-tmsource.git#dev-0.9.0b \
+          @mapbox/tilelive-vector@4.2.0 \
+          @mapbox/tilelive-bridge@3.2.1 \
+          git+https://github.com/smellman/tilelive-mapnik#dev-1.1.0
 
 VOLUME /tm2source /export
 ENV SOURCE_PROJECT_DIR=/tm2source EXPORT_DIR=/export TILELIVE_BIN=tl
