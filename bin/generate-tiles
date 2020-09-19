@@ -6,17 +6,38 @@ set -o nounset
 # For backward compatibility, allow both PG* and POSTGRES_* forms,
 # with the non-standard POSTGRES_* form taking precedence.
 # An error will be raised if neither form is given, except for the PGPORT
-export PGHOST="${POSTGRES_HOST:-${PGHOST?}}" # "xxx.xxx.xxx.xxx&host=xxx.xxx.xxx.xxx&host=..."
+export PGHOST="${POSTGRES_HOST:-${PGHOST?}}"
 export PGDATABASE="${POSTGRES_DB:-${PGDATABASE?}}"
 export PGUSER="${POSTGRES_USER:-${PGUSER?}}"
 export PGPASSWORD="${POSTGRES_PASSWORD:-${PGPASSWORD?}}"
 export PGPORT="${POSTGRES_PORT:-${PGPORT:-5432}}"
 
+# List of postgres servers
+if [[ -z "${PGHOSTS_LIST}" ]] # "xxx.xxx.xxx.xxx&host=xxx.xxx.xxx.xxx&host=..."
+then
+  export HOST_COUNT=1
+  export PGHOSTS="${PGHOST}"
+else
+  export HOST_COUNT=`awk -F"&" '{print NF}' <<< "${PGHOSTS_LIST}"`
+  export PGHOSTS="${PGHOSTS_LIST}"
+fi
+
+export NO_GZIP=${NO_GZIP:-1}
+if [[ ${NO_GZIP} ]] && [[ ! ${NO_GZIP} == "0" ]] && [[ ! ${NO_GZIP} == "true" ]]
+then
+  export NO_GZIP=1
+fi
+
+export KEY=${KEY:-1}
+if [[ ${KEY} ]] && [[ ! ${KEY} == "0" ]] && [[ ! ${KEY} == "true" ]]
+then
+  export KEY=1
+fi
+
 export FUNCZXY="${FUNCZXY:-getmvt}"
 export CPU=${CPU:-4}  # number of CPUs per postgres server
 export MAXCONNECTIONS=${MAXCONNECTIONS:-${CPU}}
-export NO_GZIP=${NO_GZIP:-1}
-export KEY=${KEY:-"true"}
+export ALL_STREAMS=$(( MAXCONNECTIONS * HOST_COUNT ))
 
 export EXPORT_DIR=${EXPORT_DIR:-/export}
 export MBTILES_FILE=${MBTILES_FILE:-tiles.mbtiles}
@@ -26,10 +47,8 @@ export BBOX=${BBOX:-"-180.0,-85.0511,180.0,85.0511"}
 export TIMEOUT=${TIMEOUT:-1800000}
 export MIN_ZOOM=${MIN_ZOOM:-0}
 export MAX_ZOOM=${MAX_ZOOM:-14}
-export HOST_COUNT=${HOST_COUNT:-1}  # number of postgres servers
-export ALL_STREAMS=$(( MAXCONNECTIONS * HOST_COUNT ))
 
-export PGQUERY="pgquery://?database=$PGDATABASE&host=$PGHOST&port=$PGPORT&username=$PGUSER&password=$PGPASSWORD&funcZXY=$FUNCZXY&testOnStartup=false&maxpool=$MAXCONNECTIONS&nogzip=$NO_GZIP&key=$KEY"
+export PGQUERY="pgquery://?database=${PGDATABASE}&host=${PGHOST}&port=${PGPORT}&username=${PGUSER}&password=${PGPASSWORD}&funcZXY=${FUNCZXY}&testOnStartup=false&maxpool=${MAXCONNECTIONS}&nogzip=${NO_GZIP}&key=${KEY}"
 echo $PGQUERY
 
 function export_local_mbtiles() {
