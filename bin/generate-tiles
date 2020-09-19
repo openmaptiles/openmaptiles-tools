@@ -35,8 +35,8 @@ then
 fi
 
 export FUNCZXY="${FUNCZXY:-getmvt}"
-export CPU=${CPU:-4}  # number of CPUs per postgres server
-export MAXCONNECTIONS=${MAXCONNECTIONS:-${CPU}}
+export COPY_CONCURRENCY=${COPY_CONCURRENCY:-1}  # number of CPUs per postgres server
+export MAXCONNECTIONS=${MAXCONNECTIONS:-${COPY_CONCURRENCY}}
 export ALL_STREAMS=$(( MAXCONNECTIONS * HOST_COUNT ))
 
 export EXPORT_DIR=${EXPORT_DIR:-/export}
