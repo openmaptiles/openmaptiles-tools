@@ -65,6 +65,5 @@ function export_local_mbtiles() {
         "mbtiles://${EXPORT_DIR}/${MBTILES_FILE}"
 }
 
-#echo "Generating zoom from $MIN_ZOOM to $MAX_ZOOM."
 echo "Generating zoom $MIN_ZOOM..$MAX_ZOOM from $HOST_COUNT servers, using $MAX_HOST_CONNECTIONS connections per server, $ALL_STREAMS parallel streams..."
-#export_local_mbtiles
+export_local_mbtiles
