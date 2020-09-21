@@ -120,6 +120,17 @@ RUN set -eux ;\
         libleveldb-dev \
         libprotobuf-dev \
         ;\
+    # generate-tiles
+    curl -sL https://deb.nodesource.com/setup_12.x | bash -  ;\
+    DEBIAN_FRONTEND=noninteractive apt-get update  ;\
+    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends  \
+        nodejs  ;\
+    rm -rf /var/lib/apt/lists/  ;\
+    npm config set unsafe-perm true  ;\
+    npm install -g \
+      @mapbox/mbtiles@0.12.1 \
+      @mapbox/tilelive@6.1.0 \
+      tilelive-pgquery@0.7.3 ;\
     \
     /bin/bash -c 'echo ""; echo ""; echo "##### Cleaning up"' >&2 ;\
     rm -rf /var/lib/apt/lists/*
