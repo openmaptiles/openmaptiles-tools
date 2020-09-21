@@ -6,7 +6,6 @@ from asyncpg import Connection
 # noinspection PyProtectedMember
 from docopt import DocoptExit
 
-from openmaptiles.consts import PIXEL_SCALE
 from openmaptiles.tileset import Tileset, Layer
 from openmaptiles.utils import find_duplicates
 
@@ -15,8 +14,11 @@ class MvtGenerator:
     layer_ids: Set[str]
     exclude_layers: bool  # if True, inverses layer_ids to use all except them
 
-    def __init__(self, tileset: Union[str, Tileset], postgis_ver: str,
-                 zoom: Union[str, int], x: Union[str, int], y: Union[str, int],
+    def __init__(self,
+                 tileset: Union[str, Tileset],
+                 postgis_ver: str,
+                 zoom: Union[None, str, int],
+                 x: Union[None, str, int], y: Union[None, str, int],
                  layer_ids: List[str] = None, exclude_layers=False,
                  key_column=False, gzip: Union[int, bool] = False,
                  use_feature_id: bool = None, test_geometry=False,
@@ -26,8 +28,8 @@ class MvtGenerator:
         else:
             self.tileset = tileset
         self.extent = extent
-        self.pixel_width = PIXEL_SCALE
-        self.pixel_height = PIXEL_SCALE
+        self.pixel_width = self.tileset.pixel_scale
+        self.pixel_height = self.tileset.pixel_scale
         self.key_column = key_column
         self.gzip = gzip
         self.test_geometry = test_geometry
@@ -108,7 +110,7 @@ PREPARE {fname}(integer, integer, integer) AS
 
         extras = ''
         if self.test_geometry:
-            extras += f', SUM(COALESCE(bad_geos, 0)) as bad_geos'
+            extras += f', SUM(COALESCE(_bad_geos_, 0)) as _bad_geos_'
 
         concatenate_layers = "STRING_AGG(mvtl, '')"
         # Handle when gzip is True or a number
@@ -132,7 +134,7 @@ SELECT {concatenate_layers} AS mvt{extras} FROM (
 
         if self.key_column:
             query = f"SELECT mvt, md5(mvt) AS key" \
-                    f"{', bad_geos' if self.test_geometry else ''} " \
+                    f"{', _bad_geos_' if self.test_geometry else ''} " \
                     f"FROM ({query}) AS mvt_data"
 
         return query + '\n'
@@ -143,7 +145,7 @@ SELECT {concatenate_layers} AS mvt{extras} FROM (
         """
         columns = None
         if self.test_geometry:
-            columns = f"(1-ST_IsValid({layer.geometry_field})::int) as bad_geos"
+            columns = f"(1-ST_IsValid({layer.geometry_field})::int) as _bad_geos_"
         query = self.layer_to_query(layer, extra_columns=columns)
 
         extras = ''
@@ -151,8 +153,8 @@ SELECT {concatenate_layers} AS mvt{extras} FROM (
             # Count the number of invalid regular & mvt geometries (should always be 0)
             extras += f', SUM((1' \
                       f'-COALESCE(ST_IsValid(mvtgeometry)::int, 1))' \
-                      f'+COALESCE(bad_geos, 0)' \
-                      f') as bad_geos'
+                      f'+COALESCE(_bad_geos_, 0)' \
+                      f') as _bad_geos_'
         if order_layers:
             extras += f', {layer.index} as _layer_index'
 
@@ -189,9 +191,11 @@ as mvtl{extras} FROM {query}"""
                        mvt_geometry_wrapper: Callable[[str], str] = None,
                        extra_columns: str = None) -> str:
         query = layer.query
-        if self.zoom is not None:
-            query = self.substitute_sql(query, layer, self.zoom, self.x, self.y)
+        if self.zoom is None:
+            return query
 
+        bbox = self.tile_to_bbox(layer, self.zoom, self.x, self.y)
+        query = self.substitute_sql(query, self.zoom, bbox)
         replacement = ''
         if to_mvt_geometry:
             replacement = f"ST_AsMVTGeom(" \
@@ -218,24 +222,25 @@ as mvtl{extras} FROM {query}"""
 
         return query
 
-    def bbox(self, zoom, x, y, margin=None):
-        margin_str = '' if margin is None else f", {margin}"
-        return f"{self.tile_envelope}({zoom}, {x}, {y}{margin_str})"
-
-    def substitute_sql(self, query, layer: Layer, zoom, x, y):
+    def tile_to_bbox(self, layer: Layer, zoom, x, y):
         # A zoom 0 tile has width/height of 40075016.6855785 units
         # Buffer expressed as a percentage of a tile width gives us this formula.
         # Every subsequent zoom divides it by 2
         if layer.buffer_size > 0:
             if not self.tile_envelope_margin:
                 percentage = 40075016.6855785 * layer.buffer_size / self.extent
-                bbox = f"ST_Expand({self.bbox(zoom, x, y)}, {percentage}/2^{zoom})"
+                return f"ST_Expand({self.bbox(zoom, x, y)}, {percentage}/2^{zoom})"
             else:
                 # Once https://github.com/postgis/postgis/pull/514 is merged
-                bbox = self.bbox(zoom, x, y, float(layer.buffer_size) / self.extent)
+                return self.bbox(zoom, x, y, float(layer.buffer_size) / self.extent)
         else:
-            bbox = self.bbox(zoom, x, y)
+            return self.bbox(zoom, x, y)
 
+    def bbox(self, zoom, x, y, margin=None):
+        margin_str = '' if margin is None else f", {margin}"
+        return f"{self.tile_envelope}({zoom}, {x}, {y}{margin_str})"
+
+    def substitute_sql(self, query, zoom, bbox):
         query = (query
                  .replace("!bbox!", bbox)
                  .replace("z(!scale_denominator!)", str(zoom))
@@ -287,7 +292,7 @@ as mvtl{extras} FROM {query}"""
         self, connection: Connection, layer: Layer
     ) -> Dict[str, str]:
         """Get field names => SQL types (oid) by executing a dummy query"""
-        query = self.substitute_sql(layer.query, layer, 0, 0, 0)
+        query = self.substitute_sql(layer.query, 0, self.bbox(0, 0, 0))
         st = await connection.prepare(f"SELECT * FROM {query} WHERE false LIMIT 0")
         return {fld.name: fld.type.oid for fld in st.get_attributes()}
 

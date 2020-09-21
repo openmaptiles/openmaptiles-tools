@@ -2,12 +2,12 @@
 """
 Usage:
   download-osm list <service> [-l] [-c]
+  download-osm make-dc <pbf-file> -d <file> [-i <z>] [-a <z>] [-x <v>] [--id <id>]
   download-osm planet [-o <file> [-f]] [-j <file> [-k <kv>]...] [-d <file> [-i <z>]
                [-l] [-p] [-n] [-v] [-a <z>] [-x <v>]] [--] [<aria2c_args>...]
   download-osm [url|geofabrik|osmfr|bbbike] <area_or_url> [-o <file> [-f]] [-s <file>]
                [-j <file> [-k <kv>]...] [-l] [-c] [-n] [-v]
                [-d <file> [-i <z>] [-a <z>] [-x <v>] [--id <id>]] [--] [<aria2c_args>...]
-  download-osm make-dc <pbf-file> -d <file> [-i <z>] [-a <z>] [-x <v>] [--id <id>]
   download-osm --help
   download-osm --version
 
@@ -549,6 +549,8 @@ async def save_state_file(session, state_url, state_file):
 def save_cfg_file(dry_run, cfg_file, repl_url, extras):
     cfg_file = Path(cfg_file).resolve()
     print(f"{'Would create' if dry_run else 'Creating'} Imposm config file {cfg_file}:")
+    if not repl_url.endswith("/"):
+        repl_url += '/'
     if repl_url.endswith("/minute/"):
         interval = "1m"
     elif repl_url.endswith("/hour/"):
@@ -628,18 +630,24 @@ def make_docker_compose_file(pbf_file: Path, dc_file: Path,
         lon_max = res["lon max"]
         lat_min = res["lat min"]
         lat_max = res["lat max"]
-        timestamp_max = res["timestamp max"]
+        timestamp_max = res["timestamp max"] if "timestamp max" in res else None
+        env_values = {
+            "environment": {
+                "BBOX": f"{lon_min},{lat_min},{lon_max},{lat_max}",
+                "OSM_MAX_TIMESTAMP": timestamp_max,
+                "OSM_AREA_NAME": area or pbf_file.name.split('.', 1)[0],
+                "MIN_ZOOM": min_zoom,
+                "MAX_ZOOM": max_zoom,
+            }}
+        if timestamp_max is None:
+            # Deleting is better than adding because it keeps key ordering intact
+            del env_values["environment"]["OSM_MAX_TIMESTAMP"]
         dc_data = {
             "version": str(dc_ver),
             "services": {
-                "generate-vectortiles": {
-                    "environment": {
-                        "BBOX": f"{lon_min},{lat_min},{lon_max},{lat_max}",
-                        "OSM_MAX_TIMESTAMP": timestamp_max,
-                        "OSM_AREA_NAME": area or pbf_file.name.split('.', 1)[0],
-                        "MIN_ZOOM": min_zoom,
-                        "MAX_ZOOM": max_zoom,
-                    }}}}
+                "openmaptiles-tools": env_values,
+                "generate-vectortiles": env_values,
+            }}
         print(f"Saving metadata to {dc_file}...")
         with dc_file.open('w') as yaml_file:
             yaml.dump(dc_data, yaml_file, sort_keys=False)

@@ -42,7 +42,7 @@ gcloud compute instances \
 Login into the newly created VM. The OpenMapTiles and OpenMapTiles-tools repos will be automatically cloned on the first login.
 
 ```bash
-# SSH to the machine, and 
+# SSH to the machine, and proxy port 8090 to it for testing
 gcloud compute ssh --project $GOOGLE_PROJECT_ID $TEST_VM_NAME --zone=$GOOGLE_ZONE_NAME -- -L 8090:localhost:8090
 
 # if you don't see openmaptiles files, logoff/login - the script hasn't finished yet
@@ -51,7 +51,7 @@ ls
 sudo tail -f -n 1000 /var/log/syslog | grep 'startup-script:'
 ```
 
-Note that the script automatically starts [tmux](https://github.com/tmux/tmux/wiki/Getting-Started) session, so in the event of disconnect your work will not be lost. 
+Note that the script automatically starts [tmux](https://github.com/tmux/tmux/wiki/Getting-Started) session, so in the event of disconnect your work will not be lost.
 
 #### Init OpenMapTiles database
 Once started and docker is accessible with `docker ps` command, check out the needed git branch and create the database.
@@ -84,4 +84,4 @@ docker logs openmaptiles_postserve_1  -f
 ```
 
 Now open [https://maputnik.github.io/editor/](https://maputnik.github.io/editor/#12.83/43.73757/7.42704), click `Data Sources`, and at the very TOP modify **TileJSON URL** to `http://localhost:8090`, and click the `X` in the upper right corner. Observe tile requests in the log. The `-L 8090:localhost:8090` ssh parameter in `gcloud` command above is what proxies tile requests from your local machine to the server.
- 
+

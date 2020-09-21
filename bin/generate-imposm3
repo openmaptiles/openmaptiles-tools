@@ -17,4 +17,4 @@ from openmaptiles.imposm import create_imposm3_mapping
 if __name__ == '__main__':
     args = docopt(__doc__, version=openmaptiles.__version__)
     mapping = create_imposm3_mapping(args['<tileset>'])
-    print(yaml.safe_dump(mapping))
+    print(yaml.safe_dump(mapping, sort_keys=False))

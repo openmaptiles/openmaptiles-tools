@@ -14,11 +14,11 @@ Layer:
     password: pgpswd
     port: 5432
     srid: 900913
-    table: (SELECT geometry, housenumber, NULLIF(tags->'name:en', '') AS "name:en",
-      NULLIF(tags->'name:de', '') AS "name:de", NULLIF(tags->'name:cs', '') AS "name:cs",
-      NULLIF(tags->'name_int', '') AS "name_int", NULLIF(tags->'name:latin', '') AS
-      "name:latin", NULLIF(tags->'name:nonlatin', '') AS "name:nonlatin" FROM layer_housenumber(!bbox!,
-      z(!scale_denominator!))) AS t
+    table: (SELECT !bbox! as geometry, z(!scale_denominator!) AS housenumber, NULLIF(tags->'name:en',
+      '') AS "name:en", NULLIF(tags->'name:de', '') AS "name:de", NULLIF(tags->'name:cs',
+      '') AS "name:cs", NULLIF(tags->'name_int', '') AS "name_int", NULLIF(tags->'name:latin',
+      '') AS "name:latin", NULLIF(tags->'name:nonlatin', '') AS "name:nonlatin" FROM
+      (SELECT 'name:en=>"enname"'::hstore as tags) AS tt) AS t
     type: postgis
     user: pguser
   id: housenumber
@@ -41,8 +41,8 @@ Layer:
     password: pgpswd
     port: 5432
     srid: 900913
-    table: (SELECT osm_id, geometry, enumfield FROM layer_enumfields(!bbox!, z(!scale_denominator!)))
-      AS t
+    table: (SELECT !bbox! as geometry, z(!scale_denominator!) AS osm_id, 'foo' AS
+      class) AS t
     type: postgis
     user: pguser
   id: enumfield

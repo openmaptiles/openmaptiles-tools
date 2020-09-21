@@ -63,7 +63,6 @@ class GetTile(RequestHandledWithCors):
 
         self.set_header("Content-Type", "application/x-protobuf")
         self.set_header("Content-Disposition", "attachment")
-        self.set_header("Access-Control-Allow-Origin", "*")
         try:
             async with self.pool.acquire() as connection:
                 connection.add_log_listener(logger)
@@ -77,7 +76,7 @@ class GetTile(RequestHandledWithCors):
                     row = await connection.fetchrow(query, zoom, x, y)
                     tile = row['mvt']
                     key = row['key'] if self.key_column else None
-                    bad_geos = row['bad_geos'] if self.test_geometry else 0
+                    bad_geos = row['_bad_geos_'] if self.test_geometry else 0
                 else:
                     tile = await connection.fetchval(query, zoom, x, y)
                     key = None

@@ -31,7 +31,7 @@ fi
 
 
 if [ -z ${1+x} ] || [ "$1" = "natural-earth" ]; then
-  echo "Importing Natual Earth $INFO..."
+  echo "Importing Natural Earth $INFO..."
   PGCLIENTENCODING=UTF8 ogr2ogr \
     -progress \
     -f Postgresql \
