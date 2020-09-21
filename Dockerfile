@@ -130,7 +130,7 @@ RUN set -eux ;\
     npm install -g \
       @mapbox/mbtiles@0.12.1 \
       @mapbox/tilelive@6.1.0 \
-      tilelive-pgquery@0.7.2 ;\
+      tilelive-pgquery@0.7.3 ;\
     \
     /bin/bash -c 'echo ""; echo ""; echo "##### Cleaning up"' >&2 ;\
     rm -rf /var/lib/apt/lists/*
