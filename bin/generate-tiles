@@ -22,20 +22,25 @@ else
   export PGHOSTS="${PGHOSTS_LIST}"
 fi
 
-export NO_GZIP=${NO_GZIP:-1}
-if [[ ${NO_GZIP} ]] && [[ ! ${NO_GZIP} == "0" ]] && [[ ! ${NO_GZIP} == "true" ]]
-then
-  export NO_GZIP=1
+if [[ -n "${NO_GZIP:-}" ]] && [[ "${NO_GZIP:-}" != "0" ]] && [[ "${NO_GZIP:-}" != "false" ]]; then
+  export NO_GZIP="&nogzip=1"
+else
+  export NO_GZIP=
 fi
 
-export USE_KEY_COLUMN=${USE_KEY_COLUMN:-1}
-if [[ ${USE_KEY_COLUMN} ]] && [[ ! ${USE_KEY_COLUMN} == "0" ]] && [[ ! ${USE_KEY_COLUMN} == "true" ]]
-then
-  export USE_KEY_COLUMN=1
+if [[ -n "${USE_KEY_COLUMN:-}" ]] && [[ "${USE_KEY_COLUMN:-}" != "0" ]] && [[ "${USE_KEY_COLUMN:-}" != "false" ]]; then
+  export USE_KEY_COLUMN="&key=1"
+else
+  export USE_KEY_COLUMN=
+fi
+
+if [[ -n "${TEST_ON_STARTUP:-}" ]] && [[ "${TEST_ON_STARTUP:-}" != "0" ]] && [[ "${TEST_ON_STARTUP:-}" != "false" ]]; then
+  export TEST_ON_STARTUP_TILE="&testOnStartup=${TEST_ON_STARTUP}"
+else
+  export TEST_ON_STARTUP_TILE=
 fi
 
 export FUNC_ZXY=${FUNC_ZXY:-getmvt}
-export TEST_ON_STARTUP="${TEST_ON_STARTUP:-"14/9268/3575"}"
 export COPY_CONCURRENCY=${COPY_CONCURRENCY:-1}  # number of CPUs per postgres server
 export MAX_HOST_CONNECTIONS=${MAX_HOST_CONNECTIONS:-${COPY_CONCURRENCY}}
 export ALL_STREAMS=$(( MAX_HOST_CONNECTIONS * HOST_COUNT ))
@@ -49,7 +54,7 @@ export TIMEOUT=${TIMEOUT:-1800000}
 export MIN_ZOOM=${MIN_ZOOM:-0}
 export MAX_ZOOM=${MAX_ZOOM:-14}
 
-export PGQUERY="pgquery://?database=${PGDATABASE}&host=${PGHOST}&port=${PGPORT}&username=${PGUSER}&password=${PGPASSWORD}&funcZXY=${FUNC_ZXY}&testOnStartup=${TEST_ON_STARTUP}&maxpool=${MAX_HOST_CONNECTIONS}&nogzip=${NO_GZIP}&key=${USE_KEY_COLUMN}"
+export PGQUERY="pgquery://?database=${PGDATABASE}&host=${PGHOST}&port=${PGPORT}&username=${PGUSER}&password=${PGPASSWORD}&funcZXY=${FUNC_ZXY}&maxpool=${MAX_HOST_CONNECTIONS}${NO_GZIP}${USE_KEY_COLUMN}${TEST_ON_STARTUP_TILE}"
 echo $PGQUERY
 
 function export_local_mbtiles() {
