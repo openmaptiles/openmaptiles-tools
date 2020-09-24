@@ -103,8 +103,11 @@ class Layer:
         ]
         self.schemas = [f"-- Layer {self.id} - {p}\n\n{d}" for p, d in schemas]
 
-        self.fields = [Field(k, v) for k, v in
-                       self.definition['layer']['fields'].items()]
+        if self.definition['layer'].get('fields'):
+            self.fields = [Field(k, v) for k, v in
+                        self.definition['layer']['fields'].items()]
+        else:
+            self.fields = []
 
         if 'requires' in self.definition['layer']:
             self.requires = self.definition['layer']['requires']
@@ -144,7 +147,10 @@ class Layer:
     def get_fields(self) -> List[str]:
         """Get a list of field names this layer generates.
            Geometry field is not included."""
-        layer_fields = list(self.definition['layer']['fields'].keys())
+        if self.definition['layer'].get('fields'):
+            layer_fields = list(self.definition['layer']['fields'].keys())
+        else:
+            layer_fields = []
         if self.key_field:
             layer_fields.append(self.key_field)
         if self.tileset and self.has_localized_names:
