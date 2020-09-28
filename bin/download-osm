@@ -2,11 +2,11 @@
 """
 Usage:
   download-osm list <service> [-l] [-c]
-  download-osm bbox <pbf-file> <env-file> [-v]
-  download-osm planet [-o <file> [-f] [-b <env-file>]] [-j <file> [-k <kv>]...]
+  download-osm bbox <pbf-file> <bbox-file> [-v]
+  download-osm planet [-o <file> [-f] [-b <bbox-file>]] [-j <file> [-k <kv>]...]
                [-l] [-p] [-n] [-v]  [--]  [<aria2c_args>...]
   download-osm [url|geofabrik|osmfr|bbbike] <area_or_url>
-               [-o <file> [-f] [-b <env-file>]] [-s <file>]
+               [-o <file> [-f] [-b <bbox-file>]] [-s <file>]
                [-l] [-c] [-n] [-v] [-j <file> [-k <kv>]...]  [--]  [<aria2c_args>...]
   download-osm --help
   download-osm --version
@@ -24,15 +24,15 @@ Download types:
   osmfr <id>       Loads file from openstreetmap.fr by extract ID, for example
                    "central-america/costa_rica".  Download will add '-latest.osm.pbf'.
                    See https://download.openstreetmap.fr/extracts
-  bbox             Compute bounding box for the given data pbf and save it to
-                   an .env-style file with a single line: BBOX=.....
+  bbox             Compute bounding box for the given data pbf and save the string to
+                   a text file with a single line.
 
 Options:
   -o --output <file>    Configure aria2c to save downloaded file under a given name.
                         If directory does not exist, it will be created.
                         If the file already exists, exits with an error, unless --force.
   -f --force            If set and file already exists, will delete it before downloading.
-  -b --bbox <file>      Similar to the "bbox" command, create a bbox env file.
+  -b --bbox <file>      Similar to the "bbox" command, create a bbox value file.
                         Uses bbox from the catalog if available, e.g. Geofabrik.
                         This param requires the --output option.
   -p --include-primary  If set, will download from the main osm.org (please avoid
@@ -629,13 +629,13 @@ def make_bbox_env_file(pbf_file, bbox_file):
 
 
 def save_bbox(bbox: str, bbox_file: Path):
-    print(f"Saving BBOX={bbox} to {bbox_file}...")
-    bbox_file.write_text(f"BBOX={bbox}\n", encoding="utf-8")
+    print(f"Saving computed BBOX {bbox} to {bbox_file}...")
+    bbox_file.write_text(f"{bbox}\n", encoding="utf-8")
 
 
 async def main_async(args):
     if args["bbox"]:
-        return make_bbox_env_file(args["<pbf-file>"], args["<env-file>"])
+        return make_bbox_env_file(args["<pbf-file>"], args["<bbox-file>"])
 
     if not args['--output'] and args['--bbox']:
         raise SystemExit("The --output param must be set when using --bbox")

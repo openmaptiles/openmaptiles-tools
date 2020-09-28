@@ -65,15 +65,15 @@ python -m http.server 8555 -d "$HTTPDIR" &
 trap "kill $!" EXIT
 
 download-osm url http://localhost:8555/monaco-20150428.osm.pbf \
-  --output "$TEMP_DIR/monaco-20150428.osm.pbf" --verbose --bbox "$BUILD/monaco.bbox.env"
+  --output "$TEMP_DIR/monaco-20150428.osm.pbf" --verbose --bbox "$BUILD/monaco.bbox"
 
-download-osm bbox "$TEMP_DIR/monaco-20150428.osm.pbf" "$BUILD/monaco.bbox.env" --verbose
+download-osm bbox "$TEMP_DIR/monaco-20150428.osm.pbf" "$BUILD/monaco.bbox" --verbose
 diff --brief "$HTTPDIR/monaco-20150428.osm.pbf" "$TEMP_DIR/monaco-20150428.osm.pbf"
 rm "$TEMP_DIR/monaco-20150428.osm.pbf"
 
 download-osm geofabrik monaco-test \
   --verbose --imposm-cfg "$BUILD/monaco-cfg.json" --kv foo=bar --kv replication_interval=4h \
-  --bbox "$BUILD/monaco2.bbox.yml" --output "$TEMP_DIR/monaco-20150428.osm.pbf"
+  --bbox "$BUILD/monaco2.bbox" --output "$TEMP_DIR/monaco-20150428.osm.pbf"
 diff --brief "$HTTPDIR/monaco-20150428.osm.pbf" "$TEMP_DIR/monaco-20150428.osm.pbf"
 rm "$TEMP_DIR/monaco-20150428.osm.pbf"
 
