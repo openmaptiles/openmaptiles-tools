@@ -17,7 +17,7 @@ function export_local_mbtiles() {
     echo "Generating tiles into $EXPORT_DIR/$MBTILES_NAME for zooms $MIN_ZOOM..$MAX_ZOOM inside ($BBOX) using $COPY_CONCURRENCY threads"
 
     filter_deprecation tilelive-copy \
-        --scheme=pyramid \
+        --scheme="$RENDER_SCHEME" \
         --bounds="$BBOX" \
         --timeout="$TILE_TIMEOUT" \
         --concurrency="$COPY_CONCURRENCY" \

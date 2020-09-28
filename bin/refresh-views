@@ -73,7 +73,7 @@ WITH objects AS (
         JOIN pg_rewrite r ON r.oid=d.objid
         JOIN pg_class c2 ON c2.oid=r.ev_class AND c2.oid != c.oid
         JOIN pg_namespace n2 ON c2.relnamespace=n2.oid
-        JOIN pg_authid au ON au.oid=c2.relowner
+        JOIN pg_roles au ON au.oid=c2.relowner
     WHERE c.relkind IN ('r','m','v','t','f')
 )
 (

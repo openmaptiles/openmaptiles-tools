@@ -101,6 +101,7 @@ RUN set -eux ;\
         git  \
         less \
         nano \
+        procps  `# ps command` \
         gnupg2  `# TODO: not sure why gnupg2 is needed`  ;\
     curl https://www.postgresql.org/media/keys/ACCC4CF8.asc | apt-key add - ;\
     /bin/bash -c 'source /etc/os-release && echo "deb http://apt.postgresql.org/pub/repos/apt/ ${VERSION_CODENAME:?}-pgdg main ${PG_MAJOR:?}" > /etc/apt/sources.list.d/pgdg.list' ;\
@@ -119,6 +120,17 @@ RUN set -eux ;\
         libleveldb-dev \
         libprotobuf-dev \
         ;\
+    # generate-tiles
+    curl -sL https://deb.nodesource.com/setup_12.x | bash -  ;\
+    DEBIAN_FRONTEND=noninteractive apt-get update  ;\
+    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends  \
+        nodejs  ;\
+    rm -rf /var/lib/apt/lists/  ;\
+    npm config set unsafe-perm true  ;\
+    npm install -g \
+      @mapbox/mbtiles@0.12.1 \
+      @mapbox/tilelive@6.1.0 \
+      tilelive-pgquery@0.7.3 ;\
     \
     /bin/bash -c 'echo ""; echo ""; echo "##### Cleaning up"' >&2 ;\
     rm -rf /var/lib/apt/lists/*
