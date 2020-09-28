@@ -1,63 +1,65 @@
 {
-    "DESCRIPTION": "This is a fake catalog of Geofabrik areas used in testing",
-    "type": "FeatureCollection",
-    "features": [
+    "DESCRIPTION" : "This is a fake catalog of Geofabrik areas used in testing",
+    "type" : "FeatureCollection",
+    "features" : [
         {
             "type": "Feature",
             "properties": {
-                "id": "monaco-test",
-                "parent": "europe",
-                "iso3166-1:alpha2": [
-                    "MC"
-                ],
-                "name": "A test file",
-                "urls": {
-                    "pbf": "http://localhost:8555/monaco-20150428.osm.pbf",
-                    "updates": "http://localhost:8555/fake-updates/"
+                "id" : "monaco-test",
+                "parent" : "europe",
+                "iso3166-1:alpha2" : [ "MC" ],
+                "name" : "A test file",
+                "urls" : {
+                    "pbf" : "http://localhost:8555/monaco-20150428.osm.pbf",
+                    "updates" : "http://localhost:8555/fake-updates/"
                 }
-            }
+            },
+            "geometry" : { "type" : "MultiPolygon", "coordinates" : [[[[7.448637,43.739920],[7.420651,43.723350],[7.409205,43.729330],[7.410161,43.730720],[7.411732,43.731390],[7.413011,43.731620],[7.412909,43.733790],[7.412364,43.734290],[7.415174,43.736180],[7.421612,43.740330],[7.421557,43.740800],[7.423117,43.741350],[7.424507,43.740690],[7.426007,43.742260],[7.427535,43.743690],[7.428709,43.745900],[7.430755,43.748850],[7.431923,43.748560],[7.433675,43.749520],[7.435904,43.749790],[7.437361,43.750830],[7.436782,43.751490],[7.437709,43.751690],[7.438827,43.751330],[7.438466,43.748990],[7.441831,43.745050],[7.448637,43.739920]]]]}
         },
         {
             "type": "Feature",
             "properties": {
-                "id": "us/michigan",
-                "parent": "north-america",
-                "iso3166-2": [
+                "id" : "us/michigan",
+                "parent" : "north-america",
+                "iso3166-2" : [
                     "US-MI"
                 ],
-                "name": "Michigan",
-                "urls": {
-                    "pbf": "https://download.geofabrik.de/north-america/us/michigan-latest.osm.pbf",
-                    "bz2": "https://download.geofabrik.de/north-america/us/michigan-latest.osm.bz2",
-                    "shp": "https://download.geofabrik.de/north-america/us/michigan-latest-free.shp.zip",
-                    "pbf-internal": "https://osm-internal.download.geofabrik.de/north-america/us/michigan-latest-internal.osm.pbf",
-                    "history": "https://osm-internal.download.geofabrik.de/north-america/us/michigan-internal.osh.pbf",
-                    "taginfo": "https://taginfo.geofabrik.de/north-america/us/michigan/",
-                    "updates": "https://download.geofabrik.de/north-america/us/michigan-updates"
+                "name" : "Michigan",
+                "urls" : {
+                    "pbf" : "https://download.geofabrik.de/north-america/us/michigan-latest.osm.pbf",
+                    "bz2" : "https://download.geofabrik.de/north-america/us/michigan-latest.osm.bz2",
+                    "shp" : "https://download.geofabrik.de/north-america/us/michigan-latest-free.shp.zip",
+                    "pbf-internal" : "https://osm-internal.download.geofabrik.de/north-america/us/michigan-latest-internal.osm.pbf",
+                    "history" : "https://osm-internal.download.geofabrik.de/north-america/us/michigan-internal.osh.pbf",
+                    "taginfo" : "https://taginfo.geofabrik.de/north-america/us/michigan/",
+                    "updates" : "https://download.geofabrik.de/north-america/us/michigan-updates"
                 }
-            }
+            },
+            "geometry" : { "type" : "MultiPolygon", "coordinates" : [[[[7.448637,43.739920],[7.420651,43.723350]]]]}
         },
         {
             "type": "Feature",
             "properties": {
-                "id": "europe",
-                "name": "Europe",
-                "urls": {
-                    "pbf": "https://download.geofabrik.de/europe-latest.osm.pbf",
-                    "updates": "http://localhost:8555/fake-europe-updates/"
+                "id" : "europe",
+                "name" : "Europe",
+                "urls" : {
+                    "pbf" : "https://download.geofabrik.de/europe-latest.osm.pbf",
+                    "updates" : "http://localhost:8555/fake-europe-updates/"
                 }
-            }
+            },
+            "geometry" : { "type" : "MultiPolygon", "coordinates" : [[[[7.448637,43.739920],[7.420651,43.723350]]]]}
         },
         {
             "type": "Feature",
             "properties": {
-                "id": "north-america",
-                "name": "North America",
-                "urls": {
-                    "pbf": "https://download.geofabrik.de/north-america-latest.osm.pbf",
-                    "updates": "http://localhost:8555/fake-north-america-updates/"
+                "id" : "north-america",
+                "name" : "North America",
+                "urls" : {
+                    "pbf" : "https://download.geofabrik.de/north-america-latest.osm.pbf",
+                    "updates" : "http://localhost:8555/fake-north-america-updates/"
                 }
-            }
+            },
+            "geometry" : { "type" : "MultiPolygon", "coordinates" : [[[[7.448637,43.739920],[7.420651,43.723350]]]]}
         }
     ]
 }

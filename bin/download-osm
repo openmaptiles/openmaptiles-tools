@@ -2,12 +2,12 @@
 """
 Usage:
   download-osm list <service> [-l] [-c]
-  download-osm make-dc <pbf-file> -d <file> [-i <z>] [-a <z>] [-x <v>] [--id <id>]
-  download-osm planet [-o <file> [-f]] [-j <file> [-k <kv>]...] [-d <file> [-i <z>]
-               [-l] [-p] [-n] [-v] [-a <z>] [-x <v>]] [--] [<aria2c_args>...]
-  download-osm [url|geofabrik|osmfr|bbbike] <area_or_url> [-o <file> [-f]] [-s <file>]
-               [-j <file> [-k <kv>]...] [-l] [-c] [-n] [-v]
-               [-d <file> [-i <z>] [-a <z>] [-x <v>] [--id <id>]] [--] [<aria2c_args>...]
+  download-osm bbox <pbf-file> <bbox-file> [-v]
+  download-osm planet [-o <file> [-f] [-b <bbox-file>]] [-j <file> [-k <kv>]...]
+               [-l] [-p] [-n] [-v]  [--]  [<aria2c_args>...]
+  download-osm [url|geofabrik|osmfr|bbbike] <area_or_url>
+               [-o <file> [-f] [-b <bbox-file>]] [-s <file>]
+               [-l] [-c] [-n] [-v] [-j <file> [-k <kv>]...]  [--]  [<aria2c_args>...]
   download-osm --help
   download-osm --version
 
@@ -24,15 +24,17 @@ Download types:
   osmfr <id>       Loads file from openstreetmap.fr by extract ID, for example
                    "central-america/costa_rica".  Download will add '-latest.osm.pbf'.
                    See https://download.openstreetmap.fr/extracts
-  make-dc          Analyze area data pbf file and generate Docker-Compose file with
-                   metadata, e.g. bounding box.  This action can be combined with
-                   the area downloads by setting the -d <file> parameter.
+  bbox             Compute bounding box for the given data pbf and save the string to
+                   a text file with a single line.
 
 Options:
   -o --output <file>    Configure aria2c to save downloaded file under a given name.
                         If directory does not exist, it will be created.
                         If the file already exists, exits with an error, unless --force.
   -f --force            If set and file already exists, will delete it before downloading.
+  -b --bbox <file>      Similar to the "bbox" command, create a bbox value file.
+                        Uses bbox from the catalog if available, e.g. Geofabrik.
+                        This param requires the --output option.
   -p --include-primary  If set, will download from the main osm.org (please avoid
                         using this parameter to reduce the load on the primary server)
   -l --force-latest     Always download the very latest available planet file,
@@ -44,15 +46,6 @@ Options:
                         replication_url param into it.  Use -k any additional values.
                         (requires planet, geofabrik, or osmfr download type)
   -k --kv <key=value>   Add extra key=value params to the imposm config (requires -j)
-  -d --make-dc <file>   Create a docker-compose file with the area metadata.
-  -x --dc-ver <ver>     Set docker-compose file version to this value.
-                        By default will be 2 unless MAKE_DC_VERSION env var is set.
-  -i --minzoom=<zoom>   Set minimum zoom when making docker compose file.
-                        By default will be 0 unless MIN_ZOOM env var is set.
-  -a --maxzoom=<zoom>   Set maximum zoom when making docker compose file.
-                        By default will be 7 unless MAX_ZOOM env var is set.
-  --id=<area_id>        Name of the area. If not set, will use filename.
-                        By default will be pbf file unless OSM_AREA_NAME env var is set.
   -n --dry-run          If set, do all the steps except the actual data download.
                         State file will still be downloaded if --state is set.
   -v --verbose          Print additional debugging information
@@ -68,13 +61,12 @@ Split is used to download with as many streams, as download-osm finds.
 Use  --split  or  -s  parameter to override that number. Use --dry-run
 to see all parameters downloader will use with aria2c without downloading.
 
-Internal callback mode:  If DOWNLOAD_OSM_DC_FILE env var is set, expects 3 parameters,
-where the 3rd parameter is the name of the PDF file. Will run make-dc command.
+Internal callback mode:  If DOWNLOAD_OSM_BBOX_FILE env var is set, expects 3 parameters,
+where the 3rd parameter is the name of the PDF file. Will run bbox command.
 """
 
 import asyncio
 import json
-import os
 import re
 import subprocess
 import sys
@@ -86,7 +78,6 @@ from pathlib import Path
 from typing import List, Dict, Tuple, Iterable, Union
 
 import aiohttp
-import yaml
 from aiohttp import ClientSession
 from bs4 import BeautifulSoup
 # noinspection PyProtectedMember
@@ -94,7 +85,7 @@ from docopt import docopt, __all__ as docopt_funcs
 from tabulate import tabulate
 
 import openmaptiles
-from openmaptiles.utils import print_err
+from openmaptiles.utils import print_err, Bbox
 
 USER_AGENT = f'OpenMapTiles download-osm {openmaptiles.__version__} ' \
              '(https://github.com/openmaptiles/openmaptiles-tools)'
@@ -381,8 +372,8 @@ class AreaSource:
         self.no_cache = no_cache
         self.name = type(self).__name__
 
-    async def search(self, area_id: str, id2: str,
-                     is_guessing: bool) -> Union[None, Tuple[Source, str, str]]:
+    async def search(self, area_id: str, is_guessing: bool
+                     ) -> Union[None, Tuple[Source, str, str, str]]:
         raise ValueError(f"Search is not implemented for {self.name}")
 
     async def get_catalog(self) -> dict:
@@ -415,14 +406,14 @@ class AreaSource:
 
 class Geofabrik(AreaSource):
     def fetch_catalog(self):
-        return fetch(self.session, "https://download.geofabrik.de/index-v1-nogeom.json")
+        return fetch(self.session, "https://download.geofabrik.de/index-v1.json")
 
     async def get_printable_catalog(self):
         catalog = await self.get_catalog()
         return [dict(id=v["full_id"], name=v["full_name"]) for v in catalog.values()]
 
     async def parse_catalog(self, data):
-        entries = {v["properties"]["id"]: v["properties"]
+        entries = {v["properties"]["id"]: {**v["properties"], "geo": v.get("geometry")}
                    for v in json.loads(data)["features"]}
         warnings = []
         # resolve parents until no more changes are made
@@ -451,7 +442,7 @@ class Geofabrik(AreaSource):
         return {v["full_id"]: v
                 for v in sorted(entries.values(), key=lambda v: v["full_id"])}, warnings
 
-    async def search(self, area_id: str, id2: str, is_guessing: bool):
+    async def search(self, area_id: str, is_guessing: bool):
         catalog = await self.get_catalog()
         if area_id not in catalog:
             # If there is no exact match, find anything that ends with key
@@ -476,16 +467,21 @@ class Geofabrik(AreaSource):
                     return None
                 else:
                     raise SystemExit(error)
-        url = catalog[area_id]["url"]
-        return (Source(area_id, url),
-                catalog[area_id]["url_updates"],
-                url.replace("-latest.osm.pbf", "-updates/state.txt"))
+        entry = catalog[area_id]
+        bbox = None
+        if entry["geo"]:
+            bbox = Bbox.from_geometry(entry["geo"]["coordinates"]).bounds_str()
+
+        return (Source(area_id, entry["url"]),
+                entry["url_updates"],
+                entry["url"].replace("-latest.osm.pbf", "-updates/state.txt"),
+                bbox)
 
 
 class UrlSrc(AreaSource):
-    async def search(self, val: str, id2: str, is_guessing: bool):
+    async def search(self, val: str, is_guessing: bool):
         if not is_guessing or val.startswith("https://") or val.startswith("http://"):
-            return Source((id2 or "").strip() or "raw url", val), None, None
+            return Source("raw url", val), None, None, None
         return None
 
 
@@ -511,21 +507,21 @@ class Bbbike(AreaSource):
                    if 'href' in v.attrs and v.text != ".."
                }, []
 
-    async def search(self, area_id: str, id2: str, is_guessing: bool):
+    async def search(self, area_id: str, is_guessing: bool):
         catalog = await self.get_catalog()
         area_id = area_id.lower()
         for k, v in catalog.items():
             if area_id == k.lower():
-                return v, None, None
+                return v, None, None, None
         return None
 
 
 class Osmfr(AreaSource):
-    async def search(self, area_id: str, id2: str, is_guessing: bool):
+    async def search(self, area_id: str, is_guessing: bool):
         url = f"http://download.openstreetmap.fr/extracts/{area_id}-latest.osm.pbf"
         return (Source(area_id, url),
                 f"http://download.openstreetmap.fr/replication/{area_id}/minute/",
-                url.replace("-latest.osm.pbf", ".state.txt"))
+                url.replace("-latest.osm.pbf", ".state.txt"), None)
 
 
 area_sources = {
@@ -588,12 +584,11 @@ class AreaParamParser:
     async def parse(self):
         if self.is_guessing:
             print("Area source has not been specified. Auto-detecting...")
-        id2 = self.args["--id"] or os.environ.get("OSM_AREA_NAME")
         for src_name, src_type in self.sources.items():
             site = src_type(self.session, self.force_latest, self.no_cache)
-            res = await site.search(self.area_id, id2, self.is_guessing)
+            res = await site.search(self.area_id, self.is_guessing)
             if res:
-                src, repl_url, state_url = res
+                src, repl_url, state_url, bbox = res
                 await self.load_source(src)
                 if src.file_len is not None:
                     break
@@ -607,16 +602,16 @@ class AreaParamParser:
             if not state_url:
                 raise SystemExit(f"State is not available when using '{src_type}'")
             await save_state_file(self.session, state_url, self.args.state)
-        return [src.url], src.hash, src.name, repl_url
+        return [src.url], src.hash, repl_url, bbox
 
     def load_source(self, source: Source):
         return load_sources([source], self.session, self.args.verbose)
 
 
-def make_docker_compose_file(pbf_file: Path, dc_file: Path,
-                             min_zoom=None, max_zoom=None, area=None, ver=None):
-    area, min_zoom, max_zoom, dc_ver = normalize_make_dc(area, min_zoom, max_zoom, ver)
-    print(f"Extracting metadata from {pbf_file} using osmconvert", flush=True)
+def make_bbox_env_file(pbf_file, bbox_file):
+    pbf_file = Path(pbf_file)
+    bbox_file = Path(bbox_file)
+    print(f"Extracting bbox from {pbf_file} using osmconvert", flush=True)
     params = ["osmconvert", "--out-statistics", str(pbf_file)]
     res = subprocess.run(params, capture_output=True)
     exit_code = res.returncode
@@ -626,50 +621,24 @@ def make_docker_compose_file(pbf_file: Path, dc_file: Path,
         res = {v[0]: v[1] for v in
                [[vv.strip() for vv in v.split(':', 1)] for v in res_text.split('\n')]
                if len(v) == 2 and all(v)}
-        lon_min = res["lon min"]
-        lon_max = res["lon max"]
-        lat_min = res["lat min"]
-        lat_max = res["lat max"]
-        timestamp_max = res["timestamp max"] if "timestamp max" in res else None
-        env_values = {
-            "environment": {
-                "BBOX": f"{lon_min},{lat_min},{lon_max},{lat_max}",
-                "OSM_MAX_TIMESTAMP": timestamp_max,
-                "OSM_AREA_NAME": area or pbf_file.name.split('.', 1)[0],
-                "MIN_ZOOM": min_zoom,
-                "MAX_ZOOM": max_zoom,
-            }}
-        if timestamp_max is None:
-            # Deleting is better than adding because it keeps key ordering intact
-            del env_values["environment"]["OSM_MAX_TIMESTAMP"]
-        dc_data = {
-            "version": str(dc_ver),
-            "services": {
-                "openmaptiles-tools": env_values,
-                "generate-vectortiles": env_values,
-            }}
-        print(f"Saving metadata to {dc_file}...")
-        with dc_file.open('w') as yaml_file:
-            yaml.dump(dc_data, yaml_file, sort_keys=False)
-        print_data = dc_data["services"]["generate-vectortiles"]["environment"].items()
-        print(tabulate(print_data))
+        bbox = Bbox(left=res['lon min'], bottom=res['lat min'],
+                    right=res['lon max'], top=res['lat max'])
+        save_bbox(bbox.bounds_str(), bbox_file)
 
     return exit_code
 
 
-def normalize_make_dc(area, min_zoom, max_zoom, ver):
-    area = os.environ.get("OSM_AREA_NAME", "Unknown") if not area else area
-    min_zoom = int(os.environ.get("MIN_ZOOM", 0) if min_zoom is None else min_zoom)
-    max_zoom = int(os.environ.get("MAX_ZOOM", 7) if max_zoom is None else max_zoom)
-    ver = float(os.environ.get("MAKE_DC_VERSION", 2) if ver is None else ver)
-    return area, min_zoom, max_zoom, ver
+def save_bbox(bbox: str, bbox_file: Path):
+    print(f"Saving computed BBOX {bbox} to {bbox_file}...")
+    bbox_file.write_text(f"{bbox}\n", encoding="utf-8")
 
 
 async def main_async(args):
-    if args["make-dc"]:
-        return make_docker_compose_file(
-            Path(args["<pbf-file>"]), Path(args["--make-dc"]),
-            args['--minzoom'], args['--maxzoom'], args["--id"], args["--dc-ver"])
+    if args["bbox"]:
+        return make_bbox_env_file(args["<pbf-file>"], args["<bbox-file>"])
+
+    if not args['--output'] and args['--bbox']:
+        raise SystemExit("The --output param must be set when using --bbox")
 
     urls, md5, repl_url = None, None, None
     exit_code = 0
@@ -687,31 +656,40 @@ async def main_async(args):
                     f"Service {args.service} does not support listings.\n"
                     f"Please ask service maintainers to publish a catalog similar to Geofabrik's.")
             print(tabulate(info, headers="keys") + '\n')
-            return
-
-        if args.planet:
+        elif args.planet:
             use_primary = args['--include-primary']
             urls, md5 = await Catalog().init(session, args.verbose, use_primary,
                                              force_latest)
-            area_id = "planet"
             repl_url = "http://planet.openstreetmap.org/replication/day/"
         else:
-            urls, md5, area_id, repl_url = await AreaParamParser(
+            urls, md5, repl_url, bbox = await AreaParamParser(
                 session, force_latest, no_cache, args).parse()
 
-    dry_run = args['--dry-run']
     if urls:
-        exit_code = await run_aria2c(args['<aria2c_args>'], dry_run, md5, urls, args,
-                                     area_id)
-    if args['--imposm-cfg']:
-        if not repl_url:
-            raise SystemExit(f"Imposm config file cannot be generated from this source")
-        save_cfg_file(dry_run, args['--imposm-cfg'], repl_url, args['--kv'])
+        exit_code = await run_aria2c(args['<aria2c_args>'], md5, urls, args)
+        if exit_code == 0 and args['--bbox']:
+            bbox_file = Path(args['--bbox'])
+            pbf_file = Path(args['--output'])
+            if args['--dry-run']:
+                if bbox:
+                    print(f"Would save BBOX={bbox} (extracted from the downloaded catalog) to {bbox_file}...")
+                else:
+                    print(f"Would extract bbox from {pbf_file} using osmconvert")
+            else:
+                if bbox:
+                    save_bbox(bbox, bbox_file)
+                else:
+                    make_bbox_env_file(pbf_file, bbox_file)
+        if exit_code == 0 and args['--imposm-cfg']:
+            if not repl_url:
+                raise SystemExit(f"Imposm config file not available from this source")
+            save_cfg_file(args['--dry-run'], args['--imposm-cfg'], repl_url,
+                          args['--kv'])
 
     return exit_code
 
 
-async def run_aria2c(aria2c_args, dry_run, md5, urls, args, area_id):
+async def run_aria2c(aria2c_args, md5, urls, args):
     params = ['aria2c']
     if md5:
         params.append(f'--checksum=md5={md5}')
@@ -726,11 +704,11 @@ async def run_aria2c(aria2c_args, dry_run, md5, urls, args, area_id):
     if not any((v for v in aria2c_args if v == '-U' or v.startswith('--user-agent'))):
         # user has not set a custom user agent, set one
         params.append(f'--user-agent={USER_AGENT}')
-    if args.output:
+    if args["--output"]:
         assert_conflict_args(
             "--output", aria2c_args, '-d', '--dir', '-o', '--out', '-i', '--input-file',
             '--auto-file-renaming', '-Z', '--force-sequential', '--allow-overwrite')
-        out_path = Path(args.output).resolve()
+        out_path = Path(args["--output"]).resolve()
         out_path.parent.mkdir(parents=True, exist_ok=True)
         params.append(f'--dir={out_path.parent}')
         params.append(f'--out={out_path.name}')
@@ -738,67 +716,15 @@ async def run_aria2c(aria2c_args, dry_run, md5, urls, args, area_id):
         if args.force:
             params.append('--allow-overwrite=true')
 
-    extra_env = None
-    if args['--make-dc']:
-        assert_conflict_args("--make-dc", aria2c_args, '--on-download-complete')
-        area_id, min_zoom, max_zoom, dc_ver = normalize_make_dc(
-            area_id, args['--minzoom'], args['--maxzoom'], args['--dc-ver'])
-        extra_env = {
-            "DOWNLOAD_OSM_DC_FILE": str(Path(args['--make-dc'])),
-            "OSM_AREA_NAME": str(area_id),
-            "MIN_ZOOM": str(min_zoom),
-            "MAX_ZOOM": str(max_zoom),
-            "MAKE_DC_VERSION": str(dc_ver),
-        }
-        params.append("--on-download-complete")
-        params.append(__file__)
-
     params.extend(aria2c_args)
     params.extend(urls)
-    print(f"\n  {subprocess.list2cmdline(params)}")
-    if args.verbose and extra_env:
-        env_str = ', '.join((f'{k}={v}' for k, v in extra_env.items()))
-        print(f"  Setting environment vars: {env_str}")
-    capture_output = False
-    for flag in ('--on-bt-download-complete', '--on-download-pause',
-                 '--on-download-complete', '--on-download-start',
-                 '--on-download-error', '--on-download-stop'):
-        if any((v for v in params if v.startswith(flag))):
-            capture_output = True
-            break
-    if args.verbose:
-        if capture_output:
-            print("  capturing stdout/stderr to wait for subprocess exit")
-        else:
-            print("  aria2c output will be printed directly to terminal")
     # Make sure to print/flush everything to STDOUT before running subprocess
-    print("", flush=True)
+    print(f"\n  {subprocess.list2cmdline(params)}\n", flush=True)
 
-    if not dry_run:
-        # Use capture_output to ensure that callback finishes before run() returns
-        # This is only needed if any callbacks are used
-        if extra_env:
-            env = os.environ.copy()
-            env.update(extra_env)
-        else:
-            env = None
-        res = subprocess.run(params, env=env, capture_output=capture_output)
-        ret = res.returncode
-        if capture_output:
-            stdout = res.stdout.decode('utf-8')
-            if stdout:
-                print(stdout)
-            stderr = res.stderr.decode('utf-8')
-            if stderr:
-                print_err(stderr)
-            # Callbacks do not report errors, so detect it
-            if ret == 0 and stderr and "Traceback (most recent call last)" in stderr:
-                ret = 1
-        return ret
+    if not args['--dry-run']:
+        return subprocess.run(params).returncode
     else:
         print("Data is not downloaded because of the --dry-run parameter")
-        if args['--make-dc']:
-            print("docker-compose file generation was skipped")
         return 0
 
 
@@ -818,13 +744,6 @@ and re-install all required dependencies with
   $ python3 -m pip install -r requirements.txt
 """)
         exit(1)
-
-    dc_file = os.environ.get("DOWNLOAD_OSM_DC_FILE")
-    if dc_file and len(sys.argv) == 4:
-        # Skip a line after aria2c output
-        print("\nRunning download-osm in aria2c callback mode...", flush=True)
-        exit(make_docker_compose_file(Path(sys.argv[3]), Path(dc_file)))
-
     exit(asyncio.run(main_async(docopt(__doc__, version=openmaptiles.__version__))))
 
 
