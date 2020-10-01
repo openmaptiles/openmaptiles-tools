@@ -630,7 +630,7 @@ def make_bbox_env_file(pbf_file, bbox_file):
 
 def save_bbox(bbox: str, bbox_file: Path):
     print(f"Saving computed BBOX {bbox} to {bbox_file}...")
-    bbox_file.write_text(f"{bbox}\n", encoding="utf-8")
+    bbox_file.write_text(f"BBOX={bbox}\n", encoding="utf-8")
 
 
 async def main_async(args):
