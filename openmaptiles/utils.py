@@ -1,18 +1,16 @@
-import gzip
-from collections import defaultdict
-
-import math
-
 import asyncio
+import gzip
+import math
 import re
 import sys
 from asyncio.futures import Future
+from collections import defaultdict
 from datetime import timedelta
-
-from betterproto import which_one_of
-from docopt import DocoptExit
 from typing import List, Callable, Any, Dict, Awaitable, Iterable, TypeVar
 
+from betterproto import which_one_of
+# noinspection PyProtectedMember
+from docopt import DocoptExit
 from tabulate import tabulate
 
 from openmaptiles.vector_tile import TileFeature, TileLayer, Tile, TileGeomType
@@ -78,6 +76,13 @@ class Bbox:
 
         minmax(geo)
         return bbox
+
+    @staticmethod
+    def from_polygon(content: str):
+        lines = content.strip().splitlines()[2:][:-2]
+        coords = [re.split(r'[\s\t]+', v.strip()) for v in lines]
+        return Bbox.from_geometry(
+            [[float(v[0]), float(v[1])] for v in coords if len(v) == 2])
 
     def bounds_str(self):
         return ','.join(map(str, self.bounds()))
