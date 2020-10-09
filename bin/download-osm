@@ -75,7 +75,7 @@ from collections import defaultdict
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import List, Dict, Tuple, Iterable, Union
+from typing import List, Dict, Tuple, Iterable, Optional
 
 import aiohttp
 from aiohttp import ClientSession
@@ -352,12 +352,20 @@ class Source:
         return f"{self.file_len / 1024.0 / 1024:,.1f} MB ({self.file_len:,})"
 
 
+@dataclass
+class SearchResult:
+    source: Source
+    repl_url: str = None
+    state_url: str = None
+    bbox: str = None
+
+
 def load_sources(sources: Iterable[Source], session: ClientSession, verbose: bool):
     return asyncio.wait([v.load_hash(session, verbose) for v in sources] +
                         [v.load_metadata(session, verbose) for v in sources])
 
 
-async def fetch(session: ClientSession, url: str):
+async def fetch(session: ClientSession, url: str) -> str:
     async with session.get(url) as resp:
         if resp.status >= 400:
             raise ValueError(f"Received status={resp.status}")
@@ -372,8 +380,7 @@ class AreaSource:
         self.no_cache = no_cache
         self.name = type(self).__name__
 
-    async def search(self, area_id: str, is_guessing: bool
-                     ) -> Union[None, Tuple[Source, str, str, str]]:
+    async def search(self, area_id: str, is_guessing: bool) -> Optional[SearchResult]:
         raise ValueError(f"Search is not implemented for {self.name}")
 
     async def get_catalog(self) -> dict:
@@ -442,7 +449,7 @@ class Geofabrik(AreaSource):
         return {v["full_id"]: v
                 for v in sorted(entries.values(), key=lambda v: v["full_id"])}, warnings
 
-    async def search(self, area_id: str, is_guessing: bool):
+    async def search(self, area_id: str, is_guessing: bool) -> Optional[SearchResult]:
         catalog = await self.get_catalog()
         if area_id not in catalog:
             # If there is no exact match, find anything that ends with key
@@ -472,16 +479,17 @@ class Geofabrik(AreaSource):
         if entry["geo"]:
             bbox = Bbox.from_geometry(entry["geo"]["coordinates"]).bounds_str()
 
-        return (Source(area_id, entry["url"]),
-                entry["url_updates"],
-                entry["url"].replace("-latest.osm.pbf", "-updates/state.txt"),
-                bbox)
+        return SearchResult(
+            Source(area_id, entry["url"]),
+            entry["url_updates"],
+            entry["url"].replace("-latest.osm.pbf", "-updates/state.txt"),
+            bbox)
 
 
 class UrlSrc(AreaSource):
-    async def search(self, val: str, is_guessing: bool):
+    async def search(self, val: str, is_guessing: bool) -> Optional[SearchResult]:
         if not is_guessing or val.startswith("https://") or val.startswith("http://"):
-            return Source("raw url", val), None, None, None
+            return SearchResult(Source("raw url", val))
         return None
 
 
@@ -507,21 +515,24 @@ class Bbbike(AreaSource):
                    if 'href' in v.attrs and v.text != ".."
                }, []
 
-    async def search(self, area_id: str, is_guessing: bool):
+    async def search(self, area_id: str, is_guessing: bool) -> Optional[SearchResult]:
         catalog = await self.get_catalog()
         area_id = area_id.lower()
         for k, v in catalog.items():
             if area_id == k.lower():
-                return v, None, None, None
+                return SearchResult(v)
         return None
 
 
 class Osmfr(AreaSource):
-    async def search(self, area_id: str, is_guessing: bool):
+    async def search(self, area_id: str, is_guessing: bool) -> Optional[SearchResult]:
         url = f"http://download.openstreetmap.fr/extracts/{area_id}-latest.osm.pbf"
-        return (Source(area_id, url),
-                f"http://download.openstreetmap.fr/replication/{area_id}/minute/",
-                url.replace("-latest.osm.pbf", ".state.txt"), None)
+        poly = await fetch(self.session, f"https://download.openstreetmap.fr/polygons/{area_id}.poly")
+        return SearchResult(
+            Source(area_id, url),
+            f"http://download.openstreetmap.fr/replication/{area_id}/minute/",
+            url.replace("-latest.osm.pbf", ".state.txt"),
+            Bbox.from_polygon(poly).bounds_str())
 
 
 area_sources = {
@@ -588,7 +599,7 @@ class AreaParamParser:
             site = src_type(self.session, self.force_latest, self.no_cache)
             res = await site.search(self.area_id, self.is_guessing)
             if res:
-                src, repl_url, state_url, bbox = res
+                src = res.source
                 await self.load_source(src)
                 if src.file_len is not None:
                     break
@@ -599,10 +610,10 @@ class AreaParamParser:
         print(f"Downloading {src.url} (size={src.size_str()}, md5={src.hash})",
               flush=True)
         if self.args.state:
-            if not state_url:
+            if not res.state_url:
                 raise SystemExit(f"State is not available when using '{src_type}'")
-            await save_state_file(self.session, state_url, self.args.state)
-        return [src.url], src.hash, repl_url, bbox
+            await save_state_file(self.session, res.state_url, self.args.state)
+        return [src.url], src.hash, res.repl_url, res.bbox
 
     def load_source(self, source: Source):
         return load_sources([source], self.session, self.args.verbose)
@@ -672,7 +683,8 @@ async def main_async(args):
             pbf_file = Path(args['--output'])
             if args['--dry-run']:
                 if bbox:
-                    print(f"Would save BBOX={bbox} (extracted from the downloaded catalog) to {bbox_file}...")
+                    print(
+                        f"Would save BBOX '{bbox}' (extracted from the downloaded catalog/metadata) to {bbox_file}...")
                 else:
                     print(f"Would extract bbox from {pbf_file} using osmconvert")
             else:
