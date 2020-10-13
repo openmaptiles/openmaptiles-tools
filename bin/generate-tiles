@@ -54,7 +54,7 @@ export TIMEOUT=${TIMEOUT:-1800000}
 export MIN_ZOOM=${MIN_ZOOM:-0}
 export MAX_ZOOM=${MAX_ZOOM:-14}
 
-export PGQUERY="pgquery://?database=${PGDATABASE}&host=${PGHOST}&port=${PGPORT}&username=${PGUSER}&password=${PGPASSWORD}&funcZXY=${FUNC_ZXY}&maxpool=${MAX_HOST_CONNECTIONS}${NO_GZIP}${USE_KEY_COLUMN}${TEST_ON_STARTUP_TILE}"
+export PGQUERY="pgquery://?database=${PGDATABASE}&host=${PGHOSTS}&port=${PGPORT}&username=${PGUSER}&password=${PGPASSWORD}&funcZXY=${FUNC_ZXY}&maxpool=${MAX_HOST_CONNECTIONS}${NO_GZIP}${USE_KEY_COLUMN}${TEST_ON_STARTUP_TILE}"
 echo $PGQUERY
 
 function export_local_mbtiles() {
