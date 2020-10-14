@@ -24,6 +24,7 @@ CREATE OR REPLACE FUNCTION remove_latin(text) RETURNS text AS $$
     END LOOP;
     result := regexp_replace(result, '(\([ -.]*\)|\[[ -.]*\])', '');
     result := regexp_replace(result, ' +\. *$', '');
+    result := replace(result, '/', '');
     result := trim(both ' -\n' from result);
     RETURN result;
   END;
