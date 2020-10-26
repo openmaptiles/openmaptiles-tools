@@ -23,7 +23,11 @@ CREATE OR REPLACE FUNCTION remove_latin(text) RETURNS text AS $$
       END IF;
     END LOOP;
     result := regexp_replace(result, '(\([ -.]*\)|\[[ -.]*\])', '');
+    result := regexp_replace(result, '\s+', ' ', 'g');
     result := regexp_replace(result, ' +\. *$', '');
+    result := regexp_replace(result, '^ ?\. ', '');
+    result := regexp_replace(result, '^(\/ \/)+', ' ', 'g');
+    result := regexp_replace(result, '^( \/)+', '/','g');
     result := trim(both ' -\n' from result);
     RETURN result;
   END;
