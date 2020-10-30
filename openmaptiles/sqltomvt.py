@@ -228,11 +228,11 @@ as mvtl{extras} FROM {query}"""
         # Every subsequent zoom divides it by 2
         if layer.buffer_size > 0:
             if not self.tile_envelope_margin:
-                percentage = 40075016.6855785 * layer.buffer_size / self.extent
+                percentage = 40075016.6855785 * layer.buffer_size / self.pixel_width
                 return f"ST_Expand({self.bbox(zoom, x, y)}, {percentage}/2^{zoom})"
             else:
                 # Once https://github.com/postgis/postgis/pull/514 is merged
-                return self.bbox(zoom, x, y, float(layer.buffer_size) / self.extent)
+                return self.bbox(zoom, x, y, float(layer.buffer_size) / self.pixel_width)
         else:
             return self.bbox(zoom, x, y)
 
