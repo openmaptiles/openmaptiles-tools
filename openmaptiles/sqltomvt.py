@@ -196,13 +196,14 @@ as mvtl{extras} FROM {query}"""
 
         bbox = self.tile_to_bbox(layer, self.zoom, self.x, self.y)
         query = self.substitute_sql(query, self.zoom, bbox)
+        tile_buffer_size = int(self.extent * layer.buffer_size / self.pixel_width)
         replacement = ''
         if to_mvt_geometry:
             replacement = f"ST_AsMVTGeom(" \
                           f"{layer.geometry_field}, " \
                           f"{self.bbox(self.zoom, self.x, self.y)}, " \
                           f"{self.extent}, " \
-                          f"{layer.buffer_size}, " \
+                          f"{tile_buffer_size}, " \
                           f"true)"
             if mvt_geometry_wrapper:
                 replacement = mvt_geometry_wrapper(replacement)
