@@ -242,11 +242,15 @@ as mvtl{extras} FROM {query}"""
         return f"{self.tile_envelope}({zoom}, {x}, {y}{margin_str})"
 
     def substitute_sql(self, query, zoom, bbox):
+        zero_tile_width_res = 40075016.6855785 / self.pixel_width
+        zero_tile_height_res = 40075016.6855785 / self.pixel_height
+        zoom_pixel_width = f"{zero_tile_width_res}/2^{zoom}"
+        zoom_pixel_height = f"{zero_tile_height_res}/2^{zoom}"
         query = (query
                  .replace("!bbox!", bbox)
                  .replace("z(!scale_denominator!)", str(zoom))
-                 .replace("!pixel_width!", str(self.pixel_width))
-                 .replace("!pixel_height!", str(self.pixel_height)))
+                 .replace("!pixel_width!", zoom_pixel_width)
+                 .replace("!pixel_height!", zoom_pixel_height))
         if '!scale_denominator!' in query:
             raise ValueError(
                 'MVT made an invalid assumption that "!scale_denominator!" is '
