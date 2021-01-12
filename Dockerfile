@@ -124,7 +124,7 @@ RUN set -eux ;\
     curl -sL https://deb.nodesource.com/setup_12.x | bash -  ;\
     DEBIAN_FRONTEND=noninteractive apt-get update  ;\
     DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends  \
-        nodejs  ;\
+        nodejs build-essential ;\
     rm -rf /var/lib/apt/lists/  ;\
     npm config set unsafe-perm true  ;\
     npm install -g \
