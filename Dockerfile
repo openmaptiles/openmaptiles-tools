@@ -1,6 +1,6 @@
 FROM golang:1.13 as go-builder
 ARG IMPOSM_REPO="https://github.com/omniscale/imposm3.git"
-ARG IMPOSM_VERSION="v0.10.0"
+ARG IMPOSM_VERSION="v0.11.1"
 
 # Build imposm
 RUN set -eux ;\
