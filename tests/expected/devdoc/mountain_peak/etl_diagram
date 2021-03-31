@@ -1,0 +1,4 @@
+digraph G {
+	graph [rankdir=LR]
+imposm3 -> osm_peak_point
+}

@@ -1,0 +1,10 @@
+digraph "Imposm Mapping" {
+	graph [rankdir=LR ranksep=3]
+	subgraph peak_point {
+		node [fixed_size=shape]
+		peak_point [shape=box]
+		key_natural [label=natural shape=box]
+		key_natural -> peak_point [label="peak
+volcano"]
+	}
+}

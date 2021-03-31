@@ -125,8 +125,9 @@ EOT
   echo "----------------------- mbtiles-tools meta-copy"
   mbtiles-tools meta-set "$MBTILES2_FILE" foo bar
   mbtiles-tools meta-copy "$MBTILES_FILE" "$MBTILES2_FILE" --reset
-  mbtiles-tools meta-all "$MBTILES_FILE" > /tmp/metaout1.out
-  mbtiles-tools meta-all "$MBTILES2_FILE" > /tmp/metaout2.out
+  # Ignore filesize result because it could differ without vacuuming sqlite files first
+  mbtiles-tools meta-all "$MBTILES_FILE" | grep -v '^filesize ' > /tmp/metaout1.out
+  mbtiles-tools meta-all "$MBTILES2_FILE" | grep -v '^filesize ' > /tmp/metaout2.out
   diff --brief /tmp/metaout1.out /tmp/metaout2.out
   echo "----------------------- mbtiles-tools meta-copy with overrides"
   export METADATA_ATTRIBUTION="attr override"
