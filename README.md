@@ -215,7 +215,7 @@ Use `postserve <tileset>` to start serving. Use `--help` to get the list of Post
 * run `docker pull openmaptiles/openmaptiles-tools` to download the latest tools version
 * from inside the openmaptiles repo dir, run this command.
 (This assumes PostgreSQL is on the localhost:5432, but if it runs inside docker, you may want to change
- `--net=host` to `--net=openmaptiles_postgres_conn` to match the openmaptiles quickstart, and also expose
+ `--net=host` to `--net=openmaptiles_postgres` to match the openmaptiles quickstart, and also expose
   port 8090 to the host with `-p 8090:8090`)
 ```
 docker run -it --rm -u $(id -u ${USER}):$(id -g ${USER}) \
