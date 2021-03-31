@@ -1,7 +1,7 @@
 version: '3.1'
 
 networks:
-  postgres_conn:
+  postgres:
     driver: bridge
 
 services:
@@ -11,7 +11,7 @@ services:
       - "5432"
     env_file: test.env
     networks:
-      - postgres_conn
+      - postgres
 
   tests:
     image: "$DOCKER_IMAGE"
@@ -23,4 +23,4 @@ services:
     depends_on:
       - postgres
     networks:
-      - postgres_conn
+      - postgres
