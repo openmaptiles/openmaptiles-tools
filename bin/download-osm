@@ -619,11 +619,16 @@ class AreaParamParser:
         return load_sources([source], self.session, self.args.verbose)
 
 
-def make_bbox_env_file(pbf_file, bbox_file):
+def make_bbox_env_file(pbf_file, bbox_file, verbose):
     pbf_file = Path(pbf_file)
+    if not pbf_file.is_file():
+        print(f"PBF file {pbf_file} does not exist")
+        return 1
     bbox_file = Path(bbox_file)
     print(f"Extracting bbox from {pbf_file} using osmconvert", flush=True)
     params = ["osmconvert", "--out-statistics", str(pbf_file)]
+    if verbose:
+        print(f"\n  {subprocess.list2cmdline(params)}\n", flush=True)
     res = subprocess.run(params, capture_output=True)
     exit_code = res.returncode
     if exit_code == 0:
@@ -635,6 +640,8 @@ def make_bbox_env_file(pbf_file, bbox_file):
         bbox = Bbox(left=res['lon min'], bottom=res['lat min'],
                     right=res['lon max'], top=res['lat max'])
         save_bbox(bbox.bounds_str(), bbox_file)
+    else:
+        print(f"Error #{exit_code} executing this command:\n  {subprocess.list2cmdline(params)}\n", flush=True)
 
     return exit_code
 
@@ -646,7 +653,7 @@ def save_bbox(bbox: str, bbox_file: Path):
 
 async def main_async(args):
     if args["bbox"]:
-        return make_bbox_env_file(args["<pbf-file>"], args["<bbox-file>"])
+        return make_bbox_env_file(args["<pbf-file>"], args["<bbox-file>"], args['--verbose'])
 
     if not args['--output'] and args['--bbox']:
         raise SystemExit("The --output param must be set when using --bbox")
@@ -691,7 +698,7 @@ async def main_async(args):
                 if bbox:
                     save_bbox(bbox, bbox_file)
                 else:
-                    make_bbox_env_file(pbf_file, bbox_file)
+                    make_bbox_env_file(pbf_file, bbox_file, args['--verbose'])
         if exit_code == 0 and args['--imposm-cfg']:
             if not repl_url:
                 raise SystemExit(f"Imposm config file not available from this source")
