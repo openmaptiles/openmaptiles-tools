@@ -5,6 +5,8 @@ SELECT STRING_AGG(mvtl, '') AS mvt FROM (
   SELECT COALESCE(ST_AsMVT(t, 'housenumber', 4096, 'mvtgeometry'), '') as mvtl FROM (SELECT ST_Expand(ST_TileEnvelope(zoom, x, y), 1252344.2714243282/2^zoom) as ST_AsMVTGeom(geometry, ST_TileEnvelope(zoom, x, y), 4096, 128, true) AS mvtgeometry, zoom AS housenumber, NULLIF(tags->'name:en', '') AS "name:en", NULLIF(tags->'name:de', '') AS "name:de", NULLIF(tags->'name:cs', '') AS "name:cs", NULLIF(tags->'name_int', '') AS "name_int", NULLIF(tags->'name:latin', '') AS "name:latin", NULLIF(tags->'name:nonlatin', '') AS "name:nonlatin" FROM (SELECT 'name:en=>"enname"'::hstore as tags) AS tt) AS t
     UNION ALL
   SELECT COALESCE(ST_AsMVT(t, 'enumfield', 4096, 'mvtgeometry', 'osm_id'), '') as mvtl FROM (SELECT ST_TileEnvelope(zoom, x, y) as ST_AsMVTGeom(geometry, ST_TileEnvelope(zoom, x, y), 4096, 0, true) AS mvtgeometry, zoom AS osm_id, 'foo' AS class) AS t
+    UNION ALL
+  SELECT COALESCE(ST_AsMVT(t, 'mountain_peak', 4096, 'mvtgeometry', 'osm_id'), '') as mvtl FROM (SELECT ST_Expand(ST_TileEnvelope(zoom, x, y), 10018754.171394626/2^zoom) AS ST_AsMVTGeom(geometry, ST_TileEnvelope(zoom, x, y), 4096, 1024, true) AS mvtgeometry, zoom AS osm_id, 'foo_name' AS name, 'foo_name_en' AS name_en, 'foo_name_de' AS name_de, 'foo_class' AS class, zoom AS ele, zoom AS ele_ft, zoom AS rank) AS t
 ) AS all_layers
 ;
 $$ LANGUAGE SQL STABLE RETURNS NULL ON NULL INPUT;

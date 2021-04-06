@@ -2,6 +2,7 @@ tileset:
   layers:
     - housenumber/housenumber.yaml
     - enumfield/enumfield.yaml
+    - mountain_peak/mountain_peak.yaml
   name: TestMapTiles v1.0
   version: 1.1.1
   id: testmaptiles

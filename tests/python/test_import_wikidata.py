@@ -23,7 +23,7 @@ class UtilsTestCase(IsolatedAsyncioTestCase):
 
     async def test_find_tables(self):
         tables = importer.find_tables(test_dir / '../testlayers/testmaptiles.yaml')
-        self.assertEqual(tables, ['osm_housenumber_point'])
+        self.assertEqual(tables, ['osm_housenumber_point', 'osm_peak_point'])
 
     # async def test_pg_func(self):
     #     conn = None
