@@ -37,17 +37,6 @@ RUN set -eux  ;\
         libgdal-dev \
     ;\
     ##
-    ## GEOS
-    cd /opt/ ;\
-    curl -o /opt/geos.tar.bz2 http://download.osgeo.org/geos/geos-3.9.0.tar.bz2 ;\
-    mkdir /opt/geos ;\
-    tar xf /opt/geos.tar.bz2 -C /opt/geos --strip-components=1 ;\
-    cd /opt/geos/ ;\
-    ./configure ;\
-    make -j ;\
-    make install ;\
-    rm -rf /opt/geos* ;\
-    ##
     ## gzip extension
     cd /opt/  ;\
     git clone --quiet --depth 1 -b $PGSQL_GZIP_TAG $PGSQL_GZIP_REPO  ;\
