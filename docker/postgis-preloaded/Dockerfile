@@ -4,7 +4,7 @@
 
 # OMT_TOOLS_VERSION will be injected by the dockerhub auto-build environment
 ARG OMT_TOOLS_VERSION=latest
-FROM openmaptiles/import-data:${OMT_TOOLS_VERSION} as data
+FROM etresoft/import-data:${OMT_TOOLS_VERSION} as data
 
 ARG OMT_TOOLS_VERSION
 RUN echo "**********************************************************" \
@@ -12,7 +12,7 @@ RUN echo "**********************************************************" \
  && echo "**********************************************************"
 
 
-FROM openmaptiles/postgis:${OMT_TOOLS_VERSION} as builder
+FROM etresoft/postgis:${OMT_TOOLS_VERSION} as builder
 
 # Override PGDATA to change the default location of the Postgres data directory
 # to another place that has not been created as a volume
@@ -52,7 +52,7 @@ RUN preload-database.sh \
 
 # Final image - contains just the resulting PGDATA, without the copy of import-data
 ARG OMT_TOOLS_VERSION
-FROM openmaptiles/postgis:${OMT_TOOLS_VERSION}
+FROM etresoft/postgis:${OMT_TOOLS_VERSION}
 
 LABEL maintainer="Yuri Astrakhan <YuriAstrakhan@gmail.com>"
 
