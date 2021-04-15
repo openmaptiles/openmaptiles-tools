@@ -38,7 +38,7 @@ RUN set -eux  ;\
     ;\
     ## GEOS
     cd /opt/ ;\
-    curl -o /opt/geos.tar.bz2 http://download.osgeo.org/geos/geos-3.9.0.tar.bz2 ;\
+    curl -o /opt/geos.tar.bz2 http://download.osgeo.org/geos/geos-3.9.1.tar.bz2 ;\
     mkdir /opt/geos ;\
     tar xf /opt/geos.tar.bz2 -C /opt/geos --strip-components=1 ;\
     cd /opt/geos/ ;\
