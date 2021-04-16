@@ -1,5 +1,5 @@
 FROM node:8-slim
-LABEL maintainer=<me@lukasmartinelli.ch>
+LABEL maintainer="Tomas Pohanka <TomPohys@gmail.com>"
 
 WORKDIR /usr/src/app
 RUN npm install -g \
