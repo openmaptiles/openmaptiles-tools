@@ -685,7 +685,7 @@ async def main_async(args):
 
     if urls:
         exit_code = await run_aria2c(args['<aria2c_args>'], md5, urls, args)
-        if exit_code == 0 and args['--bbox']:
+        if exit_code == 0 and !args.planet and args['--bbox']:
             bbox_file = Path(args['--bbox'])
             pbf_file = Path(args['--output'])
             if args['--dry-run']:
