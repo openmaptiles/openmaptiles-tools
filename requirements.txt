@@ -2,7 +2,7 @@
 ## But there it removes all version restrictions
 aiohttp==3.7.4
 ascii_graph==1.5.1
-asyncpg==0.20.1
+asyncpg==0.21.0
 betterproto==1.2.3
 beautifulsoup4==4.9.1
 dataclasses-json==0.4.3
