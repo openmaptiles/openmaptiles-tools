@@ -7,6 +7,9 @@ FROM postgis/postgis:$BASE_POSTGIS_VER
 
 LABEL maintainer="Yuri Astrakhan <YuriAstrakhan@gmail.com>"
 
+# https://github.com/libgeos/geos/releases
+ARG GEOS_VER=3.9.1
+
 # https://github.com/pramsey/pgsql-gzip/releases
 ARG PGSQL_GZIP_TAG=v1.0.0
 ARG PGSQL_GZIP_REPO=https://github.com/pramsey/pgsql-gzip.git
@@ -36,6 +39,16 @@ RUN set -eux  ;\
         libkakasi2-dev \
         libgdal-dev \
     ;\
+    ## Install specific GEOS version 
+    cd /opt/  ;\
+    curl -o /opt/geos.tar.bz2 http://download.osgeo.org/geos/geos-${GEOS_VER}.tar.bz2  ;\
+    mkdir /opt/geos  ;\
+    tar xf /opt/geos.tar.bz2 -C /opt/geos --strip-components=1  ;\
+    cd /opt/geos/  ;\
+    ./configure  ;\
+    make -j  ;\
+    make install  ;\
+    rm -rf /opt/geos*  ;\
     ##
     ## gzip extension
     cd /opt/  ;\
