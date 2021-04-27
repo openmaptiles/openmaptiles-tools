@@ -16,7 +16,7 @@ readonly MBTILES_NAME=${MBTILES_NAME:-tiles.mbtiles}
 function export_local_mbtiles() {
     echo "Generating tiles into $EXPORT_DIR/$MBTILES_NAME for zooms $MIN_ZOOM..$MAX_ZOOM inside ($BBOX) using $COPY_CONCURRENCY concurrent I/O operations"
 
-    filter_deprecation tilelive-copy \
+    exec tilelive-copy \
         --scheme="$RENDER_SCHEME" \
         --bounds="$BBOX" \
         --timeout="$TILE_TIMEOUT" \
