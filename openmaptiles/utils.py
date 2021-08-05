@@ -6,7 +6,7 @@ import sys
 from asyncio.futures import Future
 from collections import defaultdict
 from datetime import timedelta
-from typing import List, Callable, Any, Dict, Awaitable, Iterable, TypeVar
+from typing import List, Callable, Any, Dict, Awaitable, Iterable, TypeVar, Union, Optional
 
 from betterproto import which_one_of
 # noinspection PyProtectedMember
@@ -143,9 +143,9 @@ async def run_actions(actions: List[Action],
 
 
 def _validate_actions(
-    actions: List[Action],
-    remove_missing_deps=False,
-    verbose=False,
+        actions: List[Action],
+        remove_missing_deps=False,
+        verbose=False,
 ) -> Dict[str, Action]:
     """
     Make sure there is no infinite loop, and all IDs exist and not duplicated
@@ -320,3 +320,14 @@ def print_tile(data: bytes, show_names: bool, summary: bool, info: str) -> None:
 
 def shorten_str(value: str, length: int) -> str:
     return value if len(value) < length else value[:length] + "…"
+
+
+def parse_zooms(zoom: Union[str, List[str]],
+                minzoom: Optional[str] = None,
+                maxzoom: Optional[str] = None) -> List[int]:
+    """Parse a user-provided list of zooms (one or more --zoom parameters),
+       or if not given, parse minzoom and maxzoom.  Returns a list of zooms to work on. """
+    result = [int(v) for v in (zoom if isinstance(zoom, list) else [zoom])]
+    if not result and minzoom is not None and maxzoom is not None:
+        result = list(range(int(minzoom), int(maxzoom) + 1))
+    return result

@@ -3,10 +3,11 @@ import os
 import sqlite3
 from datetime import datetime
 from pathlib import Path
+from sqlite3 import Cursor
+from typing import Dict, List, Optional
 
 import asyncpg
 from tabulate import tabulate
-from typing import Dict
 
 from openmaptiles.pgutils import get_postgis_version, get_vector_layers
 from openmaptiles.sqlite_utils import query
@@ -251,7 +252,7 @@ GROUP BY zoom_level
                 cursor.execute("DELETE FROM metadata WHERE name=?;", [name])
             else:
                 cursor.execute(
-                    "INSERT OR REPLACE INTO  metadata(name, value) VALUES (?, ?);",
+                    "INSERT OR REPLACE INTO metadata(name, value) VALUES (?, ?);",
                     [name, value])
 
     async def generate(self, tileset, reset, auto_minmax,
@@ -261,8 +262,8 @@ GROUP BY zoom_level
             f'Connecting to PostgreSQL at {pghost}:{pgport}, db={dbname}, user={user}...')
         try:
             async with asyncpg.create_pool(
-                database=dbname, host=pghost, port=pgport, user=user,
-                password=password, min_size=1, max_size=1,
+                    database=dbname, host=pghost, port=pgport, user=user,
+                    password=password, min_size=1, max_size=1,
             ) as pool:
                 async with pool.acquire() as conn:
                     mvt = MvtGenerator(
@@ -364,7 +365,7 @@ GROUP BY zoom_level
             if not is_valid:
                 raise ValueError(f"Invalid {name}={value}")
             cursor.execute(
-                "INSERT OR REPLACE INTO  metadata(name, value) VALUES (?, ?);",
+                "INSERT OR REPLACE INTO metadata(name, value) VALUES (?, ?);",
                 [name, value])
 
     def validate(self, name, value):
@@ -424,3 +425,118 @@ GROUP BY zoom_level
                 else:
                     value = f'(invalid JSON value, use --show-json to see it)'
         return value, is_valid
+
+
+class TileCopier:
+    """Copy tile data between mbtile files"""
+
+    def __init__(self,
+                 source: Metadata,
+                 target: str,
+                 zooms: List[int],
+                 minzoom: Optional[int],
+                 maxzoom: Optional[int],
+                 reset: bool,
+                 auto_minmax: bool,
+                 bbox: Optional[Bbox],
+                 verbose: bool,
+                 ) -> None:
+        self.source = source
+        self.target = Path(target)
+        self.zooms = zooms
+        self.minzoom = minzoom
+        self.maxzoom = maxzoom
+        self.reset = reset
+        self.auto_minmax = auto_minmax
+        self.bbox = bbox
+        self.verbose = verbose
+
+        if self.bbox:
+            raise ValueError("bbox support is not implemented yet")
+
+    def run(self):
+        if not self.target.exists():
+            self.create_new_db()
+        print(f"Opening {self.target}")
+        with sqlite3.connect(self.target) as conn:
+            cursor = conn.cursor()
+            self.execute(cursor, "ATTACH DATABASE ? AS sourceDb", [self.source.mbtiles])
+
+            sql = "INSERT OR IGNORE INTO map SELECT zoom_level, tile_column, tile_row, tile_id FROM sourceDb.map"
+            sql, params = self._add_sql_where(sql, [])
+            self.execute(cursor, sql, params)
+
+            if not self.zooms and self.minzoom is None and self.maxzoom is None:
+                sql = "INSERT OR IGNORE INTO images SELECT tile_data, tile_id FROM sourceDb.images"
+            else:
+                sql = """
+    INSERT OR IGNORE INTO images
+    SELECT images.tile_data, images.tile_id
+    FROM sourceDb.images
+      JOIN sourceDb.map
+      ON images.tile_id = map.tile_id
+   """
+            sql, params = self._add_sql_where(sql, [])
+            self.execute(cursor, sql, params)
+        self.source.copy(self.target, self.reset, self.auto_minmax)
+
+    def _add_sql_where(self, sql, params):
+        if self.zooms:
+            sql += " WHERE zoom_level IN (" + ", ".join(("?" for z in self.zooms)) + ")"
+            params.extend(self.zooms)
+        elif self.minzoom is not None and self.maxzoom is not None:
+            sql += " WHERE zoom_level BETWEEN ? AND ?"
+            params.extend([self.minzoom, self.maxzoom])
+        elif self.minzoom is not None:
+            sql += " WHERE zoom_level >= ?"
+            params.append(self.minzoom)
+        elif self.maxzoom is not None:
+            sql += " WHERE zoom_level <= ?"
+            params.append(self.maxzoom)
+        return sql, params
+
+    def create_new_db(self) -> None:
+        print(f"Creating a new file {self.target}")
+        with sqlite3.connect(self.target) as conn:
+            cursor = conn.cursor()
+            self.execute(cursor, "SELECT * FROM sqlite_master")
+            row = cursor.fetchone()
+            if row is not None:
+                raise ValueError(f"Newly created file '{self.target}' is not empty")
+
+            self.execute(cursor, """
+    CREATE TABLE map (
+       zoom_level INTEGER,
+       tile_column INTEGER,
+       tile_row INTEGER,
+       tile_id TEXT)""")
+            self.execute(cursor, """
+    CREATE TABLE images (
+        tile_data blob,
+        tile_id text)""")
+            self.execute(cursor, """
+    CREATE TABLE metadata (
+        name text,
+        value text)""")
+
+            self.execute(cursor, "CREATE UNIQUE INDEX map_index ON map (zoom_level, tile_column, tile_row)")
+            self.execute(cursor, "CREATE UNIQUE INDEX images_id ON images (tile_id)")
+            self.execute(cursor, "CREATE UNIQUE INDEX name ON metadata (name)")
+
+            self.execute(cursor, """
+    CREATE VIEW tiles AS
+        SELECT
+            map.zoom_level AS zoom_level,
+            map.tile_column AS tile_column,
+            map.tile_row AS tile_row,
+            images.tile_data AS tile_data
+        FROM map
+        JOIN images ON images.tile_id = map.tile_id""")
+
+    def execute(self, cursor: Cursor, sql: str, params=None):
+        if self.verbose:
+            vals = "  [" + ", ".join((str(v) for v in params)) + "]" if params else ""
+            print(f"Executing {sql}{vals}")
+        cursor.execute(sql, params if params else [])
+        if self.verbose and cursor.rowcount >= 0:
+            print(f"{cursor.rowcount} rows were affected")
