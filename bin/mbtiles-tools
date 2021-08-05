@@ -96,7 +96,7 @@ from docopt import docopt, DocoptExit
 import openmaptiles
 from openmaptiles.mbtile_tools import Imputer, KeyFinder, Metadata, TileCopier
 from openmaptiles.pgutils import parse_pg_args
-from openmaptiles.utils import parse_zxy_param, parse_zooms, Bbox
+from openmaptiles.utils import parse_zxy_param, parse_zoom, parse_zoom_list, Bbox
 
 
 def main():
@@ -109,9 +109,9 @@ def main():
         TileCopier(source=Metadata(args['<mbtiles-file>'], args['--show-json'],
                                    args['--show-ranges']),
                    target=args['<target-mbtiles-file>'],
-                   zooms=parse_zooms(args['--zoom']),
-                   minzoom=int(args['--minzoom']) if args['--minzoom'] is not None else None,
-                   maxzoom=int(args['--maxzoom']) if args['--maxzoom'] is not None else None,
+                   zooms=parse_zoom_list(args['--zoom']),
+                   minzoom=parse_zoom(args['--minzoom']),
+                   maxzoom=parse_zoom(args['--maxzoom']),
                    reset=args['--reset'],
                    auto_minmax=args['--auto-minmax'],
                    bbox=Bbox(bbox=args['--bbox']) if args['--bbox'] else None,
@@ -148,7 +148,7 @@ def find_dups(args):
     KeyFinder(
         mbtiles=args['<mbtiles-file>'],
         outfile=args['--output'] or '-',
-        zoom=args['--zoom'],
+        zoom=parse_zoom(args['--zoom']),
         min_dup_count=args['--min-dups'],
         verbose=args['--verbose'] or (args['--output'] and args['--output'] != '-'),
     ).run()
@@ -157,7 +157,7 @@ def find_dups(args):
 def impute(args):
     file = args['<mbtiles-file>']
     verbose = args['--verbose']
-    zoom = int(args['--zoom'])
+    zoom = parse_zoom(args['--zoom'])
     if zoom <= 0:
         raise DocoptExit(f'Zooms must be more than 0, {zoom} was given.')
     outfile = args['--output']

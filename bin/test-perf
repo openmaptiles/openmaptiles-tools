@@ -61,13 +61,13 @@ import openmaptiles
 from openmaptiles.performance import PerfTester
 from openmaptiles.perfutils import COLOR
 from openmaptiles.pgutils import parse_pg_args
-from openmaptiles.utils import parse_zooms
+from openmaptiles.utils import parse_zoom_list
 
 
 def main(args):
     if args['--no-color']:
         COLOR.enable(False)
-    zooms = parse_zooms(args['--zoom'], args['--minzoom'], args['--maxzoom'])
+    zooms = parse_zoom_list(args['--zoom'], args['--minzoom'], args['--maxzoom'])
     pghost, pgport, dbname, user, password = parse_pg_args(args)
 
     tests = args['--test']

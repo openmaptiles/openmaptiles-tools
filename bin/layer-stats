@@ -60,7 +60,7 @@ from openmaptiles.pgutils import parse_pg_args, get_postgis_version, PgWarnings,
     print_query_error
 from openmaptiles.sqltomvt import MvtGenerator
 from openmaptiles.tileset import Tileset
-from openmaptiles.utils import parse_zooms
+from openmaptiles.utils import parse_zoom_list
 
 
 async def main(args):
@@ -72,7 +72,7 @@ async def main(args):
     for c in columns:
         if not re.match(r'^[a-z_][a-z0-9_]*$', c):
             raise DocoptExit(f"Column '{c}' is invalid")
-    zooms = parse_zooms(args['--zoom'], args['--minzoom'], args['--maxzoom'])
+    zooms = parse_zoom_list(args['--zoom'], args['--minzoom'], args['--maxzoom'])
     verbose = args['--verbose']
 
     tileset = Tileset.parse(tileset_path)

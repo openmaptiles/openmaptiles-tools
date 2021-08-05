@@ -322,12 +322,33 @@ def shorten_str(value: str, length: int) -> str:
     return value if len(value) < length else value[:length] + "…"
 
 
-def parse_zooms(zoom: Union[str, List[str]],
-                minzoom: Optional[str] = None,
-                maxzoom: Optional[str] = None) -> List[int]:
+def parse_zoom_list(zoom: Union[None, str, List[str]],
+                    minzoom: Optional[str] = None,
+                    maxzoom: Optional[str] = None) -> Optional[List[int]]:
     """Parse a user-provided list of zooms (one or more --zoom parameters),
        or if not given, parse minzoom and maxzoom.  Returns a list of zooms to work on. """
-    result = [int(v) for v in (zoom if isinstance(zoom, list) else [zoom])]
+    result = parse_zoom(zoom, is_list=True)
     if not result and minzoom is not None and maxzoom is not None:
         result = list(range(int(minzoom), int(maxzoom) + 1))
     return result
+
+
+def parse_zoom(zooms: Union[None, str, List[str]], is_list: bool = False) -> Union[None, List[int], int]:
+    """Parse a user-provided zoom or a list of zooms (one or more --zoom parameters).
+    In some cases a list of zooms could be given even if a single zoom was required"""
+    if not zooms:
+        return None
+    if isinstance(zooms, str):
+        zooms = [zooms]
+    result = []
+    for zoom in zooms:
+        try:
+            z = int(zoom)
+        except ValueError:
+            raise ValueError(f"Unable to parse zoom value '{zoom}'")
+        if z < 0 or z > 22:
+            raise ValueError(f"Invalid zoom value '{zoom}'")
+        result.append(z)
+    if not is_list and len(zooms) > 1:
+        raise ValueError(f"One zoom value was expected, but multiple values were given: [{', '.join(zooms)}]")
+    return result if is_list else result[0]
