@@ -169,7 +169,7 @@ class Imputer:
         sql = f"SELECT tile_column, tile_row, tile_id FROM map WHERE zoom_level=?"
         sql_args = [search_zoom]
         if limit_to_keys:
-            sql += f" and tile_id IN ({','.join(('?' * len(self.keys)))})"
+            sql += f" and tile_id IN ({','.join('?' * len(self.keys))})"
             sql_args += self.keys
         with_key = []
         without_key = []
@@ -461,28 +461,30 @@ class TileCopier:
         with sqlite3.connect(self.target) as conn:
             cursor = conn.cursor()
             self.execute(cursor, "ATTACH DATABASE ? AS sourceDb", [self.source.mbtiles])
-
-            sql = "INSERT OR IGNORE INTO map SELECT zoom_level, tile_column, tile_row, tile_id FROM sourceDb.map"
-            sql, params = self._add_sql_where(sql, [])
-            self.execute(cursor, sql, params)
-
-            if not self.zooms and self.minzoom is None and self.maxzoom is None:
-                sql = "INSERT OR IGNORE INTO images SELECT tile_data, tile_id FROM sourceDb.images"
-            else:
-                sql = """
-    INSERT OR IGNORE INTO images
-    SELECT images.tile_data, images.tile_id
-    FROM sourceDb.images
-      JOIN sourceDb.map
-      ON images.tile_id = map.tile_id
-   """
-            sql, params = self._add_sql_where(sql, [])
-            self.execute(cursor, sql, params)
+            self.copy_tiles(cursor)
         self.source.copy(self.target, self.reset, self.auto_minmax)
+
+    def copy_tiles(self, cursor):
+        sql = "INSERT OR IGNORE INTO map SELECT zoom_level, tile_column, tile_row, tile_id FROM sourceDb.map"
+        sql, params = self._add_sql_where(sql, [])
+        self.execute(cursor, sql, params)
+
+        if not self.zooms and self.minzoom is None and self.maxzoom is None:
+            sql = "INSERT OR IGNORE INTO images SELECT tile_data, tile_id FROM sourceDb.images"
+        else:
+            sql = """
+INSERT OR IGNORE INTO images
+SELECT images.tile_data, images.tile_id
+FROM sourceDb.images
+  JOIN sourceDb.map
+  ON images.tile_id = map.tile_id
+"""
+        sql, params = self._add_sql_where(sql, [])
+        self.execute(cursor, sql, params)
 
     def _add_sql_where(self, sql, params):
         if self.zooms:
-            sql += " WHERE zoom_level IN (" + ", ".join(("?" for z in self.zooms)) + ")"
+            sql += f" WHERE zoom_level IN ({','.join('?' * len(self.zooms))})"
             params.extend(self.zooms)
         elif self.minzoom is not None and self.maxzoom is not None:
             sql += " WHERE zoom_level BETWEEN ? AND ?"
@@ -504,34 +506,13 @@ class TileCopier:
             if row is not None:
                 raise ValueError(f"Newly created file '{self.target}' is not empty")
 
-            self.execute(cursor, """
-    CREATE TABLE map (
-       zoom_level INTEGER,
-       tile_column INTEGER,
-       tile_row INTEGER,
-       tile_id TEXT)""")
-            self.execute(cursor, """
-    CREATE TABLE images (
-        tile_data blob,
-        tile_id text)""")
-            self.execute(cursor, """
-    CREATE TABLE metadata (
-        name text,
-        value text)""")
+            # This forces DB to the smallest possible block size,
+            # making overall file smaller.
+            self.execute(cursor, "PRAGMA page_size = 512;")
+            self.execute(cursor, "VACUUM;")
 
-            self.execute(cursor, "CREATE UNIQUE INDEX map_index ON map (zoom_level, tile_column, tile_row)")
-            self.execute(cursor, "CREATE UNIQUE INDEX images_id ON images (tile_id)")
-            self.execute(cursor, "CREATE UNIQUE INDEX name ON metadata (name)")
-
-            self.execute(cursor, """
-    CREATE VIEW tiles AS
-        SELECT
-            map.zoom_level AS zoom_level,
-            map.tile_column AS tile_column,
-            map.tile_row AS tile_row,
-            images.tile_data AS tile_data
-        FROM map
-        JOIN images ON images.tile_id = map.tile_id""")
+            for sql in sql_create_mbtiles:
+                self.execute(cursor, sql)
 
     def execute(self, cursor: Cursor, sql: str, params=None):
         if self.verbose:
@@ -540,3 +521,22 @@ class TileCopier:
         cursor.execute(sql, params if params else [])
         if self.verbose and cursor.rowcount >= 0:
             print(f"{cursor.rowcount} rows were affected")
+
+
+sql_create_mbtiles = [
+    "CREATE TABLE map (zoom_level INTEGER, tile_column INTEGER, tile_row INTEGER, tile_id TEXT);",
+    "CREATE TABLE images (tile_data BLOB, tile_id TEXT);",
+    """\
+CREATE VIEW tiles AS
+  SELECT
+      map.zoom_level AS zoom_level,
+      map.tile_column AS tile_column,
+      map.tile_row AS tile_row,
+      images.tile_data AS tile_data
+  FROM map
+  JOIN images ON images.tile_id = map.tile_id;""",
+    "CREATE TABLE metadata (name text, value text);",
+    "CREATE UNIQUE INDEX map_index ON map (zoom_level, tile_column, tile_row);",
+    "CREATE UNIQUE INDEX images_id ON images (tile_id);",
+    "CREATE UNIQUE INDEX name ON metadata (name);",
+]
