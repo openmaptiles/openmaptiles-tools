@@ -11,7 +11,7 @@ Usage:
  mbtiles-tools copy <mbtiles-file> <target-mbtiles-file>
                 ([--zoom=<zoom>]... | [--minzoom=<min>] [--maxzoom=<max>])
                 [--reset] [--auto-minmax] [--show-json] [--show-ranges]
-                [--bbox=<bbox>] [--verbose]
+                [--exist=<ignore|replace|fail>] [--bbox=<bbox>] [--verbose]
   mbtiles-tools meta-all <mbtiles-file> [--show-json] [--show-ranges]
   mbtiles-tools meta-get <mbtiles-file> <metakey>
   mbtiles-tools meta-set <mbtiles-file> <metakey> [<newvalue>]
@@ -65,6 +65,8 @@ Options:
   -i --min-dups=<count> Number of times a tile is repeated before considering it a dup.
   -m --minzoom=<min>    Process all zooms beginning with this one (inclusive).
   -n --maxzoom=<max>    Process all zooms ending at this one (inclusive).
+  -e --exist=<mode>     When copying tiles, specify what to do if tile with the same
+                        coordinates already exists in the target file.
   -k --key=<hash>       Key of the tile (i.e. an MD5 hash). Could be multiple.
   -f --keyfile=<file>   A file with tile Keys, one per line.
   -o --output=<file>    Write a list of tiles to this file. Use '-' for stdout.
@@ -106,6 +108,15 @@ def main():
     elif args['impute']:
         impute(args)
     elif args['copy']:
+        if args['--exist'] is None or args['--exist'] == 'ignore':
+            on_conflict = 'IGNORE'
+        elif args['--exist'] == 'replace':
+            on_conflict = 'REPLACE'
+        elif args['--exist'] == 'fail':
+            on_conflict = 'FAIL'
+        else:
+            raise DocoptExit(f'Invalid value for --exist parameter.')
+
         TileCopier(source=Metadata(args['<mbtiles-file>'], args['--show-json'],
                                    args['--show-ranges']),
                    target=args['<target-mbtiles-file>'],
@@ -113,6 +124,7 @@ def main():
                    minzoom=parse_zoom(args['--minzoom']),
                    maxzoom=parse_zoom(args['--maxzoom']),
                    reset=args['--reset'],
+                   on_conflict=on_conflict,
                    auto_minmax=args['--auto-minmax'],
                    bbox=Bbox(bbox=args['--bbox']) if args['--bbox'] else None,
                    verbose=bool(args['--verbose'])).run()

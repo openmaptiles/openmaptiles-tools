@@ -99,6 +99,18 @@ class Bbox:
             (self.min_lat + self.max_lat) / 2.0,
             self.center_zoom)
 
+    def to_tiles(self, zoom: int):
+        """Convert current bbox into (min_x, min_y, max_x, max_y) tile coordinates for a given zoom.
+        The result is inclusive for both the min and the max coordinates"""
+        max_val = 2 ** zoom - 1
+
+        def limit(v):
+            return min(max_val, max(0, v[0])), min(max_val, max(0, v[1]))
+
+        x1, y1 = limit(deg2num(self.min_lat, self.min_lon, zoom))
+        x2, y2 = limit(deg2num(self.max_lat, self.max_lon, zoom))
+        return min(x1, x2), min(y1, y2), max(x1, x2), max(y1, y2),
+
 
 class Action:
     _result: Future = None

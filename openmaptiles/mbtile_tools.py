@@ -4,7 +4,7 @@ import sqlite3
 from datetime import datetime
 from pathlib import Path
 from sqlite3 import Cursor
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 
 import asyncpg
 from tabulate import tabulate
@@ -338,8 +338,7 @@ GROUP BY zoom_level
         with sqlite3.connect(file) as conn:
             cursor = conn.cursor()
             if auto_minmax:
-                cursor.execute("SELECT MIN(zoom_level), MAX(zoom_level) FROM map")
-                min_z, max_z = cursor.fetchone()
+                min_z, max_z = self.find_min_max_zoom(cursor)
                 if min_z is None:
                     raise ValueError("Unable to get min/max zoom - tile data is empty")
                 metadata["minzoom"] = min_z
@@ -349,6 +348,11 @@ GROUP BY zoom_level
 
         print(f"New metadata values in {file}")
         self.print_all(file=file)
+
+    @staticmethod
+    def find_min_max_zoom(cursor, db_prefix="") -> Tuple[int, int]:
+        cursor.execute(f"SELECT MIN(zoom_level), MAX(zoom_level) FROM {db_prefix}map")
+        return cursor.fetchone()
 
     @staticmethod
     def _get_metadata(file) -> Dict[str, str]:
@@ -437,6 +441,7 @@ class TileCopier:
                  minzoom: Optional[int],
                  maxzoom: Optional[int],
                  reset: bool,
+                 on_conflict: str,
                  auto_minmax: bool,
                  bbox: Optional[Bbox],
                  verbose: bool,
@@ -447,12 +452,10 @@ class TileCopier:
         self.minzoom = minzoom
         self.maxzoom = maxzoom
         self.reset = reset
+        self.on_conflict = on_conflict
         self.auto_minmax = auto_minmax
         self.bbox = bbox
         self.verbose = verbose
-
-        if self.bbox:
-            raise ValueError("bbox support is not implemented yet")
 
     def run(self):
         if not self.target.exists():
@@ -465,37 +468,62 @@ class TileCopier:
         self.source.copy(self.target, self.reset, self.auto_minmax)
 
     def copy_tiles(self, cursor):
-        sql = "INSERT OR IGNORE INTO map SELECT zoom_level, tile_column, tile_row, tile_id FROM sourceDb.map"
-        sql, params = self._add_sql_where(sql, [])
-        self.execute(cursor, sql, params)
+        sql = f"INSERT OR {self.on_conflict} INTO map SELECT zoom_level, tile_column, tile_row, tile_id FROM sourceDb.map"
+        for sql, params in self.iterate_queries(cursor, sql):
+            self.execute(cursor, sql, params)
 
-        if not self.zooms and self.minzoom is None and self.maxzoom is None:
-            sql = "INSERT OR IGNORE INTO images SELECT tile_data, tile_id FROM sourceDb.images"
+        if not self.zooms and self.minzoom is None and self.maxzoom is None and self.bbox is None:
+            sql = f"INSERT OR {self.on_conflict} INTO images SELECT tile_data, tile_id FROM sourceDb.images"
         else:
-            sql = """
-INSERT OR IGNORE INTO images
+            sql = f"""\
+INSERT OR {self.on_conflict} INTO images
 SELECT images.tile_data, images.tile_id
 FROM sourceDb.images
   JOIN sourceDb.map
-  ON images.tile_id = map.tile_id
-"""
-        sql, params = self._add_sql_where(sql, [])
-        self.execute(cursor, sql, params)
+  ON images.tile_id = map.tile_id"""
+        for sql, params in self.iterate_queries(cursor, sql):
+            self.execute(cursor, sql, params)
 
-    def _add_sql_where(self, sql, params):
-        if self.zooms:
-            sql += f" WHERE zoom_level IN ({','.join('?' * len(self.zooms))})"
-            params.extend(self.zooms)
-        elif self.minzoom is not None and self.maxzoom is not None:
-            sql += " WHERE zoom_level BETWEEN ? AND ?"
-            params.extend([self.minzoom, self.maxzoom])
-        elif self.minzoom is not None:
-            sql += " WHERE zoom_level >= ?"
-            params.append(self.minzoom)
-        elif self.maxzoom is not None:
-            sql += " WHERE zoom_level <= ?"
-            params.append(self.maxzoom)
-        return sql, params
+    def iterate_queries(self, cursor, sql):
+        # For BBOX filter, perform one query per zoom,
+        # otherwise run just one query for the whole DB
+        if self.bbox:
+            if self.zooms:
+                zooms = self.zooms
+            elif self.minzoom is not None and self.maxzoom is not None:
+                zooms = range(self.minzoom, self.maxzoom + 1)
+            else:
+                print(f"Detecting zoom levels in the source file")
+                min_z, max_z = self.source.find_min_max_zoom(cursor, "sourceDb.")
+                if min_z is None:
+                    print("No tile data was found in the source file")
+                    raise StopIteration
+                print(f"Source file contains tiles for zooms {min_z}..{max_z}")
+                if self.minzoom is not None:
+                    min_z = max(self.minzoom, min_z)
+                if self.maxzoom is not None:
+                    max_z = min(self.maxzoom, max_z)
+                zooms = range(min_z, max_z + 1)
+            sql += f" WHERE zoom_level = ? AND tile_column BETWEEN ? AND ? AND tile_row BETWEEN ? AND ?"
+            for zoom in zooms:
+                largest_y = 2 ** zoom - 1
+                min_x, min_y, max_x, max_y = self.bbox.to_tiles(zoom)
+                yield sql, [zoom, min_x, max_x, largest_y - max_y, largest_y - min_y]
+        else:
+            if self.zooms:
+                sql += f" WHERE zoom_level IN ({','.join('?' * len(self.zooms))})"
+                yield sql, self.zooms
+            elif self.minzoom is not None and self.maxzoom is not None:
+                sql += " WHERE zoom_level BETWEEN ? AND ?"
+                yield sql, [self.minzoom, self.maxzoom]
+            elif self.minzoom is not None:
+                sql += " WHERE zoom_level >= ?"
+                yield sql, [self.minzoom]
+            elif self.maxzoom is not None:
+                sql += " WHERE zoom_level <= ?"
+                yield sql, [self.maxzoom]
+            else:
+                yield sql, []
 
     def create_new_db(self) -> None:
         print(f"Creating a new file {self.target}")
