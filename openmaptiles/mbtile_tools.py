@@ -3,10 +3,11 @@ import os
 import sqlite3
 from datetime import datetime
 from pathlib import Path
+from sqlite3 import Cursor
+from typing import Dict, List, Optional, Tuple
 
 import asyncpg
 from tabulate import tabulate
-from typing import Dict
 
 from openmaptiles.pgutils import get_postgis_version, get_vector_layers
 from openmaptiles.sqlite_utils import query
@@ -168,7 +169,7 @@ class Imputer:
         sql = f"SELECT tile_column, tile_row, tile_id FROM map WHERE zoom_level=?"
         sql_args = [search_zoom]
         if limit_to_keys:
-            sql += f" and tile_id IN ({','.join(('?' * len(self.keys)))})"
+            sql += f" and tile_id IN ({','.join('?' * len(self.keys))})"
             sql_args += self.keys
         with_key = []
         without_key = []
@@ -251,7 +252,7 @@ GROUP BY zoom_level
                 cursor.execute("DELETE FROM metadata WHERE name=?;", [name])
             else:
                 cursor.execute(
-                    "INSERT OR REPLACE INTO  metadata(name, value) VALUES (?, ?);",
+                    "INSERT OR REPLACE INTO metadata(name, value) VALUES (?, ?);",
                     [name, value])
 
     async def generate(self, tileset, reset, auto_minmax,
@@ -261,8 +262,8 @@ GROUP BY zoom_level
             f'Connecting to PostgreSQL at {pghost}:{pgport}, db={dbname}, user={user}...')
         try:
             async with asyncpg.create_pool(
-                database=dbname, host=pghost, port=pgport, user=user,
-                password=password, min_size=1, max_size=1,
+                    database=dbname, host=pghost, port=pgport, user=user,
+                    password=password, min_size=1, max_size=1,
             ) as pool:
                 async with pool.acquire() as conn:
                     mvt = MvtGenerator(
@@ -337,8 +338,7 @@ GROUP BY zoom_level
         with sqlite3.connect(file) as conn:
             cursor = conn.cursor()
             if auto_minmax:
-                cursor.execute("SELECT MIN(zoom_level), MAX(zoom_level) FROM map")
-                min_z, max_z = cursor.fetchone()
+                min_z, max_z = self.find_min_max_zoom(cursor)
                 if min_z is None:
                     raise ValueError("Unable to get min/max zoom - tile data is empty")
                 metadata["minzoom"] = min_z
@@ -348,6 +348,11 @@ GROUP BY zoom_level
 
         print(f"New metadata values in {file}")
         self.print_all(file=file)
+
+    @staticmethod
+    def find_min_max_zoom(cursor, db_prefix="") -> Tuple[int, int]:
+        cursor.execute(f"SELECT MIN(zoom_level), MAX(zoom_level) FROM {db_prefix}map")
+        return cursor.fetchone()
 
     @staticmethod
     def _get_metadata(file) -> Dict[str, str]:
@@ -364,7 +369,7 @@ GROUP BY zoom_level
             if not is_valid:
                 raise ValueError(f"Invalid {name}={value}")
             cursor.execute(
-                "INSERT OR REPLACE INTO  metadata(name, value) VALUES (?, ?);",
+                "INSERT OR REPLACE INTO metadata(name, value) VALUES (?, ?);",
                 [name, value])
 
     def validate(self, name, value):
@@ -424,3 +429,142 @@ GROUP BY zoom_level
                 else:
                     value = f'(invalid JSON value, use --show-json to see it)'
         return value, is_valid
+
+
+class TileCopier:
+    """Copy tile data between mbtile files"""
+
+    def __init__(self,
+                 source: Metadata,
+                 target: str,
+                 zooms: List[int],
+                 minzoom: Optional[int],
+                 maxzoom: Optional[int],
+                 reset: bool,
+                 on_conflict: str,
+                 auto_minmax: bool,
+                 bbox: Optional[Bbox],
+                 verbose: bool,
+                 ) -> None:
+        self.source = source
+        self.target = Path(target)
+        self.zooms = zooms
+        self.minzoom = minzoom
+        self.maxzoom = maxzoom
+        self.reset = reset
+        self.on_conflict = on_conflict
+        self.auto_minmax = auto_minmax
+        self.bbox = bbox
+        self.verbose = verbose
+
+    def run(self):
+        if not self.target.exists():
+            self.create_new_db()
+        print(f"Opening {self.target}")
+        with sqlite3.connect(self.target) as conn:
+            cursor = conn.cursor()
+            self.execute(cursor, "ATTACH DATABASE ? AS sourceDb", [self.source.mbtiles])
+            self.copy_tiles(cursor)
+        self.source.copy(self.target, self.reset, self.auto_minmax)
+
+    def copy_tiles(self, cursor):
+        sql = f"INSERT OR {self.on_conflict} INTO map SELECT zoom_level, tile_column, tile_row, tile_id FROM sourceDb.map"
+        for sql, params in self.iterate_queries(cursor, sql):
+            self.execute(cursor, sql, params)
+
+        if not self.zooms and self.minzoom is None and self.maxzoom is None and self.bbox is None:
+            sql = f"INSERT OR {self.on_conflict} INTO images SELECT tile_data, tile_id FROM sourceDb.images"
+        else:
+            sql = f"""\
+INSERT OR {self.on_conflict} INTO images
+SELECT images.tile_data, images.tile_id
+FROM sourceDb.images
+  JOIN sourceDb.map
+  ON images.tile_id = map.tile_id"""
+        for sql, params in self.iterate_queries(cursor, sql):
+            self.execute(cursor, sql, params)
+
+    def iterate_queries(self, cursor, sql):
+        # For BBOX filter, perform one query per zoom,
+        # otherwise run just one query for the whole DB
+        if self.bbox:
+            if self.zooms:
+                zooms = self.zooms
+            elif self.minzoom is not None and self.maxzoom is not None:
+                zooms = range(self.minzoom, self.maxzoom + 1)
+            else:
+                print(f"Detecting zoom levels in the source file")
+                min_z, max_z = self.source.find_min_max_zoom(cursor, "sourceDb.")
+                if min_z is None:
+                    print("No tile data was found in the source file")
+                    raise StopIteration
+                print(f"Source file contains tiles for zooms {min_z}..{max_z}")
+                if self.minzoom is not None:
+                    min_z = max(self.minzoom, min_z)
+                if self.maxzoom is not None:
+                    max_z = min(self.maxzoom, max_z)
+                zooms = range(min_z, max_z + 1)
+            sql += f" WHERE zoom_level = ? AND tile_column BETWEEN ? AND ? AND tile_row BETWEEN ? AND ?"
+            for zoom in zooms:
+                largest_y = 2 ** zoom - 1
+                min_x, min_y, max_x, max_y = self.bbox.to_tiles(zoom)
+                yield sql, [zoom, min_x, max_x, largest_y - max_y, largest_y - min_y]
+        else:
+            if self.zooms:
+                sql += f" WHERE zoom_level IN ({','.join('?' * len(self.zooms))})"
+                yield sql, self.zooms
+            elif self.minzoom is not None and self.maxzoom is not None:
+                sql += " WHERE zoom_level BETWEEN ? AND ?"
+                yield sql, [self.minzoom, self.maxzoom]
+            elif self.minzoom is not None:
+                sql += " WHERE zoom_level >= ?"
+                yield sql, [self.minzoom]
+            elif self.maxzoom is not None:
+                sql += " WHERE zoom_level <= ?"
+                yield sql, [self.maxzoom]
+            else:
+                yield sql, []
+
+    def create_new_db(self) -> None:
+        print(f"Creating a new file {self.target}")
+        with sqlite3.connect(self.target) as conn:
+            cursor = conn.cursor()
+            self.execute(cursor, "SELECT * FROM sqlite_master")
+            row = cursor.fetchone()
+            if row is not None:
+                raise ValueError(f"Newly created file '{self.target}' is not empty")
+
+            # This forces DB to the smallest possible block size,
+            # making overall file smaller.
+            self.execute(cursor, "PRAGMA page_size = 512;")
+            self.execute(cursor, "VACUUM;")
+
+            for sql in sql_create_mbtiles:
+                self.execute(cursor, sql)
+
+    def execute(self, cursor: Cursor, sql: str, params=None):
+        if self.verbose:
+            vals = "  [" + ", ".join((str(v) for v in params)) + "]" if params else ""
+            print(f"Executing {sql}{vals}")
+        cursor.execute(sql, params if params else [])
+        if self.verbose and cursor.rowcount >= 0:
+            print(f"{cursor.rowcount} rows were affected")
+
+
+sql_create_mbtiles = [
+    "CREATE TABLE map (zoom_level INTEGER, tile_column INTEGER, tile_row INTEGER, tile_id TEXT);",
+    "CREATE TABLE images (tile_data BLOB, tile_id TEXT);",
+    """\
+CREATE VIEW tiles AS
+  SELECT
+      map.zoom_level AS zoom_level,
+      map.tile_column AS tile_column,
+      map.tile_row AS tile_row,
+      images.tile_data AS tile_data
+  FROM map
+  JOIN images ON images.tile_id = map.tile_id;""",
+    "CREATE TABLE metadata (name text, value text);",
+    "CREATE UNIQUE INDEX map_index ON map (zoom_level, tile_column, tile_row);",
+    "CREATE UNIQUE INDEX images_id ON images (tile_id);",
+    "CREATE UNIQUE INDEX name ON metadata (name);",
+]

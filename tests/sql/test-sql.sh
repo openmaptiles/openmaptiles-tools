@@ -73,6 +73,8 @@ echo "Testing mbtiles-tools"
 echo "++++++++++++++++++++++++"
 MBTILES_FILE="/tmp/data.mbtiles"
 MBTILES2_FILE="/tmp/data2.mbtiles"
+MBTILES3_FILE="/tmp/data3.mbtiles"
+MBTILES4_FILE="/tmp/data4.mbtiles"
 cp "/omt/tests/http/empty.mbtiles" "$MBTILES_FILE"
 cp "/omt/tests/http/empty.mbtiles" "$MBTILES2_FILE"
 cp /omt/tests/http/osm_13_4388_2568.mvt /tmp/osm_13_4388_2568.mvt
@@ -158,6 +160,10 @@ EOT
   echo "----------------------- mbtiles-tools impute"
   mbtiles-tools impute "$MBTILES_FILE" --zoom=2 --min-dups=2 --output -
   mbtiles-tools meta-all "$MBTILES_FILE" --show-ranges
+  echo "----------------------- mbtiles-tools copy"
+  mbtiles-tools copy "$MBTILES_FILE" "$MBTILES3_FILE" --minzoom=1 --maxzoom=2 --reset --auto-minmax --show-ranges --verbose
+  echo "----------------------- mbtiles-tools copy bbox"
+  mbtiles-tools copy "$MBTILES3_FILE" "$MBTILES4_FILE" --bbox '20.2403,35.8223,23.3262,45.8046' --reset --auto-minmax --show-ranges --verbose
 
 } > /omt/build/mbtiles.out
 

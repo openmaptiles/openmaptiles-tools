@@ -24,3 +24,11 @@ jobs:
           popd
 
           # Do not auto-build import-data and postgis-preload due to high download requirements
+
+      - name: Save build results
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v2
+        with:
+          name: build-result
+          path: |
+            build
