@@ -53,8 +53,8 @@ export PGQUERY
 
 function export_local_mbtiles() {
   echo "Generating zoom $MIN_ZOOM..$MAX_ZOOM from $HOST_COUNT servers, using $MAX_HOST_CONNECTIONS connections per server, $ALL_STREAMS parallel streams..."
-	set -x
-	exec tilelive-copy \
+  set -x
+  exec tilelive-copy \
         --scheme="$RENDER_SCHEME" \
         --retry="$RETRY" \
         --bounds="$BBOX" \
