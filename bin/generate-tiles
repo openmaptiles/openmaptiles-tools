@@ -22,24 +22,6 @@ else
   export PGHOSTS="${PGHOSTS_LIST}"
 fi
 
-if [[ -n "${NO_GZIP:-}" ]] && [[ "${NO_GZIP:-}" != "0" ]] && [[ "${NO_GZIP:-}" != "false" ]]; then
-  export NO_GZIP="&nogzip=1"
-else
-  export NO_GZIP=
-fi
-
-if [[ -n "${USE_KEY_COLUMN:-}" ]] && [[ "${USE_KEY_COLUMN:-}" != "0" ]] && [[ "${USE_KEY_COLUMN:-}" != "false" ]]; then
-  export USE_KEY_COLUMN="&key=1"
-else
-  export USE_KEY_COLUMN=
-fi
-
-if [[ -n "${TEST_ON_STARTUP:-}" ]] && [[ "${TEST_ON_STARTUP:-}" != "0" ]] && [[ "${TEST_ON_STARTUP:-}" != "false" ]]; then
-  export TEST_ON_STARTUP_TILE="&testOnStartup=${TEST_ON_STARTUP}"
-else
-  export TEST_ON_STARTUP_TILE=
-fi
-
 export FUNC_ZXY=${FUNC_ZXY:-getmvt}
 export COPY_CONCURRENCY=${COPY_CONCURRENCY:-1}  # number of CPUs per postgres server
 export MAX_HOST_CONNECTIONS=${MAX_HOST_CONNECTIONS:-${COPY_CONCURRENCY}}
@@ -54,10 +36,24 @@ export TIMEOUT=${TIMEOUT:-1800000}
 export MIN_ZOOM=${MIN_ZOOM:-0}
 export MAX_ZOOM=${MAX_ZOOM:-14}
 
-export PGQUERY="pgquery://?database=${PGDATABASE}&host=${PGHOSTS}&port=${PGPORT}&username=${PGUSER}&password=${PGPASSWORD}&funcZXY=${FUNC_ZXY}&maxpool=${MAX_HOST_CONNECTIONS}${NO_GZIP}${USE_KEY_COLUMN}${TEST_ON_STARTUP_TILE}"
-echo $PGQUERY
+PGQUERY="pgquery://\
+?database=${PGDATABASE}\
+&host=${PGHOSTS}\
+&port=${PGPORT}\
+&username=${PGUSER}\
+&password=${PGPASSWORD}\
+&funcZXY=${FUNC_ZXY}\
+&maxpool=${MAX_HOST_CONNECTIONS}\
+${GZIP:+&gzip=${GZIP}}\
+${NOGZIP:+&nogzip=${NOGZIP}}\
+${USE_KEY_COLUMN:+&key=${USE_KEY_COLUMN}}\
+${TEST_ON_STARTUP_TILE:+&testOnStartup=${TEST_ON_STARTUP}}"
+
+export PGQUERY
 
 function export_local_mbtiles() {
+  echo "Generating zoom $MIN_ZOOM..$MAX_ZOOM from $HOST_COUNT servers, using $MAX_HOST_CONNECTIONS connections per server, $ALL_STREAMS parallel streams..."
+	set -x
 	exec tilelive-copy \
         --scheme="$RENDER_SCHEME" \
         --retry="$RETRY" \
@@ -70,5 +66,4 @@ function export_local_mbtiles() {
         "mbtiles://${EXPORT_DIR}/${MBTILES_FILE}"
 }
 
-echo "Generating zoom $MIN_ZOOM..$MAX_ZOOM from $HOST_COUNT servers, using $MAX_HOST_CONNECTIONS connections per server, $ALL_STREAMS parallel streams..."
 export_local_mbtiles
