@@ -65,10 +65,6 @@ jobs:
           make build-docker
           push_docker openmaptiles-tools
 
-          df -h .
-          make build-generate-vectortiles
-          push_docker generate-vectortiles
-
           # Github has a very low disk limit, get rid of some data
           df -h .
           sudo docker system prune --all --force
@@ -79,3 +75,10 @@ jobs:
           push_docker import-data
           push_docker postgis-preloaded
           df -h .
+
+          # The generate-vectortiles docker image often fails build, so leave it as last step
+          df -h .
+          sudo docker system prune --all --force
+          df -h .
+          make build-generate-vectortiles
+          push_docker generate-vectortiles
