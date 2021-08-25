@@ -11,24 +11,28 @@ jobs:
       - name: Checkout the changes
         uses: actions/checkout@v2
 
-      - name: main
+      - name: Tests
         run: |
           make test
 
-          pushd docker/postgis
-          docker build .
-          popd
-
-          pushd docker/generate-vectortiles
-          docker build .
-          popd
-
-          # Do not auto-build import-data and postgis-preload due to high download requirements
-
-      - name: Save build results
+      - name: Save test results
         if: ${{ always() }}
         uses: actions/upload-artifact@v2
         with:
           name: build-result
-          path: |
-            build
+          path: build
+
+      - name: Build postgis docker
+        run: |
+          pushd docker/postgis
+          docker build .
+          popd
+
+      - name: Build generate-vectortiles docker
+        continue-on-error: true
+        run: |
+          pushd docker/generate-vectortiles
+          docker build .
+          popd
+
+        # Do not auto-build import-data and postgis-preload due to high download requirements
