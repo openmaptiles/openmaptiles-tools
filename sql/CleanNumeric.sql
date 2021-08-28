@@ -11,7 +11,7 @@ __Returns:__ `numeric`
 ******************************************************************************/
 create or replace function CleanNumeric (i text) returns numeric as
 $body$
- SELECT substring(i from '^\s*([-+]?(?=\d|\.\d)\d*(?:\.\d*)?(?:[Ee][-+]?\d+)?)\s*$')::numeric;
+ SELECT substring(i from '^\s*([-+]?(?=\d|\.\d)\d*(?:\.\d*)?(?:[Ee][-+]?\d+)?)[\s\w]*$')::numeric;
 $body$
 language sql
 strict immutable cost 20
