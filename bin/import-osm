@@ -14,6 +14,7 @@ export PGPORT="${POSTGRES_PORT:-${PGPORT:-5432}}"
 
 
 : "${DIFF_MODE:=true}"
+: "${$APPEND_MODE:=false}"
 
 
 function import_pbf() {
@@ -26,10 +27,16 @@ function import_pbf() {
         echo "Importing $pbf_file into $PGHOST:$PGPORT/$PGDATABASE using Imposm in NORMAL mode..."
     fi
 
+    local cache_flag="-overwritecache"
+    if [ "$APPEND_MODE" = true ]; then
+        cache_flag="-appendcache"
+        echo "Appending $pbf_file into $PGHOST:$PGPORT/$PGDATABASE"
+    fi
+
     imposm import \
         -connection "postgis://$PGUSER:$PGPASSWORD@$PGHOST:$PGPORT/$PGDATABASE" \
         -mapping "${IMPOSM_MAPPING_FILE:?}" \
-        -overwritecache \
+        $cache_flag \
         -diffdir "${IMPOSM_DIFF_DIR:?}" \
         -cachedir "${IMPOSM_CACHE_DIR:?}" \
         -read "$pbf_file" \
