@@ -28,3 +28,6 @@ SELECT CleanNumeric('22') AS ok_v26;	-- 23
 SELECT CleanNumeric('24') AS ok_v27;	-- 25
 SELECT CleanNumeric('  26   ') AS ok_v28;	-- 27
 SELECT CleanNumeric('28e29') AS ok_v29;	-- 30
+SELECT CleanNumeric('20 ft') AS ok_v30;	-- 21
+SELECT CleanNumeric('12 m') AS ok_v31;	-- 13
+SELECT CleanNumeric('14 Meter') AS ok_v32;	-- 15
