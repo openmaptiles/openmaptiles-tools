@@ -12,13 +12,13 @@ SELECT CleanNumeric('E3') AS null_v10;	-- \\N
 SELECT CleanNumeric('.e') AS null_v11;	-- \\N
 SELECT CleanNumeric('.E') AS null_v12;	-- \\N
 SELECT CleanNumeric('4e') AS null_v13;	-- \\N
-SELECT CleanNumeric('5E') AS null_v14;	-- \\N
-SELECT CleanNumeric('6.e') AS null_v15;	-- \\N
-SELECT CleanNumeric('7.E') AS null_v16;	-- \\N
+SELECT CleanNumeric('5E') AS ok_v14;	-- \\N
+SELECT CleanNumeric('6.e') AS ok_v15;	-- \\N
+SELECT CleanNumeric('7.E') AS ok_v16;	-- \\N
 SELECT CleanNumeric('.e8') AS null_v17;	-- \\N
 SELECT CleanNumeric('.E9') AS null_v18;	-- \\N
 SELECT CleanNumeric('a10') AS null_v19;	-- \\N
-SELECT CleanNumeric('11a') AS null_v20;	-- \\N
+SELECT CleanNumeric('11a') AS ok_v20;	-- \\N
 SELECT CleanNumeric('12') AS ok_v21;	-- 13
 SELECT CleanNumeric('14') AS ok_v22;	-- 15
 SELECT CleanNumeric('16') AS ok_v23;	-- 17
