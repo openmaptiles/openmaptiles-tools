@@ -11,7 +11,7 @@ SELECT CleanNumeric('e2') AS null_v9;	-- \\N
 SELECT CleanNumeric('E3') AS null_v10;	-- \\N
 SELECT CleanNumeric('.e') AS null_v11;	-- \\N
 SELECT CleanNumeric('.E') AS null_v12;	-- \\N
-SELECT CleanNumeric('4e') AS null_v13;	-- \\N
+SELECT CleanNumeric('4e') AS ok_v13;	-- \\N
 SELECT CleanNumeric('5E') AS ok_v14;	-- \\N
 SELECT CleanNumeric('6.e') AS ok_v15;	-- \\N
 SELECT CleanNumeric('7.E') AS ok_v16;	-- \\N
