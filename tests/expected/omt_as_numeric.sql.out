@@ -13,9 +13,9 @@
                    -1
 (1 row)
 
- fail_postfixed_letter 
------------------------
-                    -1
+ ok_integer 
+------------
+        123
 (1 row)
 
  fail_text 
