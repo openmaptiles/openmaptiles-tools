@@ -14,7 +14,7 @@ export PGPORT="${POSTGRES_PORT:-${PGPORT:-5432}}"
 
 
 : "${DIFF_MODE:=true}"
-: "${$APPEND_MODE:=false}"
+: "${APPEND_MODE:=false}"
 
 
 function import_pbf() {
