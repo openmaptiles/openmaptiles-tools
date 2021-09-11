@@ -69,19 +69,23 @@ class Layer:
 
     def __init__(self,
                  layer_source: Union[str, Path, ParsedData],
+                 id: str,
                  tileset: 'Tileset' = None,
                  index: int = None):
         """
         :param layer_source: load layer from this source, e.g. a file
+        :param id: id of the layer
         :param tileset: parent tileset object (optional)
         :param index: layer's position index within the tileset
         """
         self.tileset = tileset
         self.index = index
+        self.id = id
 
         if isinstance(layer_source, ParsedData):
             self.filename = layer_source.path
             self.definition = layer_source.data
+            self.id = layer_source.id
         else:
             # if layer_source is a rooted path, the optional root_path will be ignored
             root_path = tileset.filename.parent if tileset else ''
@@ -156,10 +160,6 @@ class Layer:
         if self.tileset and self.has_localized_names:
             layer_fields += self.tileset.languages_as_fields()
         return layer_fields
-
-    @property
-    def id(self) -> str:
-        return self.definition['layer']['id']
 
     @property
     def description(self) -> str:
@@ -252,8 +252,8 @@ class Tileset:
         self.definition = self.definition['tileset']
         self.layers = []
         self.layers_by_id = {}
-        for index, layer_filename in enumerate(self.definition['layers']):
-            layer = Layer(layer_filename, self, index)
+        for index, layer_id in enumerate(self.definition['layers']):
+            layer = Layer(self.definition['layers'][layer_id], layer_id, self, index)
             if layer.id in self.layers_by_id:
                 raise ValueError(f"Layer '{layer.id}' is defined more than once")
             self.layers.append(layer)
