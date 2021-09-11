@@ -122,6 +122,9 @@ class Layer:
         else:
             self.requires = []
 
+        self.required_tables = self.get_required_tables
+        self.required_functions = self.get_required_functions
+
         validate_properties(self, f"Layer {self.filename}")
 
         if any(v.name == self.geometry_field for v in self.fields):
@@ -206,6 +209,20 @@ class Layer:
     def raw_query(self) -> str:
         """Query string as defined in the layer file"""
         return self.definition['layer']['datasource']['query']
+
+    @property
+    def get_required_tables(self) -> List[str]:
+        if self.definition['layer']['datasource'].get('required_tables'):
+            return self.definition['layer']['datasource']['required_tables']
+        else:
+            return []
+
+    @property
+    def get_required_functions(self) -> List[str]:
+        if self.definition['layer']['datasource'].get('required_functions'):
+            return self.definition['layer']['datasource']['required_functions']
+        else:
+            return []
 
     @property
     def has_localized_names(self) -> bool:
