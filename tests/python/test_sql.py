@@ -66,25 +66,23 @@ $$ LANGUAGE SQL IMMUTABLE;
                 center="test_center",
                 defaults=dict(srs="test_srs", datasource=dict(srid="test_datasource")),
                 id="id1",
-                layers=[
-                    ParsedData(dict(
-                        layer=dict(
-                            buffer_size="test_buffer_size",
-                            datasource=dict(query="test_query"),
-                            id=v.id,
-                            fields={},
-                            requires=v.reqs
-                        ),
-                        schema=v.schema,
-                    ), Path(f'./{v.id}.yaml')) for v in layers
-                ],
+                layers=dict(
+                   (v.id, ParsedData(dict(
+                       layer=dict(
+                           buffer_size="test_buffer_size",
+                           datasource=dict(query="test_query"),
+                           fields={},
+                           requires=v.reqs
+                       ),
+                       schema=v.schema,
+                   ), Path(f'./{v.id}.yaml'))) for v in layers
+                ),
                 maxzoom="test_maxzoom",
                 minzoom="test_minzoom",
                 name="test_name",
                 pixel_scale="test_pixel_scale",
                 version="test_version",
             ))), Path("./tileset.yaml"))
-
         result = {
             k: "\n".join(
                 [query(vv) for vv in ([v] if isinstance(v, Case) else v)]

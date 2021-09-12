@@ -64,12 +64,12 @@ class Layer:
     fields: List[Field]
 
     @staticmethod
-    def parse(layer_source: Union[str, Path, ParsedData]) -> 'Layer':
-        return Layer(layer_source)
+    def parse(layer_source: Union[str, Path, ParsedData], id: str = None) -> 'Layer':
+        return Layer(layer_source, id)
 
     def __init__(self,
                  layer_source: Union[str, Path, ParsedData],
-                 id: str,
+                 id: str = None,
                  tileset: 'Tileset' = None,
                  index: int = None):
         """
@@ -80,12 +80,10 @@ class Layer:
         """
         self.tileset = tileset
         self.index = index
-        self.id = id
 
         if isinstance(layer_source, ParsedData):
             self.filename = layer_source.path
             self.definition = layer_source.data
-            self.id = layer_source.id
         else:
             # if layer_source is a rooted path, the optional root_path will be ignored
             root_path = tileset.filename.parent if tileset else ''
@@ -93,6 +91,17 @@ class Layer:
             self.definition = parse_file(self.filename)
 
         layer_dir = self.filename.parent
+
+        self.id = id
+        if not self.id:
+            print_err(f'No id for layer passed. Check if old Layer id is existing else use filename as id')
+            if self.definition['layer'].get('id'):
+                self.id = self.definition['layer'].get('id')
+                print_err(f'Id taken from old Layer schema: {self.id}')
+            else:
+                self.id = Path(self.filename).stem
+                print_err(f'Id taken from filename: {self.id}')
+
 
         self.imposm_mapping_files = [Path(layer_dir, ds['mapping_file'])
                                      for ds in self.definition.get('datasources', [])
@@ -392,7 +401,7 @@ def validate_properties(obj, info):
         raise ValueError(err)
 
 
-def process_layers(filename: Path, processor: Callable[[Layer, bool], None]):
+def process_layers(filename: Path, processor: Callable[[Layer, bool], None], layerId: str = None):
     """
     Open a tileset or a layer yaml file, and execute callback for each layer.
     Second parameter indicates if this is part of a tileset or not."""
@@ -401,7 +410,7 @@ def process_layers(filename: Path, processor: Callable[[Layer, bool], None]):
         for layer in Tileset.parse(parsed).layers:
             processor(layer, True)
     elif 'layer' in parsed.data:
-        processor(Layer.parse(parsed), False)
+        processor(Layer.parse(parsed, layerId), False)
     else:
         raise ValueError(f"Unrecognized content in file {filename} "
                          f"- expecting 'tileset' or 'layer' top element")

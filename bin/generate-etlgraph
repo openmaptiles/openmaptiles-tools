@@ -4,7 +4,7 @@ Extract dependencies from the SQL and yaml layer files,
 and create dot/png/svg files for documentation.
 
 Usage:
-  generate-etlgraph <tileset-or-layer-file> <output-path> [<compare-path>] [--keep]
+  generate-etlgraph <tileset-or-layer-file> <output-path> [<layer-id>] [<compare-path>] [--keep]
                     [--format <format>]...
   generate-etlgraph --help
   generate-etlgraph --version
@@ -14,6 +14,7 @@ Usage:
   <compare-path>            If set, compares generated graphs with graphs that already
                             exist at this location, and exit with non-zero code
                             if they are not the same.
+  <layer-id>                If layer file is given a layer-id is required
 
 Options:
   -k --keep             If set, do not delete generated .dot file
@@ -31,6 +32,7 @@ from openmaptiles.diagram import EtlGraph
 def main(args):
     exit(EtlGraph(
         args['<tileset-or-layer-file>'],
+        args['<layer-id>'],
         args['<output-path>'],
         args['<compare-path>'],
         not args['--keep'],

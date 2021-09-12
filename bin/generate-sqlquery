@@ -2,7 +2,7 @@
 
 """
 Usage:
-  generate-sqlquery <layer-definition> <zoom-level>
+  generate-sqlquery <layer-definition> <zoom-level> <layer-id>
   generate-sqlquery --help
   generate-sqlquery --version
 Options:
@@ -21,7 +21,7 @@ def main(args):
     bbox = "ST_SetSRID(" \
            "'BOX3D(-20037508.34 -20037508.34, 20037508.34 20037508.34)'::box3d, 3857 )"
     zoom = args['<zoom-level>']
-    layer = Layer.parse(args['<layer-definition>'])
+    layer = Layer.parse(args['<layer-definition>'], args['<layer-id>'])
 
     sql = (layer.query
            .replace('!bbox!', bbox)

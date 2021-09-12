@@ -40,14 +40,14 @@ generate-sqltomvt "$TESTLAYERS/testmaptiles.yaml" --query --postgis-ver 2.5     
 generate-sqltomvt "$TESTLAYERS/testmaptiles.yaml" --query --postgis-ver 3.0       > "$BUILD/mvttile_query_v3.0.sql"
 generate-sqltomvt "$TESTLAYERS/testmaptiles.yaml" --query --test-geometry         > "$BUILD/mvttile_query_test_geom.sql"
 generate-sqltomvt "$TESTLAYERS/testmaptiles.yaml" --query --test-geometry --key   > "$BUILD/mvttile_query_test_geom_key.sql"
-generate-doc      "$TESTLAYERS/housenumber/housenumber.yaml"                      > "$BUILD/doc.md"
-generate-sqlquery "$TESTLAYERS/housenumber/housenumber.yaml" 14                   > "$BUILD/sqlquery.sql"
+generate-doc      "$TESTLAYERS/housenumber/housenumber.yaml" "housenumber"        > "$BUILD/doc.md"
+generate-sqlquery "$TESTLAYERS/housenumber/housenumber.yaml" 14 "housenumber"     > "$BUILD/sqlquery.sql"
 
 generate-etlgraph "$TESTLAYERS/testmaptiles.yaml" "$DEVDOC" --keep -f png -f svg
-generate-etlgraph "$TESTLAYERS/housenumber/housenumber.yaml" "$DEVDOC" --keep -f png -f svg
+generate-etlgraph "$TESTLAYERS/housenumber/housenumber.yaml" "$DEVDOC" "housenumber" --keep -f png -f svg
 
 generate-mapping-graph "$TESTLAYERS/testmaptiles.yaml" "$DEVDOC" --keep -f png -f svg
-generate-mapping-graph "$TESTLAYERS/housenumber/housenumber.yaml" "$DEVDOC/mapping_diagram" --keep -f png -f svg
+generate-mapping-graph "$TESTLAYERS/housenumber/housenumber.yaml" "$DEVDOC/mapping_diagram" "housenumber" --keep -f png -f svg
 
 echo "++++++++++++++++++++++++"
 echo "Testing download-osm"

@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 """
 Usage:
-  generate-mapping-graph <tileset-or-layer-file> <output-path> [<compare-path>] [--keep]
+  generate-mapping-graph <tileset-or-layer-file> <output-path> [<layer-id>] [<compare-path>] [--keep]
                          [--format <format>]...
   generate-mapping-graph --help
   generate-mapping-graph --version
@@ -11,6 +11,7 @@ Usage:
   <compare-path>            If set, compares generated graphs with graphs that already
                             exist at this location, and exit with non-zero code
                             if they are not the same.
+  <layer-id>                If layer file is given a layer-id is required
 
 Options:
   -k --keep             If set, do not delete generated .dot file
@@ -28,6 +29,7 @@ from openmaptiles.diagram import MappingGraph
 def main(args):
     exit(MappingGraph(
         args['<tileset-or-layer-file>'],
+        args['<layer-id>'],
         args['<output-path>'],
         args['<compare-path>'],
         not args['--keep'],

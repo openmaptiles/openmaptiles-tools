@@ -341,10 +341,10 @@ generate-sql <tileset> --dir <outputdir>
 
 ### Generate Markdown Documentation
 
-Takes a tileset definition and generates Markdown documentation.
+Takes layer definition & layer id and generates Markdown documentation.
 
 ```
-generate-doc <tileset>
+generate-doc <layer-definition> <layer-id>
 ```
 
 ### Generate ETL (Extract-Transform-Load) graph
@@ -373,7 +373,8 @@ output fies:
 
 example:
 ```
-generate-sqlquery layers/landcover/landcover.yaml  14
+generate-sqlquery <layer-definition> <zoom-level> <layer-id>
+generate-sqlquery layers/landcover/landcover.yaml  14 landcover
 ```
 
 ### Import and Update OSM data

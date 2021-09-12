@@ -1,5 +1,4 @@
 layer:
-  id: enumfield
   description: |
     Test for converting enumfields
   buffer_size: 0

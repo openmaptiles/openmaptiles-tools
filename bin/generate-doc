@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 """
 Usage:
-  generate-doc <layer-definition>
+  generate-doc <layer-definition> <layer-id>
   generate-doc --help
   generate-doc --version
 Options:
@@ -23,7 +23,7 @@ def generate_field_doc(field: Field):
 
 
 def main(args):
-    layer = Layer.parse(args['<layer-definition>'])
+    layer = Layer.parse(args['<layer-definition>'], args['<layer-id>'])
     fields_doc = '\n'.join((generate_field_doc(f) for f in layer.fields))
     print(f"{layer.description}\n\n## Fields\n\n{fields_doc}\n\n\n")
 

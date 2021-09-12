@@ -8,9 +8,10 @@ from openmaptiles.tileset import process_layers, Layer
 
 
 class GraphGenerator:
-    def __init__(self, filename, output_dir, compare_dir, cleanup, extensions):
+    def __init__(self, filename, layerId, output_dir, compare_dir, cleanup, extensions):
         self.messages = []
         self.filename = Path(filename)
+        self.layerId = layerId
         self.output_dir = Path(output_dir)
         self.compare_dir = Path(compare_dir) if compare_dir else None
         self.cleanup = cleanup
@@ -44,7 +45,7 @@ class GraphGenerator:
             self.messages.append(f"Error validating {cmp_with}: {ex}")
 
     def run(self) -> int:
-        process_layers(self.filename, self.do_layer)
+        process_layers(self.filename, self.do_layer, self.layerId)
         if self.messages:
             print(f'Validation errors:')
             for msg in self.messages:
