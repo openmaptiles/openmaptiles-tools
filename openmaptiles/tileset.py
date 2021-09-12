@@ -261,8 +261,11 @@ class Tileset:
         self.definition = self.definition['tileset']
         self.layers = []
         self.layers_by_id = {}
+        isOldLayerListFormat = isinstance(self.definition['layers'], list)
         for index, layer_id in enumerate(self.definition['layers']):
-            layer = Layer(self.definition['layers'][layer_id], layer_id, self, index)
+            layer_definition = layer_id if isOldLayerListFormat else self.definition['layers'][layer_id]
+            id = None if isOldLayerListFormat else layer_id
+            layer = Layer(layer_definition, id, self, index)
             if layer.id in self.layers_by_id:
                 raise ValueError(f"Layer '{layer.id}' is defined more than once")
             self.layers.append(layer)
