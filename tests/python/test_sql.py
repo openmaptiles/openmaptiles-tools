@@ -5,21 +5,21 @@ from unittest import main, TestCase
 from typing import List, Union, Dict
 
 from openmaptiles.sql import collect_sql
-from openmaptiles.tileset import ParsedData
+from openmaptiles.tileset import ParsedData, parse_requires
 
 
 @dataclass
 class Case:
     id: str
     query: str
-    reqs: Union[str, List[str]] = None
+    requires: Union[str, List[str]] = None
     schema = None
 
     def __post_init__(self):
-        if self.reqs:
-            self.reqs = [self.reqs] if isinstance(self.reqs, str) else self.reqs
+        if self.requires:
+            self.requires = parse_requires(dict(requires=self.requires))
         else:
-            self.reqs = []
+            self.requires = []
 
         if self.query:
             self.schema = [ParsedData(self.query, Path(self.id + '_s.yaml'))]
@@ -28,11 +28,22 @@ class Case:
 
 
 def query(case: Case):
-    text = f"""\
+    if case.query:
+        text = ""
+        if case.requires and case.query:
+            if case.requires.get('tables'):
+                for table in case.requires.get('tables'):
+                    text += f"-- Assert {table} exists\nSELECT '{table}'::regclass;\n\n"
+
+            if case.requires.get('functions'):
+                for func in case.requires.get('functions'):
+                    text += f"-- Assert {func} exists\nSELECT '{func}'::regprocedure;\n\n"
+        text += f"""\
 -- Layer {case.id} - {case.id}_s.yaml
 
-{case.query}""" if case.query else ""
-
+{case.query}"""
+    else:
+        text = ""
     return f"""\
 DO $$ BEGIN RAISE NOTICE 'Processing layer {case.id}'; END$$;
 
@@ -73,7 +84,7 @@ $$ LANGUAGE SQL IMMUTABLE;
                             datasource=dict(query="test_query"),
                             id=v.id,
                             fields={},
-                            requires=v.reqs
+                            requires=v.requires
                         ),
                         schema=v.schema,
                     ), Path(f'./{v.id}.yaml')) for v in layers
@@ -101,10 +112,16 @@ $$ LANGUAGE SQL IMMUTABLE;
     def test_require(self):
         c1 = Case("c1", "SELECT 1;")
         c2 = Case("c2", "SELECT 2;")
-        c3r2 = Case("c3", "SELECT 3;", reqs="c2")
-        c4r12 = Case("c4", "SELECT 4;", reqs=["c1", "c2"])
-        c5r3 = Case("c5", "SELECT 5;", reqs="c3")
-        c6r4 = Case("c6", "SELECT 6;", reqs="c4")
+        c3r2 = Case("c3", "SELECT 3;", requires="c2")
+        c4r12 = Case("c4", "SELECT 4;", requires=["c1", "c2"])
+        c5r3 = Case("c5", "SELECT 5;", requires="c3")
+        c6r4 = Case("c6", "SELECT 6;", requires="c4")
+        c7r2 = Case("c7", "SELECT 7;", requires=dict(layers="c2"))
+        c8r12 = Case("c8", "SELECT 8;", requires=dict(layers=["c1","c2"]))
+        c9 = Case("c9", "SELECT 9;", requires=dict(tables="tbl1"))
+        c10 = Case("c10", "SELECT 10;", requires=dict(tables=["tbl1","tbl2"]))
+        c11 = Case("c11", "SELECT 11;", requires=dict(functions="fnc1"))
+        c12 = Case("c12", "SELECT 12;", requires=dict(functions=["fnc1","fnc2"]))
 
         self._test("a01", [], {})
         self._test("a02", [c1], dict(c1=c1))
@@ -121,6 +138,12 @@ $$ LANGUAGE SQL IMMUTABLE;
         self._test("a12", [c4r12, c3r2, c1, c2],
                    dict(c1__c2__c4__c3=[c1, c2, c4r12, c3r2]))
 
+        self._test("a13", [c2, c7r2], dict(c2__c7=[c2, c7r2]))
+        self._test("a14", [c1, c2, c8r12], dict(c1__c2__c8=[c1, c2, c8r12]))
+        self._test("a15", [c9], dict(c9=[c9]))
+        self._test("a16", [c10], dict(c10=[c10]))
+        self._test("a17", [c11], dict(c11=[c11]))
+        self._test("a18", [c12], dict(c12=[c12]))
 
 if __name__ == '__main__':
     main()

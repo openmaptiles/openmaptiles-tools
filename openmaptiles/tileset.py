@@ -109,22 +109,6 @@ class Layer:
         else:
             self.fields = []
 
-        if 'requires' in self.definition['layer']:
-            self.requires = self.definition['layer']['requires']
-            if isinstance(self.requires, str):
-                self.requires = [self.requires]
-            if (
-                not isinstance(self.requires, list) or
-                any(not isinstance(v, str) or v == "" for v in self.requires)
-            ):
-                raise ValueError("If defined, 'requires' parameter must be the ID "
-                                 "of another layer, or a list of layer IDs")
-        else:
-            self.requires = []
-
-        self.required_tables = self.get_required_tables
-        self.required_functions = self.get_required_functions
-
         validate_properties(self, f"Layer {self.filename}")
 
         if any(v.name == self.geometry_field for v in self.fields):
@@ -211,18 +195,8 @@ class Layer:
         return self.definition['layer']['datasource']['query']
 
     @property
-    def get_required_tables(self) -> List[str]:
-        if self.definition['layer']['datasource'].get('required_tables'):
-            return self.definition['layer']['datasource']['required_tables']
-        else:
-            return []
-
-    @property
-    def get_required_functions(self) -> List[str]:
-        if self.definition['layer']['datasource'].get('required_functions'):
-            return self.definition['layer']['datasource']['required_functions']
-        else:
-            return []
+    def requires(self) -> dict:
+        return parse_requires(self.definition['layer'])
 
     @property
     def has_localized_names(self) -> bool:
@@ -283,7 +257,7 @@ class Tileset:
         while len(resolved) > last_count:
             last_count = len(resolved)
             for lid, layer in list(unresolved.items()):
-                for req in layer.requires:
+                for req in layer.requires.get('layers'):
                     if req not in self.layers_by_id:
                         raise ValueError(f"Unknown layer '{req}' required for "
                                          f"layer {layer.id}")
@@ -422,3 +396,38 @@ def process_layers(filename: Path, processor: Callable[[Layer, bool], None]):
     else:
         raise ValueError(f"Unrecognized content in file {filename} "
                          f"- expecting 'tileset' or 'layer' top element")
+
+def parse_requires(layer_definition):
+    result = dict(
+        layers=[],
+        tables=[],
+        functions=[]
+    )
+    if 'requires' in layer_definition:
+        requires = layer_definition['requires']
+        if isinstance(requires, str):
+            result['layers'] = [requires]
+        elif isinstance(requires, list):
+            result['layers'] = requires
+        else:
+            props = ['layers','tables','functions']
+
+            for v in requires:
+                if v not in props:
+                    raise ValueError(f"'{v}' is not one of the allowed properties as child of 'requires': {props}");
+
+            for prop in props:
+                if prop in requires:
+                    reqprop = requires[prop]
+                    if isinstance(reqprop, str):
+                        result[prop] = [reqprop]
+                    elif any(not isinstance(v, str) or v == "" for v in reqprop):
+                        raise ValueError(f" Empty values are not allowed in '{prop}'")
+                    elif isinstance(reqprop, list):
+                         result[prop] = reqprop
+                    else:
+                        if prop == 'layers':
+                            raise ValueError(f"'layers' parameter must be the ID of another layer, or a list of layer IDs")
+                        elif prop == 'tables' or prop == 'functions':
+                            raise ValueError(f"'{prop}' parameter must be a SQL {prop} name or a list of SQL {prop} names")
+    return result
