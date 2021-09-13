@@ -9,6 +9,7 @@ Usage:
                       [--pghost=<host>] [--pgport=<port>] [--dbname=<db>]
                       [--user=<user>] [--password=<password>]
                       [--test-geometry] [--verbose]
+                      [--max-pg-conn <count>]
   postserve --help
   postserve --version
 
@@ -24,6 +25,7 @@ Options:
   --no-feature-ids      Disable feature ID generation, e.g. from osm_id.
                         Feature IDS are automatically disabled with PostGIS before v3
   -g --test-geometry    Validate all geometries produced by ST_AsMvtGeom(), and warn.
+  -c --max-pg-conn <c>  Maximum number of PostgreSQL connections. Defaults to CPU count.
   -v --verbose          Print additional debugging information
   --help                Show this screen.
   --version             Show version.
@@ -66,6 +68,7 @@ def main(args):
         disable_feature_ids=args['--no-feature-ids'],
         test_geometry=args['--test-geometry'],
         verbose=args.get('--verbose'),
+        max_pg_connections=args.get('--max-pg-conn'),
     ).serve()
 
 
