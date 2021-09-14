@@ -31,18 +31,18 @@ def collect_sql(tileset_filename, parallel=False, nodata=False
     while len(resolved) > last_count:
         last_count = len(resolved)
         for lid, layer in list(unresolved.items()):
-            if all((v in resolved for v in layer.requires.get('layers'))):
+            if all((v in resolved for v in layer.requires_layers)):
                 # All requirements have been resolved.
                 resolved[lid] = lid
                 results[lid] = layer_to_sql(layer, nodata)
                 del unresolved[lid]
 
-                if layer.requires.get('layers'):
+                if layer.requires_layers:
                     # If there are more than one requirement, merge them first,
                     # e.g. if there are layers A, B, and C; and C requires A & B,
                     # first concatenate A and B, and then append C to them.
                     # Make sure the same code is not merged multiple times
-                    mix = list(layer.requires.get('layers')) + [lid]
+                    mix = list(layer.requires_layers) + [lid]
                     lid1 = mix[0]
                     for idx in range(1, len(mix)):
                         lid2 = mix[idx]
@@ -211,6 +211,12 @@ class FieldExpander:
 
 def to_sql(sql: str, layer: Layer, nodata: bool):
     """Clean up SQL, and perform any needed code injections"""
+    result = ''
+    for table in layer.requires_tables:
+        result += f"-- Assert {table} exists\nSELECT '{table}'::regclass;\n\n"
+    for func in layer.requires_functions:
+        result += f"-- Assert {func} exists\nSELECT '{func}'::regprocedure;\n\n"
+
     sql = sql.strip()
 
     # Replace "%%FIELD_MAPPING: <field_name>%%" with fields from layer definition
@@ -224,12 +230,6 @@ def to_sql(sql: str, layer: Layer, nodata: bool):
     if nodata:
         sql = re.sub(
             r'/\*\s*DELAY_MATERIALIZED_VIEW_CREATION\s*\*/', ' WITH NO DATA ', sql)
-
-    result = ''
-    for table in layer.requires.get('tables'):
-        result += f"-- Assert {table} exists\nSELECT '{table}'::regclass;\n\n"
-    for func in layer.requires.get('functions'):
-        result += f"-- Assert {func} exists\nSELECT '{func}'::regprocedure;\n\n"
 
     result += sql
 

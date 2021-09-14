@@ -109,6 +109,22 @@ class Layer:
         else:
             self.fields = []
 
+        requires = self.definition['layer'].get('requires', {})
+        if not isinstance(requires, dict):
+            requires = dict(layers=requires)
+        else:
+            requires = requires.copy()  # dict will be modified to detect unrecognized properties
+
+        err = "If set, 'requires' parameter must be a map with optional 'layers', 'tables', and 'functions' sub-elements. Each sub-element must be a string or a list of strings. If 'requires' is a list or a string itself, it is treated as a list of layers. "
+
+        self.requires_layers = get_requires_prop(requires, 'layers', err + "'requires.layers' must be an ID of another layer, or a list of layer IDs.")
+        self.requires_tables = get_requires_prop(requires, 'tables', err + "'requires.tables' must be the name of a PostgreSQL table or a view, or a list of tables/views")
+        self.requires_functions = get_requires_prop(requires, 'functions', err + "'requires.functions' must be a PostgreSQL function name with parameters or a list of functions. Example: 'myfunc(TEXT, TEXT)' ")
+
+        if requires:
+            # get_requires_prop will delete the key it handled. Remaining keys are errors.
+            raise ValueError("Unrecognized sub-elements in the 'requires' parameter:" + str(list(requires.keys())))
+
         validate_properties(self, f"Layer {self.filename}")
 
         if any(v.name == self.geometry_field for v in self.fields):
@@ -195,10 +211,6 @@ class Layer:
         return self.definition['layer']['datasource']['query']
 
     @property
-    def requires(self) -> dict:
-        return parse_requires(self.definition['layer'])
-
-    @property
     def has_localized_names(self) -> bool:
         return '{name_languages}' in self.raw_query
 
@@ -257,7 +269,7 @@ class Tileset:
         while len(resolved) > last_count:
             last_count = len(resolved)
             for lid, layer in list(unresolved.items()):
-                for req in layer.requires.get('layers'):
+                for req in layer.requires_layers:
                     if req not in self.layers_by_id:
                         raise ValueError(f"Unknown layer '{req}' required for "
                                          f"layer {layer.id}")
@@ -397,37 +409,22 @@ def process_layers(filename: Path, processor: Callable[[Layer, bool], None]):
         raise ValueError(f"Unrecognized content in file {filename} "
                          f"- expecting 'tileset' or 'layer' top element")
 
-def parse_requires(layer_definition):
-    result = dict(
-        layers=[],
-        tables=[],
-        functions=[]
-    )
-    if 'requires' in layer_definition:
-        requires = layer_definition['requires']
-        if isinstance(requires, str):
-            result['layers'] = [requires]
-        elif isinstance(requires, list):
-            result['layers'] = requires
-        else:
-            props = ['layers','tables','functions']
+def get_requires_prop(requires: dict, prop: str, err: str ):
+    if prop not in requires:
+        return []
 
-            for v in requires:
-                if v not in props:
-                    raise ValueError(f"'{v}' is not one of the allowed properties as child of 'requires': {props}");
+    requires_prop = requires[prop]
 
-            for prop in props:
-                if prop in requires:
-                    reqprop = requires[prop]
-                    if isinstance(reqprop, str):
-                        result[prop] = [reqprop]
-                    elif any(not isinstance(v, str) or v == "" for v in reqprop):
-                        raise ValueError(f" Empty values are not allowed in '{prop}'")
-                    elif isinstance(reqprop, list):
-                         result[prop] = reqprop
-                    else:
-                        if prop == 'layers':
-                            raise ValueError(f"'layers' parameter must be the ID of another layer, or a list of layer IDs")
-                        elif prop == 'tables' or prop == 'functions':
-                            raise ValueError(f"'{prop}' parameter must be a SQL {prop} name or a list of SQL {prop} names")
-    return result
+    # map string to list
+    if isinstance(requires_prop, str):
+        requires_prop = [requires_prop]
+
+    if (
+       not isinstance(requires_prop, list) or
+       any(not isinstance(v, str) or v == "" for v in requires_prop)
+    ):
+       raise ValueError(err)
+
+    del requires[prop]
+
+    return requires_prop

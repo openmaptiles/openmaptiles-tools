@@ -5,19 +5,37 @@ from unittest import main, TestCase
 from typing import List, Union, Dict
 
 from openmaptiles.sql import collect_sql
-from openmaptiles.tileset import ParsedData, parse_requires
+from openmaptiles.tileset import ParsedData, get_requires_prop
 
 
 @dataclass
 class Case:
     id: str
     query: str
-    requires: Union[str, List[str]] = None
+    requires: Union[str, List[str], dict] = None
     schema = None
+    requires_layers = None
+    requires_tables = None
+    requires_functions = None
 
     def __post_init__(self):
         if self.requires:
-            self.requires = parse_requires(dict(requires=self.requires))
+            requires = self.requires
+            if not isinstance(requires, dict):
+                requires = dict(layers = requires)
+            else:
+                requires = requires.copy()  # dict will be modified to detect unrecognized properties
+
+            err = "If set, 'requires' parameter must be a map with optional 'layers', 'tables', and 'functions' sub-elements. Each sub-element must be a string or a list of strings. If 'requires' is a list or a string itself, it is treated as a list of layers. "
+
+            self.requires_layers = get_requires_prop(requires, 'layers', err + "'requires.layers' must be an ID of another layer, or a list of layer IDs.")
+            self.requires_tables = get_requires_prop(requires, 'tables', err + "'requires.tables' must be the name of a PostgreSQL table or a view, or a list of tables/views")
+            self.requires_functions = get_requires_prop(requires, 'functions', err + "'requires.functions' must be a PostgreSQL function name with parameters or a list of functions. Example: 'myfunc(TEXT, TEXT)' ")
+
+            if requires:
+                # get_requires_prop will delete the key it handled. Remaining keys are errors.
+                raise ValueError("Unrecognized sub-elements in the 'requires' parameter:" + str(list(requires.keys())))
+
         else:
             self.requires = []
 
@@ -30,14 +48,13 @@ class Case:
 def query(case: Case):
     if case.query:
         text = ""
-        if case.requires and case.query:
-            if case.requires.get('tables'):
-                for table in case.requires.get('tables'):
-                    text += f"-- Assert {table} exists\nSELECT '{table}'::regclass;\n\n"
+        if case.requires_tables:
+            for table in case.requires_tables:
+                text += f"-- Assert {table} exists\nSELECT '{table}'::regclass;\n\n"
 
-            if case.requires.get('functions'):
-                for func in case.requires.get('functions'):
-                    text += f"-- Assert {func} exists\nSELECT '{func}'::regprocedure;\n\n"
+        if case.requires_functions:
+            for func in case.requires_functions:
+                text += f"-- Assert {func} exists\nSELECT '{func}'::regprocedure;\n\n"
         text += f"""\
 -- Layer {case.id} - {case.id}_s.yaml
 
