@@ -2,7 +2,6 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import List, Union, Dict, Any, Callable
 
-import json
 import sys
 import yaml
 from deprecated import deprecated
@@ -50,7 +49,7 @@ class Field:
 
     def __str__(self):
         if self.description:
-            return f"{self.name} -- {self.description}"
+            return f'{self.name} -- {self.description}'
         else:
             return self.name
 
@@ -101,11 +100,11 @@ class Layer:
             else (f, Path(layer_dir, f).read_text('utf-8'))
             for f in self.definition.get('schema', [])
         ]
-        self.schemas = [f"-- Layer {self.id} - {p}\n\n{d}" for p, d in schemas]
+        self.schemas = [f'-- Layer {self.id} - {p}\n\n{d}' for p, d in schemas]
 
         if self.definition['layer'].get('fields'):
             self.fields = [Field(k, v) for k, v in
-                        self.definition['layer']['fields'].items()]
+                           self.definition['layer']['fields'].items()]
         else:
             self.fields = []
 
@@ -114,15 +113,15 @@ class Layer:
             if isinstance(self.requires, str):
                 self.requires = [self.requires]
             if (
-                not isinstance(self.requires, list) or
-                any(not isinstance(v, str) or v == "" for v in self.requires)
+                    not isinstance(self.requires, list)
+                    or any(not isinstance(v, str) or v == '' for v in self.requires)
             ):
                 raise ValueError("If defined, 'requires' parameter must be the ID "
-                                 "of another layer, or a list of layer IDs")
+                                 'of another layer, or a list of layer IDs')
         else:
             self.requires = []
 
-        validate_properties(self, f"Layer {self.filename}")
+        validate_properties(self, f'Layer {self.filename}')
 
         if any(v.name == self.geometry_field for v in self.fields):
             raise ValueError(
@@ -131,16 +130,16 @@ class Layer:
         if self.key_field and self.key_field_as_attribute:
             # If 'yes', we will need to generate a wrapper query that includes
             # osm_id column twice - once for feature_id, and once as an attribute
-            raise ValueError(f"key_field_as_attribute=yes is not yet implemented")
+            raise ValueError('key_field_as_attribute=yes is not yet implemented')
 
     @deprecated(version='3.2.0', reason='use named properties instead')
     def __getitem__(self, attr):
         if attr in self.definition:
             return self.definition[attr]
-        elif attr == "fields":
+        elif attr == 'fields':
             return {}
-        elif attr == "description":
-            return ""
+        elif attr == 'description':
+            return ''
         else:
             raise KeyError
 
@@ -226,7 +225,7 @@ class Layer:
             path = self.filename.relative_to(self.tileset.filename.parent)
         else:
             path = self.filename
-        return f"{self.id} ({path})"
+        return f'{self.id} ({path})'
 
 
 class Tileset:
@@ -269,7 +268,7 @@ class Tileset:
                 for req in layer.requires:
                     if req not in self.layers_by_id:
                         raise ValueError(f"Unknown layer '{req}' required for "
-                                         f"layer {layer.id}")
+                                         f'layer {layer.id}')
                     if req not in resolved:
                         break
                 else:
@@ -277,10 +276,10 @@ class Tileset:
                     resolved.add(lid)
                     del unresolved[lid]
         if unresolved:
-            raise ValueError(f"Circular dependency found in layer requirements: " +
-                             ', '.join(unresolved.keys()))
+            raise ValueError('Circular dependency found in layer requirements: '
+                             + ', '.join(unresolved.keys()))
 
-        validate_properties(self, f"Tileset {self.filename}")
+        validate_properties(self, f'Tileset {self.filename}')
 
     @deprecated(version='3.2.0', reason='use named properties instead')
     def __getitem__(self, attr):
@@ -352,9 +351,9 @@ class Tileset:
     def languages_as_fields(self) -> List[str]:
         """
         Get languages as a list of SQL field names,
-        decorated as "name:code", as well as the default ones.
+        decorated as 'name:code', as well as the default ones.
         """
-        return [f"name:{lang}"
+        return [f'name:{lang}'
                 for lang in self.languages] + Tileset.auto_language_fields
 
     def languages_as_sql_fields(self) -> List[str]:
@@ -364,7 +363,7 @@ class Tileset:
         return tag_fields_to_sql(self.languages_as_fields())
 
     def __str__(self) -> str:
-        return f"{self.name} ({self.filename})"
+        return f'{self.name} ({self.filename})'
 
 
 def parse_file(file: Path) -> dict:
@@ -372,7 +371,7 @@ def parse_file(file: Path) -> dict:
         try:
             return yaml.full_load(stream)
         except yaml.YAMLError as e:
-            print_err(f"Could not parse {file}")
+            print_err(f'Could not parse {file}')
             print_err(e)
             sys.exit(1)
 
@@ -386,9 +385,9 @@ def validate_properties(obj, info):
         except Exception as ex:
             errors.append((attr, ex))
     if errors:
-        err = f"\n{info} has invalid data:\n"
-        err += "\n".join((f"  * {n}: {repr(e)}" for n, e in errors))
-        err += "\n"
+        err = f'\n{info} has invalid data:\n'
+        err += '\n'.join((f'  * {n}: {repr(e)}' for n, e in errors))
+        err += '\n'
         raise ValueError(err)
 
 
@@ -403,5 +402,5 @@ def process_layers(filename: Path, processor: Callable[[Layer, bool], None]):
     elif 'layer' in parsed.data:
         processor(Layer.parse(parsed), False)
     else:
-        raise ValueError(f"Unrecognized content in file {filename} "
+        raise ValueError(f'Unrecognized content in file {filename} '
                          f"- expecting 'tileset' or 'layer' top element")

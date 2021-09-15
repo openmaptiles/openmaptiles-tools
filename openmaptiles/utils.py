@@ -180,7 +180,7 @@ def _validate_actions(
                           f"on an undefined action '{dep}'"
                     if remove_missing_deps:
                         if verbose:
-                            print(f"{msg} [ignoring]")
+                            print(f'{msg} [ignoring]')
                         action.depends_on.remove(dep)
                     else:
                         raise ValueError(msg)
@@ -239,13 +239,13 @@ def parse_tags(feature: TileFeature, layer: TileLayer, show_names: bool,
         show_names = True
     geo_size = len(feature.geometry)
     res = {'*ID*': feature.id,
-           'GeoSize': f"{geo_size :,}" if not summary else geo_size,
+           'GeoSize': f'{geo_size :,}' if not summary else geo_size,
            'GeoType': TileGeomType(feature.type).name}
     tags = {
         layer.keys[feature.tags[i]]:
-            which_one_of(layer.values[feature.tags[i + 1]], "val")[1] for i in
+            which_one_of(layer.values[feature.tags[i + 1]], 'val')[1] for i in
         range(0, len(feature.tags), 2) if
-        show_names or not layer.keys[feature.tags[i]].startswith("name:")}
+        show_names or not layer.keys[feature.tags[i]].startswith('name:')}
     if summary:
         res['tags'] = tags
     else:
@@ -258,14 +258,14 @@ def print_tile(data: bytes, show_names: bool, summary: bool, info: str) -> None:
     try:
         tile_raw = gzip.decompress(data)
         gzipped_size = len(data)
-        info = "Tile " + info
+        info = 'Tile ' + info
     except gzip.BadGzipFile:
         tile_raw = data
         gzipped_size = len(gzip.compress(data))
-        info = "Uncompressed tile " + info
+        info = 'Uncompressed tile ' + info
     tile = Tile().parse(tile_raw)
-    print(f"{info} size={len(tile_raw):,} bytes, "
-          f"gzipped={gzipped_size:,} bytes, {len(tile.layers)} layers")
+    print(f'{info} size={len(tile_raw):,} bytes, '
+          f'gzipped={gzipped_size:,} bytes, {len(tile.layers)} layers')
     res = []
     for layer in tile.layers:
         tags = [parse_tags(f, layer, show_names, summary) for f in layer.features]
@@ -278,7 +278,7 @@ def print_tile(data: bytes, show_names: bool, summary: bool, info: str) -> None:
             for tag in tags:
                 geo_stats[tag['GeoType']] += 1
                 for key in tag['tags'].keys():
-                    if key.startswith("name:"):
+                    if key.startswith('name:'):
                         name_stats[key[5:]] += 1
                     else:
                         tag_stats[key] += 1
@@ -286,28 +286,28 @@ def print_tile(data: bytes, show_names: bool, summary: bool, info: str) -> None:
             def format_stats(stats, show100=False):
                 # First show those with 100%, then the rest, keep the order
                 stats = sorted(stats.items(), key=lambda v: -v[1] / features)
-                return ", ".join(
-                    (k + (f"({v / features:.0%})" if show100 or v < features else '')
+                return ', '.join(
+                    (k + (f'({v / features:.0%})' if show100 or v < features else '')
                      for k, v in stats))
 
             entry = {
-                "Layer": layer.name,
-                "Extent": layer.extent,
-                "Ver": layer.version,
-                "Features": f"{features :,}",
-                "GeoType": format_stats(geo_stats),
-                "GeoSize": f"{geo_size:,}",
-                "AVG GeoSize": f"{geo_size / features:,.1f}",
-                "Fields (percentage only if not all features have it)":
+                'Layer': layer.name,
+                'Extent': layer.extent,
+                'Ver': layer.version,
+                'Features': f'{features :,}',
+                'GeoType': format_stats(geo_stats),
+                'GeoSize': f'{geo_size:,}',
+                'AVG GeoSize': f'{geo_size / features:,.1f}',
+                'Fields (percentage only if not all features have it)':
                     format_stats(tag_stats),
             }
             if name_stats:
                 if show_names:
                     entry[
-                        "name:* fields (percentage of features with that language)"] = format_stats(
+                        'name:* fields (percentage of features with that language)'] = format_stats(
                         name_stats, True)
                 else:
-                    entry["name:* fields"] = f"{len(name_stats)} languages"
+                    entry['name:* fields'] = f'{len(name_stats)} languages'
             res.append(entry)
         else:
             extra = ''
@@ -316,22 +316,22 @@ def print_tile(data: bytes, show_names: bool, summary: bool, info: str) -> None:
                     layer.keys[f.tags[i]][5:]
                     for f in layer.features
                     for i in range(0, len(f.tags), 2)
-                    if layer.keys[f.tags[i]].startswith("name:")
+                    if layer.keys[f.tags[i]].startswith('name:')
                 }))
                 if hidden_names:
-                    extra = f", hiding {len(hidden_names)} name:* languages: " + \
+                    extra = f', hiding {len(hidden_names)} name:* languages: ' + \
                             ','.join(hidden_names)
-            print(f"\n======= Layer {layer.name}: "
-                  f"{features} features, extent={layer.extent}, "
-                  f"version={layer.version}{extra} =======")
-            print(tabulate(tags, headers="keys"))
+            print(f'\n======= Layer {layer.name}: '
+                  f'{features} features, extent={layer.extent}, '
+                  f'version={layer.version}{extra} =======')
+            print(tabulate(tags, headers='keys'))
     if summary:
-        print(tabulate(res, headers="keys", disable_numparse=True,
+        print(tabulate(res, headers='keys', disable_numparse=True,
                        colalign=['left', 'right', 'right', 'right', 'right', 'right']))
 
 
 def shorten_str(value: str, length: int) -> str:
-    return value if len(value) < length else value[:length] + "…"
+    return value if len(value) < length else value[:length] + '…'
 
 
 def parse_zoom_list(zoom: Union[None, str, List[str]],
