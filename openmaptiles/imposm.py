@@ -36,7 +36,7 @@ def create_imposm3_mapping(tileset_filename):
                     try:  # Test if numeric
                         float(definition['tolerance'])
                     except ValueError:
-                        if re.match(r"^ZRES\d{1,2}$", definition['tolerance']):
+                        if re.match(r'^ZRES\d{1,2}$', definition['tolerance']):
                             zoom = definition['tolerance'][4:6]
                             # Convert to distance
                             definition['tolerance'] = zres(pixel_scale, zoom)
@@ -45,7 +45,7 @@ def create_imposm3_mapping(tileset_filename):
                                 f"Unrecognized tolerance '{definition['tolerance']}'")
                 if 'sql_filter' in definition:
                     definition['sql_filter'] = re.sub(
-                        r"ZRES\d{1,2}",
+                        r'ZRES\d{1,2}',
                         lambda match: call_zres(pixel_scale, match),
                         definition['sql_filter'])
                 generalized_tables[table_name] = definition
@@ -59,10 +59,10 @@ def create_imposm3_mapping(tileset_filename):
                         (v for v in tags_val if not v or not isinstance(v, str))
                     ):
                         raise ValueError(f"Tileset {tileset.name} mapping's "
-                                         f"tags/include must be a list of strings")
+                                         f'tags/include must be a list of strings')
                     include_tags += tags_val
                 else:
-                    raise ValueError(f"Tileset {tileset.name} mapping tags "
+                    raise ValueError(f'Tileset {tileset.name} mapping tags '
                                      f"uses an unsupported key '{tags_key}'")
 
     return {

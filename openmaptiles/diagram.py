@@ -41,12 +41,12 @@ class GraphGenerator:
                 raise ValueError(f'file has changed, old size = '
                                  f'{len(old):,} B,  new = {len(new):,} B')
         except Exception as ex:
-            self.messages.append(f"Error validating {cmp_with}: {ex}")
+            self.messages.append(f'Error validating {cmp_with}: {ex}')
 
     def run(self) -> int:
         process_layers(self.filename, self.do_layer)
         if self.messages:
-            print(f'Validation errors:')
+            print('Validation errors:')
             for msg in self.messages:
                 print(msg)
             return 1
@@ -59,10 +59,10 @@ class EtlGraph(GraphGenerator):
     re_schema = re.compile(r'^\s*--\s*etldoc\s*:(.*)$')
 
     def get_graph(self, layer: Layer, is_tileset: bool) -> Tuple[Digraph, Path]:
-        raw_lines = self.parse_files(layer.imposm_mapping_files, self.re_mapping) + \
-                    self.parse_files(layer.schemas, self.re_schema)
+        raw_lines = (self.parse_files(layer.imposm_mapping_files, self.re_mapping)
+                     + self.parse_files(layer.schemas, self.re_schema))
         # Combine etldoc lines that are broken up into multiple:
-        # if a line has unclosed "[", concatenate it with subsequent ones until closed
+        # if a line has unclosed '[', concatenate it with subsequent ones until closed
         lines = []
         count = 0
         for line in raw_lines:
