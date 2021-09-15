@@ -5,76 +5,66 @@ from unittest import main, TestCase
 from typing import List, Union, Dict
 
 from openmaptiles.sql import collect_sql
-from openmaptiles.tileset import ParsedData, get_requires_prop
+from openmaptiles.tileset import ParsedData, Tileset
 
 
 @dataclass
 class Case:
     id: str
     query: str
-    requires: Union[str, List[str], dict] = None
-    schema = None
-    requires_layers = None
-    requires_tables = None
-    requires_functions = None
-
-    def __post_init__(self):
-        if self.requires:
-            requires = self.requires
-            if not isinstance(requires, dict):
-                requires = dict(layers = requires)
-            else:
-                requires = requires.copy()  # dict will be modified to detect unrecognized properties
-
-            err = "If set, 'requires' parameter must be a map with optional 'layers', 'tables', and 'functions' sub-elements. Each sub-element must be a string or a list of strings. If 'requires' is a list or a string itself, it is treated as a list of layers. "
-
-            self.requires_layers = get_requires_prop(requires, 'layers', err + "'requires.layers' must be an ID of another layer, or a list of layer IDs.")
-            self.requires_tables = get_requires_prop(requires, 'tables', err + "'requires.tables' must be the name of a PostgreSQL table or a view, or a list of tables/views")
-            self.requires_functions = get_requires_prop(requires, 'functions', err + "'requires.functions' must be a PostgreSQL function name with parameters or a list of functions. Example: 'myfunc(TEXT, TEXT)' ")
-
-            if requires:
-                # get_requires_prop will delete the key it handled. Remaining keys are errors.
-                raise ValueError("Unrecognized sub-elements in the 'requires' parameter:" + str(list(requires.keys())))
-
-        else:
-            self.requires = []
-
-        if self.query:
-            self.schema = [ParsedData(self.query, Path(self.id + '_s.yaml'))]
-        else:
-            self.schema = []
+    reqs: Union[str, List[str], Dict[str, Union[str, List[str]]]] = None
 
 
-def query(case: Case):
-    if case.query:
-        text = ""
-        if case.requires_tables:
-            for table in case.requires_tables:
-                text += f"-- Assert {table} exists\nSELECT '{table}'::regclass;\n\n"
-
-        if case.requires_functions:
-            for func in case.requires_functions:
-                text += f"-- Assert {func} exists\nSELECT '{func}'::regprocedure;\n\n"
-        text += f"""\
+def expected_sql(case: Case):
+    result = f"DO $$ BEGIN RAISE NOTICE 'Processing layer {case.id}'; END$$;\n\n"
+    if isinstance(case.reqs, dict):
+        for table in case.reqs.get('tables', []):
+            result += f"-- Assert {table} exists\nSELECT '{table}'::regclass;\n\n"
+        for func in case.reqs.get('functions', []):
+            result += f"-- Assert {func} exists\nSELECT '{func}'::regprocedure;\n\n"
+    result += f"""\
 -- Layer {case.id} - {case.id}_s.yaml
 
-{case.query}"""
-    else:
-        text = ""
-    return f"""\
-DO $$ BEGIN RAISE NOTICE 'Processing layer {case.id}'; END$$;
-
-{text}
+{case.query}
 
 DO $$ BEGIN RAISE NOTICE 'Finished layer {case.id}'; END$$;
 """
+    return result
+
+
+def parsed_data(layers: Union[Case, List[Case]]):
+    return ParsedData(dict(
+        tileset=(dict(
+            attribution="test_attribution",
+            bounds="test_bounds",
+            center="test_center",
+            defaults=dict(srs="test_srs", datasource=dict(srid="test_datasource")),
+            id="id1",
+            layers=[
+                ParsedData(dict(
+                    layer=dict(
+                        buffer_size="test_buffer_size",
+                        datasource=dict(query="test_query"),
+                        id=v.id,
+                        fields={},
+                        requires=[v.reqs] if isinstance(v.reqs, str) else v.reqs or []
+                    ),
+                    schema=[ParsedData(v.query, Path(v.id + '_s.yaml'))] if v.query else [],
+                ), Path(f'./{v.id}.yaml')) for v in ([layers] if isinstance(layers, Case) else layers)
+            ],
+            maxzoom="test_maxzoom",
+            minzoom="test_minzoom",
+            name="test_name",
+            pixel_scale="test_pixel_scale",
+            version="test_version",
+        ))), Path("./tileset.yaml"))
 
 
 class SqlTestCase(TestCase):
 
     def _test(self, name, layers: List[Case],
               expect: Dict[str, Union[Case, List[Case]]]):
-        first = """\
+        expected_first = """\
 -- This SQL code should be executed first
 
 CREATE OR REPLACE FUNCTION slice_language_tags(tags hstore)
@@ -82,63 +72,39 @@ RETURNS hstore AS $$
     SELECT delete_empty_keys(slice(tags, ARRAY['int_name', 'loc_name', 'name', 'wikidata', 'wikipedia']))
 $$ LANGUAGE SQL IMMUTABLE;
 """
+        expected_last = "-- This SQL code should be executed last\n"
 
-        last = """\
--- This SQL code should be executed last
-"""
-
-        ts = ParsedData(dict(
-            tileset=(dict(
-                attribution="test_attribution",
-                bounds="test_bounds",
-                center="test_center",
-                defaults=dict(srs="test_srs", datasource=dict(srid="test_datasource")),
-                id="id1",
-                layers=[
-                    ParsedData(dict(
-                        layer=dict(
-                            buffer_size="test_buffer_size",
-                            datasource=dict(query="test_query"),
-                            id=v.id,
-                            fields={},
-                            requires=v.requires
-                        ),
-                        schema=v.schema,
-                    ), Path(f'./{v.id}.yaml')) for v in layers
-                ],
-                maxzoom="test_maxzoom",
-                minzoom="test_minzoom",
-                name="test_name",
-                pixel_scale="test_pixel_scale",
-                version="test_version",
-            ))), Path("./tileset.yaml"))
+        ts = parsed_data(layers)
 
         result = {
             k: "\n".join(
-                [query(vv) for vv in ([v] if isinstance(v, Case) else v)]
+                [expected_sql(vv) for vv in ([v] if isinstance(v, Case) else v)]
             ) for k, v in expect.items()}
 
-        self.assertEqual(first + "\n" + "\n".join(result.values()) + "\n" + last,
+        # Show entire diff in case assert fails
+        self.maxDiff = None
+
+        self.assertEqual(expected_first + "\n" + "\n".join(result.values()) + "\n" + expected_last,
                          collect_sql(ts, parallel=False),
                          msg=f"{name} - single file")
 
-        self.assertEqual((first, result, last),
+        self.assertEqual((expected_first, result, expected_last),
                          collect_sql(ts, parallel=True),
                          msg=f"{name} - parallel")
 
     def test_require(self):
         c1 = Case("c1", "SELECT 1;")
         c2 = Case("c2", "SELECT 2;")
-        c3r2 = Case("c3", "SELECT 3;", requires="c2")
-        c4r12 = Case("c4", "SELECT 4;", requires=["c1", "c2"])
-        c5r3 = Case("c5", "SELECT 5;", requires="c3")
-        c6r4 = Case("c6", "SELECT 6;", requires="c4")
-        c7r2 = Case("c7", "SELECT 7;", requires=dict(layers="c2"))
-        c8r12 = Case("c8", "SELECT 8;", requires=dict(layers=["c1","c2"]))
-        c9 = Case("c9", "SELECT 9;", requires=dict(tables="tbl1"))
-        c10 = Case("c10", "SELECT 10;", requires=dict(tables=["tbl1","tbl2"]))
-        c11 = Case("c11", "SELECT 11;", requires=dict(functions="fnc1"))
-        c12 = Case("c12", "SELECT 12;", requires=dict(functions=["fnc1","fnc2"]))
+        c3r2 = Case("c3", "SELECT 3;", reqs="c2")
+        c4r12 = Case("c4", "SELECT 4;", reqs=["c1", "c2"])
+        c5r3 = Case("c5", "SELECT 5;", reqs="c3")
+        c6r4 = Case("c6", "SELECT 6;", reqs="c4")
+        c7r2 = Case("c7", "SELECT 7;", reqs=dict(layers="c2"))
+        c8r12 = Case("c8", "SELECT 8;", reqs=dict(layers=["c1", "c2"]))
+        c9 = Case("c9", "SELECT 9;", reqs=dict(tables=["tbl1"]))
+        c10 = Case("c10", "SELECT 10;", reqs=dict(tables=["tbl1", "tbl2"]))
+        c11 = Case("c11", "SELECT 11;", reqs=dict(functions=["fnc1"]))
+        c12 = Case("c12", "SELECT 12;", reqs=dict(functions=["fnc1", "fnc2"]))
 
         self._test("a01", [], {})
         self._test("a02", [c1], dict(c1=c1))
@@ -161,6 +127,36 @@ $$ LANGUAGE SQL IMMUTABLE;
         self._test("a16", [c10], dict(c10=[c10]))
         self._test("a17", [c11], dict(c11=[c11]))
         self._test("a18", [c12], dict(c12=[c12]))
+
+    def _parse_reqs(self, reqs, expected_layers, expected_tables, expected_funcs):
+        ts = Tileset(parsed_data(Case('my_id', 'my_query;', reqs=reqs)))
+        self.assertEqual(ts.attribution, "test_attribution")
+        self.assertEqual(ts.bounds, "test_bounds")
+        self.assertEqual(ts.center, "test_center")
+        self.assertEqual(ts.defaults, dict(srs="test_srs", datasource=dict(srid="test_datasource")))
+        self.assertEqual(ts.id, "id1")
+        self.assertEqual(ts.maxzoom, "test_maxzoom")
+        self.assertEqual(ts.minzoom, "test_minzoom")
+        self.assertEqual(ts.name, "test_name")
+        self.assertEqual(ts.pixel_scale, "test_pixel_scale")
+        self.assertEqual(ts.version, "test_version")
+
+        self.assertEqual(len(ts.layers), 1)
+        layer = ts.layers_by_id['my_id']
+        self.assertEqual(layer.id, "my_id")
+        self.assertEqual(layer.requires_layers, expected_layers)
+        self.assertEqual(layer.requires_tables, expected_tables)
+        self.assertEqual(layer.requires_functions, expected_funcs)
+
+    def test_parse_reqs(self):
+        self._parse_reqs(None, [], [], [])
+        self._parse_reqs([], [], [], [])
+        self._parse_reqs({}, [], [], [])
+        self._parse_reqs(dict(tables="a"), [], ["a"], [])
+        self._parse_reqs(dict(tables=["a", "b"]), [], ["a", "b"], [])
+        self._parse_reqs(dict(functions="a"), [], [], ["a"])
+        self._parse_reqs(dict(functions=["a", "b"]), [], [], ["a", "b"])
+
 
 if __name__ == '__main__':
     main()
