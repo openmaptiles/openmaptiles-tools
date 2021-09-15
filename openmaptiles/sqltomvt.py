@@ -40,7 +40,7 @@ class MvtGenerator:
         self.y = y
 
         # extract the actual version number
-        # ...POSTGIS="2.4.8 r17696"...
+        # ...POSTGIS='2.4.8 r17696'...
         m = re.search(r'POSTGIS="([^"]+)"', postgis_ver)
         ver = m[1] if m else postgis_ver
         m = re.match(r'^(?P<major>\d+)\.(?P<minor>\d+)'
@@ -56,7 +56,7 @@ class MvtGenerator:
 
         if self.postgis_ver < (3, 0):
             if use_feature_id:
-                raise ValueError(f"Feature ID is only available in PostGIS v3.0+")
+                raise ValueError('Feature ID is only available in PostGIS v3.0+')
             self.use_feature_id = False
             self.tile_envelope = 'TileBBox'
         else:
@@ -66,7 +66,7 @@ class MvtGenerator:
 
     def set_layer_ids(self, layer_ids: List[str], exclude_layers=False):
         if exclude_layers and not layer_ids:
-            raise ValueError("Cannot invert layer selection if no layer ids are given")
+            raise ValueError('Cannot invert layer selection if no layer ids are given')
         if layer_ids:
             dups = find_duplicates(layer_ids)
             if dups:
@@ -110,7 +110,7 @@ PREPARE {fname}(integer, integer, integer) AS
 
         extras = ''
         if self.test_geometry:
-            extras += f', SUM(COALESCE(_bad_geos_, 0)) as _bad_geos_'
+            extras += ', SUM(COALESCE(_bad_geos_, 0)) as _bad_geos_'
 
         concatenate_layers = "STRING_AGG(mvtl, '')"
         # Handle when gzip is True or a number
@@ -118,14 +118,14 @@ PREPARE {fname}(integer, integer, integer) AS
         if not isinstance(self.gzip, bool) or self.gzip:
             # GZIP function is available from https://github.com/pramsey/pgsql-gzip
             if isinstance(self.gzip, bool):
-                concatenate_layers = f"GZIP({concatenate_layers})"
+                concatenate_layers = f'GZIP({concatenate_layers})'
             else:
                 self.gzip = int(self.gzip)
                 assert 0 <= self.gzip <= 9
-                concatenate_layers = f"GZIP({concatenate_layers}, {self.gzip})"
-        union_layers = "\n    UNION ALL\n  ".join(queries)
+                concatenate_layers = f'GZIP({concatenate_layers}, {self.gzip})'
+        union_layers = '\n    UNION ALL\n  '.join(queries)
         if order_layers:
-            union_layers = f"{union_layers}\n    ORDER BY _layer_index"
+            union_layers = f'{union_layers}\n    ORDER BY _layer_index'
 
         query = f"""\
 SELECT {concatenate_layers} AS mvt{extras} FROM (
@@ -133,9 +133,9 @@ SELECT {concatenate_layers} AS mvt{extras} FROM (
 ) AS all_layers"""
 
         if self.key_column:
-            query = f"SELECT mvt, md5(mvt) AS key" \
+            query = f'SELECT mvt, md5(mvt) AS key' \
                     f"{', _bad_geos_' if self.test_geometry else ''} " \
-                    f"FROM ({query}) AS mvt_data"
+                    f'FROM ({query}) AS mvt_data'
 
         return query + '\n'
 
@@ -145,16 +145,16 @@ SELECT {concatenate_layers} AS mvt{extras} FROM (
         """
         columns = None
         if self.test_geometry:
-            columns = f"(1-ST_IsValid({layer.geometry_field})::int) as _bad_geos_"
+            columns = f'(1-ST_IsValid({layer.geometry_field})::int) as _bad_geos_'
         query = self.layer_to_query(layer, extra_columns=columns)
 
         extras = ''
         if self.test_geometry:
             # Count the number of invalid regular & mvt geometries (should always be 0)
-            extras += f', SUM((1' \
-                      f'-COALESCE(ST_IsValid(mvtgeometry)::int, 1))' \
-                      f'+COALESCE(_bad_geos_, 0)' \
-                      f') as _bad_geos_'
+            extras += ', SUM((1' \
+                      '-COALESCE(ST_IsValid(mvtgeometry)::int, 1))' \
+                      '+COALESCE(_bad_geos_, 0)' \
+                      ') as _bad_geos_'
         if order_layers:
             extras += f', {layer.index} as _layer_index'
 
@@ -168,10 +168,10 @@ SELECT {concatenate_layers} AS mvt{extras} FROM (
         if self.postgis_ver < (2, 4, 0):
             # OMT for a long time used PostGIS 2.4.0dev r15415 with legacy param order
             # ST_AsMVT(text name, integer extent, text geom_name, anyelement row)
-            as_mvt_params = f"{as_mvt_params}, t"
+            as_mvt_params = f'{as_mvt_params}, t'
         else:
             # ST_AsMVT(anyelement row, text name, integer extent, text geom_name)
-            as_mvt_params = f"t, {as_mvt_params}"
+            as_mvt_params = f't, {as_mvt_params}'
 
         query = f"""\
 SELECT \
@@ -199,15 +199,15 @@ as mvtl{extras} FROM {query}"""
         tile_buffer_size = int(self.extent * layer.buffer_size / self.pixel_width)
         replacement = ''
         if to_mvt_geometry:
-            replacement = f"ST_AsMVTGeom(" \
-                          f"{layer.geometry_field}, " \
-                          f"{self.bbox(self.zoom, self.x, self.y)}, " \
-                          f"{self.extent}, " \
-                          f"{tile_buffer_size}, " \
-                          f"true)"
+            replacement = f'ST_AsMVTGeom(' \
+                          f'{layer.geometry_field}, ' \
+                          f'{self.bbox(self.zoom, self.x, self.y)}, ' \
+                          f'{self.extent}, ' \
+                          f'{tile_buffer_size}, ' \
+                          f'true)'
             if mvt_geometry_wrapper:
                 replacement = mvt_geometry_wrapper(replacement)
-            replacement += " AS mvtgeometry"
+            replacement += ' AS mvtgeometry'
         if extra_columns:
             if replacement:
                 replacement += ', '
@@ -218,7 +218,7 @@ as mvtl{extras} FROM {query}"""
             if len(q) - len(replacement) + len(layer.geometry_field) != len(query):
                 raise ValueError(
                     f"Unable to replace '{layer.geometry_field}' in {layer.id} layer, "
-                    f"expected a single geometry field in the layer query definition")
+                    f'expected a single geometry field in the layer query definition')
             query = q
 
         return query
@@ -230,7 +230,7 @@ as mvtl{extras} FROM {query}"""
         if layer.buffer_size > 0:
             if not self.tile_envelope_margin:
                 percentage = 40075016.6855785 * layer.buffer_size / self.pixel_width
-                return f"ST_Expand({self.bbox(zoom, x, y)}, {percentage}/2^{zoom})"
+                return f'ST_Expand({self.bbox(zoom, x, y)}, {percentage}/2^{zoom})'
             else:
                 # Once https://github.com/postgis/postgis/pull/514 is merged
                 return self.bbox(zoom, x, y, float(layer.buffer_size) / self.pixel_width)
@@ -238,19 +238,19 @@ as mvtl{extras} FROM {query}"""
             return self.bbox(zoom, x, y)
 
     def bbox(self, zoom, x, y, margin=None):
-        margin_str = '' if margin is None else f", {margin}"
-        return f"{self.tile_envelope}({zoom}, {x}, {y}{margin_str})"
+        margin_str = '' if margin is None else f', {margin}'
+        return f'{self.tile_envelope}({zoom}, {x}, {y}{margin_str})'
 
     def substitute_sql(self, query, zoom, bbox):
         zero_tile_width_res = 40075016.6855785 / self.pixel_width
         zero_tile_height_res = 40075016.6855785 / self.pixel_height
-        zoom_pixel_width = f"{zero_tile_width_res}/2^{zoom}::NUMERIC"
-        zoom_pixel_height = f"{zero_tile_height_res}/2^{zoom}::NUMERIC"
+        zoom_pixel_width = f'{zero_tile_width_res}/2^{zoom}::NUMERIC'
+        zoom_pixel_height = f'{zero_tile_height_res}/2^{zoom}::NUMERIC'
         query = (query
-                 .replace("!bbox!", bbox)
-                 .replace("z(!scale_denominator!)", str(zoom))
-                 .replace("!pixel_width!", zoom_pixel_width)
-                 .replace("!pixel_height!", zoom_pixel_height))
+                 .replace('!bbox!', bbox)
+                 .replace('z(!scale_denominator!)', str(zoom))
+                 .replace('!pixel_width!', zoom_pixel_width)
+                 .replace('!pixel_height!', zoom_pixel_height))
         if '!scale_denominator!' in query:
             raise ValueError(
                 'MVT made an invalid assumption that "!scale_denominator!" is '
@@ -259,7 +259,7 @@ as mvtl{extras} FROM {query}"""
         return query
 
     async def validate_layer_fields(
-        self, connection: Connection, layer_id: str, layer: Layer
+            self, connection: Connection, layer_id: str, layer: Layer
     ) -> Dict[str, str]:
         """Validate that fields in the layer definition match the ones
         returned by the dummy (0-length) SQL query.
@@ -282,23 +282,21 @@ as mvtl{extras} FROM {query}"""
             layer_fields -= same
             query_fields -= same
             error = f"Declared fields in layer '{layer_id}' do not match " \
-                    f"the fields received from a query:\n"
+                    f'the fields received from a query:\n'
             if layer_fields:
-                error += f"  These fields were declared, but not returned by " \
+                error += f'  These fields were declared, but not returned by ' \
                          f"the query: {', '.join(layer_fields)}"
             if query_fields:
-                error += f"  These fields were returned by the query, " \
+                error += f'  These fields were returned by the query, ' \
                          f"but not declared: {', '.join(query_fields)}"
             raise ValueError(error)
 
         return query_field_map
 
-    async def get_sql_fields(
-        self, connection: Connection, layer: Layer
-    ) -> Dict[str, str]:
+    async def get_sql_fields(self, connection: Connection, layer: Layer) -> Dict[str, str]:
         """Get field names => SQL types (oid) by executing a dummy query"""
         query = self.substitute_sql(layer.query, 0, self.bbox(0, 0, 0))
-        st = await connection.prepare(f"SELECT * FROM {query} WHERE false LIMIT 0")
+        st = await connection.prepare(f'SELECT * FROM {query} WHERE false LIMIT 0')
         return {fld.name: fld.type.oid for fld in st.get_attributes()}
 
     def get_layers(self) -> Iterable[Tuple[str, Layer]]:
@@ -323,8 +321,7 @@ as mvtl{extras} FROM {query}"""
         if self.layer_ids != expected_result:
             unknown = sorted(self.layer_ids - expected_result)
             raise DocoptExit(
-                f"Unable to find layer [{', '.join(unknown)}]. Available layers:\n" +
-                '\n'.join(f"* {k}" + (
-                    f"\n{v.description}" if v.description else ''
-                ) for k, v in all_layers)
+                f"Unable to find layer [{', '.join(unknown)}]. Available layers:\n"
+                + '\n'.join(f'* {k}' + (f'\n{v.description}' if v.description else '')
+                            for k, v in all_layers)
             )
