@@ -19,13 +19,6 @@ export PGPORT="${POSTGRES_PORT:-${PGPORT:-5432}}"
 
 function import_pbf() {
     local pbf_file="$1"
-    local diff_flag=""
-    if [ "$DIFF_MODE" = true ]; then
-        diff_flag="-diff"
-        echo "Importing $pbf_file into $PGHOST:$PGPORT/$PGDATABASE using Imposm in DIFF mode..."
-    else
-        echo "Importing $pbf_file into $PGHOST:$PGPORT/$PGDATABASE using Imposm in NORMAL mode..."
-    fi
 
     local extra_flags=""
     local action_msg=""
@@ -37,7 +30,7 @@ function import_pbf() {
     else
         mode_msg="DIFF"
     fi
-    
+
     if [ "$APPEND_MODE" = true ]; then
         extra_flags="$extra_flags -appendcache"
         action_msg="Appending"
@@ -50,14 +43,13 @@ function import_pbf() {
     imposm import \
         -connection "postgis://$PGUSER:$PGPASSWORD@$PGHOST:$PGPORT/$PGDATABASE" \
         -mapping "${IMPOSM_MAPPING_FILE:?}" \
-        $cache_flag \
         -diffdir "${IMPOSM_DIFF_DIR:?}" \
         -cachedir "${IMPOSM_CACHE_DIR:?}" \
         -read "$pbf_file" \
         -deployproduction \
         -write \
-        $diff_flag \
-        -config "${IMPOSM_CONFIG_FILE:?}"
+        -config "${IMPOSM_CONFIG_FILE:?}" \
+        $extra_flags
 }
 
 function import_osm_with_first_pbf() {
