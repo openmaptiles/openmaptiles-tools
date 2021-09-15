@@ -1,8 +1,8 @@
+import warnings
 from dataclasses import dataclass
 from pathlib import Path
-from unittest import main, TestCase
-
 from typing import List, Union, Dict
+from unittest import main, TestCase
 
 from openmaptiles.sql import collect_sql
 from openmaptiles.tileset import ParsedData, Tileset
@@ -147,6 +147,11 @@ $$ LANGUAGE SQL IMMUTABLE;
         self.assertEqual(layer.requires_layers, expected_layers)
         self.assertEqual(layer.requires_tables, expected_tables)
         self.assertEqual(layer.requires_functions, expected_funcs)
+
+        # This test can be deleted once we remove the deprecated property in some future version
+        with warnings.catch_warnings():
+            warnings.filterwarnings('ignore', category=DeprecationWarning)
+            self.assertEqual(layer.requires, expected_layers)
 
     def test_parse_reqs(self):
         self._parse_reqs(None, [], [], [])
