@@ -16,7 +16,7 @@ class TileGeomType(betterproto.Enum):
 
 @dataclass
 class Tile(betterproto.Message):
-    layers: List["TileLayer"] = betterproto.message_field(3)
+    layers: List['TileLayer'] = betterproto.message_field(3)
 
 
 @dataclass
@@ -27,13 +27,13 @@ class TileValue(betterproto.Message):
     """
 
     # Exactly one of these values must be present in a valid message
-    string_val: str = betterproto.string_field(1, group="val")
-    float_val: float = betterproto.float_field(2, group="val")
-    double_val: float = betterproto.double_field(3, group="val")
-    int_val: int = betterproto.int64_field(4, group="val")
-    uint_val: int = betterproto.uint64_field(5, group="val")
-    sint_val: int = betterproto.sint64_field(6, group="val")
-    bool_val: bool = betterproto.bool_field(7, group="val")
+    string_val: str = betterproto.string_field(1, group='val')
+    float_val: float = betterproto.float_field(2, group='val')
+    double_val: float = betterproto.double_field(3, group='val')
+    int_val: int = betterproto.int64_field(4, group='val')
+    uint_val: int = betterproto.uint64_field(5, group='val')
+    sint_val: int = betterproto.sint64_field(6, group='val')
+    bool_val: bool = betterproto.bool_field(7, group='val')
 
 
 @dataclass
@@ -45,7 +45,7 @@ class TileFeature(betterproto.Message):
     # description of tags is located in sections 4.2 and 4.4 of the specification
     tags: List[int] = betterproto.uint32_field(2)
     # The type of geometry stored in this feature.
-    type: "TileGeomType" = betterproto.enum_field(3)
+    type: 'TileGeomType' = betterproto.enum_field(3)
     # Contains a stream of commands and parameters (vertices). A detailed
     # description on geometry encoding is located in section 4.3 of the
     # specification.
@@ -62,11 +62,11 @@ class TileLayer(betterproto.Message):
     version: int = betterproto.uint32_field(15)
     name: str = betterproto.string_field(1)
     # The actual features in this tile.
-    features: List["TileFeature"] = betterproto.message_field(2)
+    features: List['TileFeature'] = betterproto.message_field(2)
     # Dictionary encoding for keys
     keys: List[str] = betterproto.string_field(3)
     # Dictionary encoding for values
-    values: List["TileValue"] = betterproto.message_field(4)
-    # Although this is an "optional" field it is required by the specification.
+    values: List['TileValue'] = betterproto.message_field(4)
+    # Although this is an 'optional' field it is required by the specification.
     # See https://github.com/mapbox/vector-tile-spec/issues/47
     extent: int = betterproto.uint32_field(5)

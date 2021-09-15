@@ -3,7 +3,7 @@ SHELL         = /bin/bash
 .SHELLFLAGS   = -o pipefail -c
 
 # VERSION could be set to more than one space-separated value, e.g. "5.3.2 5.3"
-VERSION      ?= $(shell sed -E -n '/__version__/s/^(.*"([^"]+)".*)$$/\2/p' ./openmaptiles/__init__.py)
+VERSION      ?= $(shell sed -E -n "/__version__/s/^(.*'([^']+)'.*)$$/\2/p" ./openmaptiles/__init__.py)
 IMAGE_REPO   ?= openmaptiles
 IMAGE_NAME   ?= $(IMAGE_REPO)/openmaptiles-tools
 DOCKER_IMAGE ?= $(IMAGE_NAME):$(word 1,$(VERSION))
@@ -90,8 +90,10 @@ run-python-tests: build-docker
 	@echo ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"
 	@echo "   Running Python unit tests"
 	@echo ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"
-	$(RUN_CMD) $(DOCKER_IMAGE) python -m unittest discover 2>&1 | \
-		awk -v s="Ran 0 tests in" '$$0~s{print; print "\n*** No Python unit tests found, aborting"; exit(1)} 1'
+	$(RUN_CMD) $(DOCKER_IMAGE)  bash -c \
+		'python -m flake8 openmaptiles \
+		 && (python -m unittest discover 2>&1 | \
+		     awk -v s="Ran 0 tests in" '\''$$0~s{print; print "\n*** No Python unit tests found, aborting"; exit(1)} 1'\'')'
 
 .PHONY: build-sql-tests
 build-sql-tests: prepare build-docker
@@ -116,3 +118,7 @@ build-bin-tests: prepare build-docker
 .PHONY: build-tests
 build-tests: build-bin-tests build-sql-tests
 	# Run all tests that generate test results in the build dir
+
+.PHONY: bash
+bash:
+	$(RUN_CMD) -it $(DOCKER_IMAGE) bash

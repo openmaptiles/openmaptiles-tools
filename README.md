@@ -11,7 +11,7 @@ A collection of tools for downloading, parsing, and generating map tiles describ
 ##### import-data [![](https://img.shields.io/docker/pulls/openmaptiles/import-data?label=downloads)](https://hub.docker.com/r/openmaptiles/import-data) [![](https://img.shields.io/docker/stars/openmaptiles/import-data?label=stars)](https://hub.docker.com/r/openmaptiles/import-data)
 Multiple data sources packaged for import into PostgreSQL DB, includes data from [Natural Earth](http://www.naturalearthdata.com/), [water polygons](http://osmdata.openstreetmap.de), and [lake centerlines](https://github.com/lukasmartinelli/osm-lakelines).
 
-##### postgis .shields.io/docker/pulls/openmaptiles/postgis?label=downloads)](https://hub.docker.com/r/openmaptiles/postgis) [![](https://img.shields.io/docker/stars/openmaptiles/postgis?label=stars)](https://hub.docker.com/r/openmaptiles/postgis)
+##### postgis [![](https://img.shields.io/docker/pulls/openmaptiles/postgis?label=downloads)](https://hub.docker.com/r/openmaptiles/postgis) [![](https://img.shields.io/docker/stars/openmaptiles/postgis?label=stars)](https://hub.docker.com/r/openmaptiles/postgis)
 An image with PostgreSQL database, Postgis, and several other extensions, custom built for OpenMapTiles project.
 
 ##### postgis-preloaded [![](https://img.shields.io/docker/pulls/openmaptiles/postgis-preloaded?label=downloads)](https://hub.docker.com/r/openmaptiles/postgis-preloaded) [![](https://img.shields.io/docker/stars/openmaptiles/postgis-preloaded?label=stars)](https://hub.docker.com/r/openmaptiles/postgis-preloaded)

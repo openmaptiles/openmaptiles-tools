@@ -27,9 +27,9 @@ class Colors:
 
     def enable(self, enable=True):
         if enable:
-            self.GREEN = "\x1b[32;107m"
-            self.RED = "\x1b[31;107m"
-            self.RESET = "\x1b[0m"
+            self.GREEN = '\x1b[32;107m'
+            self.RED = '\x1b[31;107m'
+            self.RESET = '\x1b[0m'
         else:
             self.GREEN, self.RED, self.RESET = '', '', ''
 
@@ -43,14 +43,14 @@ def change(old, new, is_speed=False, color=False):
         # For speed, less than 0.1% is considered the same
         # For size every byte should count
         clr = None
-        value = f" ±0.0%"
+        value = ' ±0.0%'
     elif abs(growth) < 0.1:
         # For < 10% show the number but don't highlight
         clr = None
-        value = f" {growth:+.1%}"
+        value = f' {growth:+.1%}'
     else:
         clr = COLOR.GREEN if (growth > 0) == is_speed else COLOR.RED
-        value = f" {clr}{growth:+.1%}{COLOR.RESET}"
+        value = f' {clr}{growth:+.1%}{COLOR.RESET}'
     if color:
         return value, clr
     else:
@@ -79,18 +79,18 @@ class PerfSummary:
     def perf_format(self, old: 'PerfSummary'):
         if self.tiles > 0:
             return (
-                f"Generated {self.tiles:,} tiles in {round_td(self.duration)}, "
-                f"{self.gen_speed:,.1f} tiles/s"
-                f"{change(old.gen_speed, self.gen_speed, True) if old else ''}"
-                f", "
-                f"{self.tile_avg_size:,.1f} bytes/tile"
-                f"{change(old.tile_avg_size, self.tile_avg_size) if old else ''}"
+                f'Generated {self.tiles:,} tiles in {round_td(self.duration)}, '
+                f'{self.gen_speed:,.1f} tiles/s'
+                f'{change(old.gen_speed, self.gen_speed, True) if old else ""}'
+                f', '
+                f'{self.tile_avg_size:,.1f} bytes/tile'
+                f'{change(old.tile_avg_size, self.tile_avg_size) if old else ""}'
             )
         else:
-            return f"No tiles were generated in {round_td(self.duration)}"
+            return f'No tiles were generated in {round_td(self.duration)}'
 
     def graph_msg(self, is_speed, group, old: 'PerfSummary'):
-        info = f"{self.tiles} tiles in {round_td(self.duration)}"
+        info = f'{self.tiles} tiles in {round_td(self.duration)}'
         value = self.gen_speed if is_speed else self.tile_avg_size
         old = (old.gen_speed if is_speed else old.tile_avg_size) if old else None
         if old:
@@ -98,7 +98,7 @@ class PerfSummary:
         else:
             delta = ''
             color = None
-        msg = f"{'tiles/s' if is_speed else 'per tile'}{delta} {group}, {info}"
+        msg = f'{"tiles/s" if is_speed else "per tile"}{delta} {group}, {info}'
         if color:
             return msg, value, color
         else:
@@ -125,10 +125,10 @@ class PerfBucket:
         else:
             delta = ''
             color = None
-        msg = f"avg size" \
-              f"{delta}, " \
-              f"{self.smallest_size:,}B ({self.smallest_id}) — " \
-              f"{self.largest_size:,}B ({self.largest_id})"
+        msg = f'avg size' \
+              f'{delta}, ' \
+              f'{self.smallest_size:,}B ({self.smallest_id}) — ' \
+              f'{self.largest_size:,}B ({self.largest_id})'
         if color:
             return msg, self.tile_avg_size, color
         else:
@@ -211,22 +211,22 @@ class TestCase:
     def fmt_table(self) -> str:
         pos = ''
         if self.size() > 0:
-            pos = f" [{self.start[0]}/{self.start[1]}]" \
-                  f"x[{self.before[0] - 1}/{self.before[1] - 1}]"
-        return f"* {self.id:30} {self.desc} ({self.size():,} " \
-               f"tiles at z{self.zoom}{pos})"
+            pos = f' [{self.start[0]}/{self.start[1]}]' \
+                  f'x[{self.before[0] - 1}/{self.before[1] - 1}]'
+        return f'* {self.id:30} {self.desc} ({self.size():,} ' \
+               f'tiles at z{self.zoom}{pos})'
 
     def format(self) -> str:
-        return f"{self.fmt_layers()} test '{self.id}' at zoom {self.zoom} " \
-               f"({self.size():,} tiles) - {self.desc}"
+        return f'{self.fmt_layers()} test "{self.id}" at zoom {self.zoom} ' \
+               f'({self.size():,} tiles) - {self.desc}'
 
     def fmt_layers(self):
         if self.layers:
             if len(self.layers) == 1:
-                return f"layer {self.layers[0]}"
+                return f'layer {self.layers[0]}'
             else:
                 vals = ','.join(self.layers)
-                return f"layers [{vals}]"
+                return f'layers [{vals}]'
         else:
             return 'all layers'
 

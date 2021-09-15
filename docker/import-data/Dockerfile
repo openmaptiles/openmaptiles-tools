@@ -8,7 +8,7 @@ RUN set -eux  ;\
     mkdir -p "$DIR"  ;\
     cd "$DIR"  ;\
     apk add --no-cache sqlite  ;\
-    wget --quiet http://naciscdn.org/naturalearth/packages/natural_earth_vector.sqlite.zip  ;\
+    wget --quiet https://naturalearth.s3.amazonaws.com/packages/natural_earth_vector.sqlite.zip ;\
     unzip -oj natural_earth_vector.sqlite.zip  ;\
     ../clean-natural-earth.sh natural_earth_vector.sqlite  ;\
     rm ../clean-natural-earth.sh  ;\

@@ -1,5 +1,5 @@
 from os import getenv
-from typing import Dict, List, Tuple
+from typing import Dict, List
 
 import asyncpg
 from asyncpg import UndefinedFunctionError, UndefinedObjectError, Connection
@@ -10,10 +10,10 @@ from openmaptiles.utils import coalesce, print_err
 
 async def get_postgis_version(conn: Connection) -> str:
     try:
-        return await conn.fetchval("SELECT postgis_full_version()")
-    except (UndefinedFunctionError, UndefinedObjectError) as ex:
-        raise ValueError("postgis_full_version() does not exist, "
-                         "probably because PostGIS is not installed")
+        return await conn.fetchval('SELECT postgis_full_version()')
+    except (UndefinedFunctionError, UndefinedObjectError):
+        raise ValueError('postgis_full_version() does not exist, '
+                         'probably because PostGIS is not installed')
 
 
 async def show_settings(conn: Connection, verbose=True) -> Dict[str, str]:
@@ -49,33 +49,33 @@ async def show_settings(conn: Connection, verbose=True) -> Dict[str, str]:
             if validator:
                 msg = validator(res)
                 if msg:
-                    suffix = f" -- {COLOR.RED}{msg}{COLOR.RESET}"
+                    suffix = f' -- {COLOR.RED}{msg}{COLOR.RESET}'
             results[setting] = res
         except (UndefinedFunctionError, UndefinedObjectError) as ex:
             res = ex.message
             prefix, suffix = COLOR.RED, COLOR.RESET
             results[setting] = None
         if verbose:
-            print(f"* {setting:{key_len}} = {prefix}{res}{suffix}")
+            print(f'* {setting:{key_len}} = {prefix}{res}{suffix}')
 
     return results
 
 
 def parse_pg_args(args):
     pghost = coalesce(
-        args.get("--pghost"), getenv('POSTGRES_HOST'), getenv('PGHOST'),
+        args.get('--pghost'), getenv('POSTGRES_HOST'), getenv('PGHOST'),
         'localhost')
     pgport = coalesce(
-        args.get("--pgport"), getenv('POSTGRES_PORT'), getenv('PGPORT'),
+        args.get('--pgport'), getenv('POSTGRES_PORT'), getenv('PGPORT'),
         '5432')
     dbname = coalesce(
-        args.get("--dbname"), getenv('POSTGRES_DB'), getenv('PGDATABASE'),
+        args.get('--dbname'), getenv('POSTGRES_DB'), getenv('PGDATABASE'),
         'openmaptiles')
     user = coalesce(
-        args.get("--user"), getenv('POSTGRES_USER'), getenv('PGUSER'),
+        args.get('--user'), getenv('POSTGRES_USER'), getenv('PGUSER'),
         'openmaptiles')
     password = coalesce(
-        args.get("--password"), getenv('POSTGRES_PASSWORD'),
+        args.get('--password'), getenv('POSTGRES_PASSWORD'),
         getenv('PGPASSWORD'), 'openmaptiles')
     return pghost, pgport, dbname, user, password
 
@@ -96,9 +96,9 @@ class PgWarnings:
     def print_message(msg: asyncpg.PostgresLogMessage):
         try:
             # noinspection PyUnresolvedReferences
-            print_err(f"  {msg.severity}: {msg.message} @ {msg.context}")
+            print_err(f'  {msg.severity}: {msg.message} @ {msg.context}')
         except AttributeError:
-            print_err(f"  {msg}")
+            print_err(f'  {msg}')
 
     def print(self):
         for msg in self.messages:
@@ -112,13 +112,13 @@ async def get_sql_types(connection: Connection):
     and return the mapping of OSM type id (oid) => MVT style type
     """
     sql_to_mvt_types = dict(
-        bool="Boolean",
-        text="String",
-        int4="Number",
-        int8="Number",
+        bool='Boolean',
+        text='String',
+        int4='Number',
+        int8='Number',
     )
     types = await connection.fetch(
-        "select oid, typname from pg_type where typname = ANY($1::text[])",
+        'select oid, typname from pg_type where typname = ANY($1::text[])',
         list(sql_to_mvt_types.keys())
     )
     return {row['oid']: sql_to_mvt_types[row['typname']] for row in types}
@@ -134,7 +134,7 @@ async def get_vector_layers(conn, mvt) -> List[dict]:
             for name, oid in fields.items() if oid not in pg_types
         }
         if unknown:
-            print(f"Ignoring fields with unknown SQL types (OIDs): "
+            print(f'Ignoring fields with unknown SQL types (OIDs): '
                   f"[{', '.join([f'{n} ({o})' for n, o in unknown.items()])}]")
 
         vector_layers.append(dict(
@@ -151,16 +151,16 @@ async def get_vector_layers(conn, mvt) -> List[dict]:
 
 
 def print_query_error(error_msg, err, pg_warnings, verbose, query, layer_sql=None):
-    msg = f"####### {error_msg} #######"
+    msg = f'####### {error_msg} #######'
     line = '#' * len(msg)
-    print(f"{line}\n{msg}\n{line}\n{err.__class__.__name__}: {err}")
-    if hasattr(err, "context") and err.context:
-        print(f"context: {err.context}")
+    print(f'{line}\n{msg}\n{line}\n{err.__class__.__name__}: {err}')
+    if hasattr(err, 'context') and err.context:
+        print(f'context: {err.context}')
     pg_warnings.print()
     if not verbose:
         # Always print failed SQL if the mode is not verbose
-        query_msg = f"\n== FULL QUERY\n{query.strip()}"
+        query_msg = f'\n== FULL QUERY\n{query.strip()}'
         if layer_sql:
-            query_msg += f"\n\n== MVT SQL\n{layer_sql}"
+            query_msg += f'\n\n== MVT SQL\n{layer_sql}'
         print(query_msg)
-    print(f"{line}\n")
+    print(f'{line}\n')
