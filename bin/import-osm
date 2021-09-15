@@ -27,12 +27,26 @@ function import_pbf() {
         echo "Importing $pbf_file into $PGHOST:$PGPORT/$PGDATABASE using Imposm in NORMAL mode..."
     fi
 
-    local cache_flag="-overwritecache"
+    local extra_flags=""
+    local action_msg=""
+    local mode_msg=""
+
+    if [ "$DIFF_MODE" = true ]; then
+        extra_flags="$extra_flags -diff"
+        mode_msg="NORMAL"
+    else
+        mode_msg="DIFF"
+    fi
+    
     if [ "$APPEND_MODE" = true ]; then
-        cache_flag="-appendcache"
-        echo "Appending $pbf_file into $PGHOST:$PGPORT/$PGDATABASE"
+        extra_flags="$extra_flags -appendcache"
+        action_msg="Appending"
+    else
+        extra_flags="$extra_flags -overwritecache"
+        action_msg="Importing"
     fi
 
+    echo "$action_msg $pbf_file into $PGHOST:$PGPORT/$PGDATABASE using Imposm in $mode_msg mode..."
     imposm import \
         -connection "postgis://$PGUSER:$PGPASSWORD@$PGHOST:$PGPORT/$PGDATABASE" \
         -mapping "${IMPOSM_MAPPING_FILE:?}" \
