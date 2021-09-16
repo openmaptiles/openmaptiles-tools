@@ -128,8 +128,10 @@ $$ LANGUAGE SQL IMMUTABLE;
         self._test("a17", [c11], dict(c11=[c11]))
         self._test("a18", [c12], dict(c12=[c12]))
 
-    def _parse_reqs(self, reqs, expected_layers, expected_tables, expected_funcs):
-        ts = Tileset(parsed_data(Case('my_id', 'my_query;', reqs=reqs)))
+    def _ts_parse(self, reqs, expected_layers, expected_tables, expected_funcs, extra_cases=None):
+        cases = [] if not extra_cases else list(extra_cases)
+        cases.append(Case('my_id', 'my_query;', reqs=reqs))
+        ts = Tileset(parsed_data(cases))
         self.assertEqual(ts.attribution, "test_attribution")
         self.assertEqual(ts.bounds, "test_bounds")
         self.assertEqual(ts.center, "test_center")
@@ -141,7 +143,7 @@ $$ LANGUAGE SQL IMMUTABLE;
         self.assertEqual(ts.pixel_scale, "test_pixel_scale")
         self.assertEqual(ts.version, "test_version")
 
-        self.assertEqual(len(ts.layers), 1)
+        self.assertEqual(len(ts.layers), len(cases))
         layer = ts.layers_by_id['my_id']
         self.assertEqual(layer.id, "my_id")
         self.assertEqual(layer.requires_layers, expected_layers)
@@ -153,14 +155,22 @@ $$ LANGUAGE SQL IMMUTABLE;
             warnings.filterwarnings('ignore', category=DeprecationWarning)
             self.assertEqual(layer.requires, expected_layers)
 
-    def test_parse_reqs(self):
-        self._parse_reqs(None, [], [], [])
-        self._parse_reqs([], [], [], [])
-        self._parse_reqs({}, [], [], [])
-        self._parse_reqs(dict(tables="a"), [], ["a"], [])
-        self._parse_reqs(dict(tables=["a", "b"]), [], ["a", "b"], [])
-        self._parse_reqs(dict(functions="a"), [], [], ["a"])
-        self._parse_reqs(dict(functions=["a", "b"]), [], [], ["a", "b"])
+    def test_ts_parse(self):
+        extra = [Case('c1', 'SELECT 1;')]
+
+        self._ts_parse(None, [], [], [])
+        self._ts_parse([], [], [], [])
+        self._ts_parse({}, [], [], [])
+        self._ts_parse('c1', ['c1'], [], [], extra)
+        self._ts_parse(['c1'], ['c1'], [], [], extra)
+        self._ts_parse(dict(layers='c1'), ['c1'], [], [], extra)
+        self._ts_parse(dict(layers=['c1']), ['c1'], [], [], extra)
+        self._ts_parse(dict(tables='a'), [], ['a'], [])
+        self._ts_parse(dict(tables=['a', 'b']), [], ['a', 'b'], [])
+        self._ts_parse(dict(functions='x'), [], [], ['x'])
+        self._ts_parse(dict(functions=['x', 'y']), [], [], ['x', 'y'])
+        self._ts_parse(dict(layers=['c1'], tables=['a', 'b'], functions=['x', 'y']),
+                       ['c1'], ['a', 'b'], ['x', 'y'], extra)
 
 
 if __name__ == '__main__':
