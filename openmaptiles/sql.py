@@ -73,15 +73,16 @@ def collect_sql(tileset_filename, parallel=False, nodata=False
 
 
 def layer_to_sql(layer: Layer, nodata: bool):
-    schemas = '\n\n'.join((to_sql(v, layer, nodata) for v in layer.schemas))
-    sql = f"""\
-DO $$ BEGIN RAISE NOTICE 'Processing layer {layer.id}'; END$$;
+    sql = f"DO $$ BEGIN RAISE NOTICE 'Processing layer {layer.id}'; END$$;\n\n"
+    for table in layer.requires_tables:
+        sql += f"-- Assert {table} exists\nSELECT '{table}'::regclass;\n\n"
+    for func in layer.requires_functions:
+        sql += f"-- Assert {func} exists\nSELECT '{func}'::regprocedure;\n\n"
+    for schema in layer.schemas:
+        sql += to_sql(schema, layer, nodata) + '\n\n'
+    sql += f"DO $$ BEGIN RAISE NOTICE 'Finished layer {layer.id}'; END$$;\n"
 
-{schemas}
-
-DO $$ BEGIN RAISE NOTICE 'Finished layer {layer.id}'; END$$;
-"""
-    return sql.strip() + '\n'
+    return sql
 
 
 def get_slice_language_tags(tileset):
@@ -210,12 +211,6 @@ class FieldExpander:
 
 def to_sql(sql: str, layer: Layer, nodata: bool):
     """Clean up SQL, and perform any needed code injections"""
-    result = ''
-    for table in layer.requires_tables:
-        result += f"-- Assert {table} exists\nSELECT '{table}'::regclass;\n\n"
-    for func in layer.requires_functions:
-        result += f"-- Assert {func} exists\nSELECT '{func}'::regprocedure;\n\n"
-
     sql = sql.strip()
 
     # Replace '%%FIELD_MAPPING: <field_name>%%' with fields from layer definition
@@ -230,6 +225,4 @@ def to_sql(sql: str, layer: Layer, nodata: bool):
         sql = re.sub(
             r'/\*\s*DELAY_MATERIALIZED_VIEW_CREATION\s*\*/', ' WITH NO DATA ', sql)
 
-    result += sql
-
-    return result
+    return sql
