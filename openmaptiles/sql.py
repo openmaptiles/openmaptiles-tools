@@ -31,18 +31,18 @@ def collect_sql(tileset_filename, parallel=False, nodata=False
     while len(resolved) > last_count:
         last_count = len(resolved)
         for lid, layer in list(unresolved.items()):
-            if all((v in resolved for v in layer.requires)):
+            if all((v in resolved for v in layer.requires_layers)):
                 # All requirements have been resolved.
                 resolved[lid] = lid
                 results[lid] = layer_to_sql(layer, nodata)
                 del unresolved[lid]
 
-                if layer.requires:
+                if layer.requires_layers:
                     # If there are more than one requirement, merge them first,
                     # e.g. if there are layers A, B, and C; and C requires A & B,
                     # first concatenate A and B, and then append C to them.
                     # Make sure the same code is not merged multiple times
-                    mix = list(layer.requires) + [lid]
+                    mix = list(layer.requires_layers) + [lid]
                     lid1 = mix[0]
                     for idx in range(1, len(mix)):
                         lid2 = mix[idx]
@@ -73,15 +73,16 @@ def collect_sql(tileset_filename, parallel=False, nodata=False
 
 
 def layer_to_sql(layer: Layer, nodata: bool):
-    schemas = '\n\n'.join((to_sql(v, layer, nodata) for v in layer.schemas))
-    sql = f"""\
-DO $$ BEGIN RAISE NOTICE 'Processing layer {layer.id}'; END$$;
+    sql = f"DO $$ BEGIN RAISE NOTICE 'Processing layer {layer.id}'; END$$;\n\n"
+    for table in layer.requires_tables:
+        sql += f"-- Assert {table} exists\nSELECT '{table}'::regclass;\n\n"
+    for func in layer.requires_functions:
+        sql += f"-- Assert {func} exists\nSELECT '{func}'::regprocedure;\n\n"
+    for schema in layer.schemas:
+        sql += to_sql(schema, layer, nodata) + '\n\n'
+    sql += f"DO $$ BEGIN RAISE NOTICE 'Finished layer {layer.id}'; END$$;\n"
 
-{schemas}
-
-DO $$ BEGIN RAISE NOTICE 'Finished layer {layer.id}'; END$$;
-"""
-    return sql.strip() + '\n'
+    return sql
 
 
 def get_slice_language_tags(tileset):

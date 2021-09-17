@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import List, Union, Dict, Any, Callable
 
 import sys
+import warnings
 import yaml
 from deprecated import deprecated
 
@@ -108,25 +109,33 @@ class Layer:
         else:
             self.fields = []
 
-        if 'requires' in self.definition['layer']:
-            self.requires = self.definition['layer']['requires']
-            if isinstance(self.requires, str):
-                self.requires = [self.requires]
-            if (
-                    not isinstance(self.requires, list)
-                    or any(not isinstance(v, str) or v == '' for v in self.requires)
-            ):
-                raise ValueError("If defined, 'requires' parameter must be the ID "
-                                 'of another layer, or a list of layer IDs')
+        requires = self.definition['layer'].get('requires', {})
+        if not isinstance(requires, dict):
+            requires = dict(layers=requires)
         else:
-            self.requires = []
+            requires = requires.copy()  # dict will be modified to detect unrecognized properties
+
+        err = 'If set, "requires" parameter must be a map with optional "layers", "tables", and "functions" sub-elements. Each sub-element must be a string or a list of strings. If "requires" is a list or a string itself, it is treated as a list of layers. '
+        self.requires_layers = get_requires_prop(
+            requires, 'layers',
+            err + '"requires.layers" must be an ID of another layer, or a list of layer IDs.')
+        self.requires_tables = get_requires_prop(
+            requires, 'tables',
+            err + '"requires.tables" must be the name of a PostgreSQL table or a view, or a list of tables/views')
+        self.requires_functions = get_requires_prop(
+            requires, 'functions',
+            err + '"requires.functions" must be a PostgreSQL function name with parameters or a list of functions. Example: "sql_func(TEXT, TEXT)"')
+
+        if requires:
+            # get_requires_prop will delete the key it handled. Remaining keys are errors.
+            raise ValueError(f'Unrecognized sub-elements in the \"requires\" parameter: {str(list(requires.keys()))}')
 
         validate_properties(self, f'Layer {self.filename}')
 
         if any(v.name == self.geometry_field for v in self.fields):
             raise ValueError(
-                f"Layer '{self.id}' must not have an implicit '{self.geometry_field}' "
-                f"field declared in the 'fields' section of the yaml file")
+                f'Layer "{self.id}" must not have an implicit "{self.geometry_field}" '
+                f'field declared in the "fields" section of the yaml file')
         if self.key_field and self.key_field_as_attribute:
             # If 'yes', we will need to generate a wrapper query that includes
             # osm_id column twice - once for feature_id, and once as an attribute
@@ -220,6 +229,11 @@ class Layer:
             fields = tag_fields_to_sql(Tileset.auto_language_fields)
         return self.raw_query.format(name_languages=(', '.join(fields)))
 
+    @property
+    @deprecated(version='5.4.0', reason='use requires_layers property instead')
+    def requires(self) -> List[str]:
+        return self.requires_layers
+
     def __str__(self) -> str:
         if self.tileset:
             path = self.filename.relative_to(self.tileset.filename.parent)
@@ -265,7 +279,7 @@ class Tileset:
         while len(resolved) > last_count:
             last_count = len(resolved)
             for lid, layer in list(unresolved.items()):
-                for req in layer.requires:
+                for req in layer.requires_layers:
                     if req not in self.layers_by_id:
                         raise ValueError(f"Unknown layer '{req}' required for "
                                          f'layer {layer.id}')
@@ -378,17 +392,20 @@ def parse_file(file: Path) -> dict:
 
 def validate_properties(obj, info):
     """Ensure that none of the object properties raise errors"""
-    errors = []
-    for attr in dir(obj):
-        try:
-            getattr(obj, attr)
-        except Exception as ex:
-            errors.append((attr, ex))
-    if errors:
-        err = f'\n{info} has invalid data:\n'
-        err += '\n'.join((f'  * {n}: {repr(e)}' for n, e in errors))
-        err += '\n'
-        raise ValueError(err)
+    with warnings.catch_warnings():
+        # Validation should test properties without warnings even if they are deprecated
+        warnings.filterwarnings('ignore', category=DeprecationWarning)
+        errors = []
+        for attr in dir(obj):
+            try:
+                getattr(obj, attr)
+            except Exception as ex:
+                errors.append((attr, ex))
+        if errors:
+            err = f'\n{info} has invalid data:\n'
+            err += '\n'.join((f'  * {n}: {repr(e)}' for n, e in errors))
+            err += '\n'
+            raise ValueError(err)
 
 
 def process_layers(filename: Path, processor: Callable[[Layer, bool], None]):
@@ -403,4 +420,16 @@ def process_layers(filename: Path, processor: Callable[[Layer, bool], None]):
         processor(Layer.parse(parsed), False)
     else:
         raise ValueError(f'Unrecognized content in file {filename} '
-                         f"- expecting 'tileset' or 'layer' top element")
+                         f'- expecting "tileset" or "layer" top element')
+
+
+def get_requires_prop(requires: Dict[str, Union[str, List[str]]], prop: str, err: str) -> List[str]:
+    """
+    Extract and delete a property from a dictionary, and ensure that the property is a valid list of strings.
+    """
+    result = requires.pop(prop, [])
+    if isinstance(result, str):
+        result = [result]
+    if not isinstance(result, list) or any(not isinstance(v, str) or v == '' for v in result):
+        raise ValueError(err)
+    return result
