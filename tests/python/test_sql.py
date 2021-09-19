@@ -46,7 +46,7 @@ def expected_sql(case: Case):
                     "exception when undefined_function then\n" + \
                     f"	RAISE EXCEPTION '%! {functionErrorText}', SQLERRM;\n" + \
                     "when invalid_text_representation then\n" + \
-                    f"	RAISE EXCEPTION '%! The arguments of the required function \"{func}\" of the layer \"{case.id}\" are missing. Example: \"{func}(text)\"', SQLERRM;\n" + \
+                    f"	RAISE EXCEPTION '%! The arguments of the required function \"{func}\" of the layer \"{case.id}\" are missing. Example: \"{func}(TEXT, TEXT)\"', SQLERRM;\n" + \
                     "end;\n$$ language 'plpgsql';\n\n"
     result += f"""\
 -- Layer {case.id} - {case.id}_s.yaml
