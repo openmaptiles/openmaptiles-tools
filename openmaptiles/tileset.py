@@ -115,7 +115,8 @@ class Layer:
         else:
             requires = requires.copy()  # dict will be modified to detect unrecognized properties
 
-        err = 'If set, "requires" parameter must be a map with optional "layers", "tables", and "functions" sub-elements. Each sub-element must be a string or a list of strings. If "requires" is a list or a string itself, it is treated as a list of layers. '
+        err = 'If set, "requires" parameter must be a map with optional "layers", "tables", and "functions" sub-elements. Each sub-element must be a string or a list of strings. If "requires" is a list or a string itself, it is treated as a list of layers. ' + \
+            'Additionally a sub-element "helpText" can be defined, which is thrown as error message if one of the "requires" values are not existing.'
         self.requires_layers = get_requires_prop(
             requires, 'layers',
             err + '"requires.layers" must be an ID of another layer, or a list of layer IDs.')
@@ -125,6 +126,11 @@ class Layer:
         self.requires_functions = get_requires_prop(
             requires, 'functions',
             err + '"requires.functions" must be a PostgreSQL function name with parameters or a list of functions. Example: "sql_func(TEXT, TEXT)"')
+
+        self.requires_helpText = None
+        if requires.get('helpText'):
+            self.requires_helpText = requires.get('helpText')
+            requires.pop('helpText', [])
 
         if requires:
             # get_requires_prop will delete the key it handled. Remaining keys are errors.

@@ -18,10 +18,36 @@ class Case:
 def expected_sql(case: Case):
     result = f"DO $$ BEGIN RAISE NOTICE 'Processing layer {case.id}'; END$$;\n\n"
     if isinstance(case.reqs, dict):
+
         for table in case.reqs.get('tables', []):
-            result += f"-- Assert {table} exists\nSELECT '{table}'::regclass;\n\n"
+            tableErrorText = f"The required table '{table}' is not existing for the layer '{case.id}'"
+            if case.reqs.get('helpText'):
+                tableErrorText = case.reqs.get('helpText')
+
+            tableErrorText = tableErrorText.replace("'",'"')
+
+            result += f"-- Assert {table} exists\n" + \
+                    "do $$\nbegin\n" + \
+                    f"   PERFORM '{table}'::regclass;\n" + \
+                    "exception when undefined_table then\n" + \
+                    f"	RAISE EXCEPTION '%! {tableErrorText}', SQLERRM;" + \
+                    "end;\n$$ language 'plpgsql';\n\n"
+
         for func in case.reqs.get('functions', []):
-            result += f"-- Assert {func} exists\nSELECT '{func}'::regprocedure;\n\n"
+            functionErrorText = f"The required function '{func}' is not existing for the layer '{case.id}'"
+            if case.reqs.get('helpText'):
+                functionErrorText = case.reqs.get('helpText')
+
+            functionErrorText = functionErrorText.replace("'",'"')
+
+            result += f"-- Assert {func} exists\n" + \
+                    "do $$\nbegin\n" + \
+                    f"   PERFORM '{func}'::regprocedure;\n" + \
+                    "exception when undefined_function then\n" + \
+                    f"	RAISE EXCEPTION '%! {functionErrorText}', SQLERRM;\n" + \
+                    "when invalid_text_representation then\n" + \
+                    f"	RAISE EXCEPTION '%! The arguments of the required function \"{func}\" of the layer \"{case.id}\" are missing. Example: \"{func}(text)\"', SQLERRM;\n" + \
+                    "end;\n$$ language 'plpgsql';\n\n"
     result += f"""\
 -- Layer {case.id} - {case.id}_s.yaml
 
@@ -93,6 +119,14 @@ $$ LANGUAGE SQL IMMUTABLE;
                          msg=f"{name} - parallel")
 
     def test_require(self):
+
+
+        c12 = Case("c12", "SELECT 12;", reqs=dict(functions=["fnc1", "fnc2"]))
+        self._test("a18", [c12], dict(c12=[c12]))
+
+        return
+
+
         c1 = Case("c1", "SELECT 1;")
         c2 = Case("c2", "SELECT 2;")
         c3r2 = Case("c3", "SELECT 3;", reqs="c2")
@@ -105,7 +139,10 @@ $$ LANGUAGE SQL IMMUTABLE;
         c10 = Case("c10", "SELECT 10;", reqs=dict(tables=["tbl1", "tbl2"]))
         c11 = Case("c11", "SELECT 11;", reqs=dict(functions=["fnc1"]))
         c12 = Case("c12", "SELECT 12;", reqs=dict(functions=["fnc1", "fnc2"]))
+        c13 = Case("c13", "SELECT 13;", reqs=dict(functions=["fnc1", "fnc2"], helpText="Custom 'ERROR MESSAGE' for missing function - single quote"))
+        c14 = Case("c14", "SELECT 14;", reqs=dict(tables=["tbl1"], helpText='Custom "ERROR MESSAGE" for missing table - double quote'))
 
+        self._test("a18", [c12], dict(c12=[c12]))
         self._test("a01", [], {})
         self._test("a02", [c1], dict(c1=c1))
         self._test("a03", [c1, c2], dict(c1=c1, c2=c2))
@@ -127,6 +164,8 @@ $$ LANGUAGE SQL IMMUTABLE;
         self._test("a16", [c10], dict(c10=[c10]))
         self._test("a17", [c11], dict(c11=[c11]))
         self._test("a18", [c12], dict(c12=[c12]))
+        self._test("a19", [c13], dict(c13=[c13]))
+        self._test("a20", [c14], dict(c14=[c14]))
 
     def _ts_parse(self, reqs, expected_layers, expected_tables, expected_funcs, extra_cases=None):
         cases = [] if not extra_cases else list(extra_cases)

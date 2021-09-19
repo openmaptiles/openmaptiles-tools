@@ -74,10 +74,35 @@ def collect_sql(tileset_filename, parallel=False, nodata=False
 
 def layer_to_sql(layer: Layer, nodata: bool):
     sql = f"DO $$ BEGIN RAISE NOTICE 'Processing layer {layer.id}'; END$$;\n\n"
+
     for table in layer.requires_tables:
-        sql += f"-- Assert {table} exists\nSELECT '{table}'::regclass;\n\n"
+        tableErrorText = f"The required table '{table}' is not existing for the layer '{layer.id}'"
+        if layer.requires_helpText:
+            tableErrorText = layer.requires_helpText
+        tableErrorText = tableErrorText.replace("'", '"')
+
+        sql += f'-- Assert {table} exists\n' + \
+            'do $$\nbegin\n' + \
+            f"   PERFORM '{table}'::regclass;\n" + \
+            'exception when undefined_table then\n' + \
+            f"	RAISE EXCEPTION '%! {tableErrorText}', SQLERRM;\n" + \
+            "end;\n$$ language 'plpgsql';\n\n"
+
     for func in layer.requires_functions:
-        sql += f"-- Assert {func} exists\nSELECT '{func}'::regprocedure;\n\n"
+        functionErrorText = f"The required function '{func}' is not existing for the layer '{layer.id}'"
+        if layer.requires_helpText:
+            functionErrorText = layer.requires_helpText
+        functionErrorText = functionErrorText.replace("'", '"')
+
+        sql += f'-- Assert {func} exists\n' + \
+            'do $$\nbegin\n' + \
+            f"   PERFORM '{func}'::regprocedure;\n" + \
+            'exception when undefined_function then\n' + \
+            f"	RAISE EXCEPTION '%! {functionErrorText}', SQLERRM;\n" + \
+            'when invalid_text_representation then\n' + \
+            f"	RAISE EXCEPTION '%! The arguments of the required function \"{func}\" of the layer \"{layer.id}\" are missing. Example: \"{func}(TEXT, TEXT)\"', SQLERRM;\n" + \
+            "end;\n$$ language 'plpgsql';\n\n"
+
     for schema in layer.schemas:
         sql += to_sql(schema, layer, nodata) + '\n\n'
     sql += f"DO $$ BEGIN RAISE NOTICE 'Finished layer {layer.id}'; END$$;\n"
