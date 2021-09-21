@@ -72,7 +72,7 @@ def main(args):
 
     tests = args['--test']
     if not tests and not args['--test-all'] and not args['--bbox']:
-        tests = ["us-across"]
+        tests = ['us-across']
 
     perf = PerfTester(
         tileset=args['<tileset>'],

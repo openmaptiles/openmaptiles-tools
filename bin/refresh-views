@@ -99,7 +99,7 @@ async def async_main(schema, dbname, pghost, pgport, user, password, max_queries
         database=dbname, host=pghost, port=pgport, user=user, password=password,
         min_size=1, max_size=max_queries,
     ) as pool:
-        print(f"Loading all materialized views from {dbname}...")
+        print(f'Loading all materialized views from {dbname}...')
         rows = defaultdict(list)
         for row in await pool.fetch(SQL_GET_MATERIALIZED_VIEWS):
             depends_on = None
@@ -109,23 +109,23 @@ async def async_main(schema, dbname, pghost, pgport, user, password, max_queries
             rows[obj_id].append(depends_on)
 
         actions = [Query(
-            action_id=f"{obj_id[0]}.{obj_id[1]}",
+            action_id=f'{obj_id[0]}.{obj_id[1]}',
             depends_on=[v for v in dependencies if v],
             query=(None if not obj_id[2] or (schema and obj_id[0] != schema) else
-                   f"REFRESH MATERIALIZED VIEW {obj_id[0]}.{obj_id[1]};")
+                   f'REFRESH MATERIALIZED VIEW {obj_id[0]}.{obj_id[1]};')
         ) for obj_id, dependencies in rows.items()]
 
         async def executor(action: Query, _: List):
             if not action.query:
                 return  # Actions without queries are treated as awaitable placeholders
-            info = f"{datetime.utcnow()} refreshing  {action.action_id}"
+            info = f'{datetime.utcnow()} refreshing  {action.action_id}'
             if action.depends_on:
                 info += f"  because  {', '.join(action.depends_on)}  finished."
             print(info)
             await pool.execute(action.query)
-            print(f"{datetime.utcnow()} finished refreshing  {action.action_id}.")
+            print(f'{datetime.utcnow()} finished refreshing  {action.action_id}.')
 
-        print(f"Refreshing {sum((1 for v in actions if v.query))} materialized views"
+        print(f'Refreshing {sum((1 for v in actions if v.query))} materialized views'
               f"{f' in schema {schema}' if schema else ''}...")
         await run_actions(actions, executor, ignore_unknown=True, verbose=verbose)
 

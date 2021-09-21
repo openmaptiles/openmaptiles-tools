@@ -54,7 +54,7 @@ from openmaptiles.utils import batches
 
 
 def validate_table_name(table, param):
-    if not re.match(r"^[a-zA-Z_.0-9]+$", table):
+    if not re.match(r'^[a-zA-Z_.0-9]+$', table):
         raise DocoptExit(f'{param} must be a valid table name (letters/digits)')
     return table
 
@@ -66,7 +66,7 @@ async def main(args):
     if tileset_path:
         tables = find_tables(tileset_path)
         if not tables:
-            print(f"Unable to find any tables with wikidata fields in {tileset_path}")
+            print(f'Unable to find any tables with wikidata fields in {tileset_path}')
             return
     elif not args['--table']:
         raise DocoptExit('--table parameter must specify the table to process')
@@ -85,10 +85,10 @@ async def main(args):
         try:
             with cache_file.open('r', encoding='utf-8') as fp:
                 cache = json.load(fp)
-            print(f"Loaded {len(cache):,} items from cache {cache_file}")
+            print(f'Loaded {len(cache):,} items from cache {cache_file}')
         except FileNotFoundError:
             cache = {}
-            print(f"Cache file {cache_file} does not exist, will create")
+            print(f'Cache file {cache_file} does not exist, will create')
     else:
         cache = None
 
@@ -108,11 +108,11 @@ async def main(args):
 
     # The wd_names table may also be created by the sql/language.sql
     # Make sure the SQL table structure is in sync.
-    await conn.execute(f'''\
+    await conn.execute(f"""\
 CREATE TABLE IF NOT EXISTS {storage_table}(
     id     varchar(20) CONSTRAINT id_key PRIMARY KEY,
     labels hstore
-);''')
+);""")
 
     if cache:
         cached_ids = {k: {'name:' + kk: vv for kk, vv in cache[k].items()}
@@ -139,7 +139,7 @@ CREATE TABLE IF NOT EXISTS {storage_table}(
 
     if cache is not None and use_wdqs and new_ids:
         # If using cache and there might have been changes, save them
-        print(f"Saving {len(cache):,} items to cache {cache_file}")
+        print(f'Saving {len(cache):,} items to cache {cache_file}')
         with cache_file.open('w', encoding='utf-8') as fp:
             json.dump(cache, fp, ensure_ascii=False, sort_keys=True, indent=1)
 
@@ -161,13 +161,13 @@ async def create_ids_from_wdqs(conn, ids, cache, storage_table, verbose):
                     cache[_qid] = labels
                 labels[_lang] = _label
 
-        query = f'''\
+        query = f"""\
     SELECT ?id ?label WHERE {{
       VALUES ?id {{ {' '.join(batch)} }}
       ?id rdfs:label ?label.
-    }}'''
+    }}"""
         if verbose:
-            print(f"----------\n{query}\n----------")
+            print(f'----------\n{query}\n----------')
         for row in wd_query(query):
             lang = row['label']['xml:lang']
             qid = entity_id(row['id'])
@@ -194,13 +194,13 @@ def resolve_redirects(ids, verbose) -> Dict[str, List[str]]:
     redirects = defaultdict(list)
     print(f'Resolving {len(ids):,} possible Wikidata redirects...')
     for batch in batches(ids, 1000, lambda v: f'wd:{v}'):
-        query = f'''\
+        query = f"""\
     SELECT ?id ?id2 WHERE {{
       VALUES ?id {{ {' '.join(batch)} }}
       ?id owl:sameAs+ ?id2.
-    }}'''
+    }}"""
         if verbose:
-            print(f"----------\n{query}\n----------")
+            print(f'----------\n{query}\n----------')
         for row in wd_query(query):
             qid = entity_id(row['id'])
             redirects[entity_id(row['id2'])].append(qid)
@@ -219,11 +219,9 @@ def find_tables(tileset_path, table_prefix='osm_'):
         for mapping in layer.imposm_mappings:
             for table_name, table_def in mapping['tables'].items():
                 if (
-                    'fields' not in table_def and
-                    'columns' not in table_def
+                    'fields' not in table_def and 'columns' not in table_def
                 ) or (
-                    '_resolve_wikidata' in table_def and
-                    not table_def['_resolve_wikidata']
+                    '_resolve_wikidata' in table_def and not table_def['_resolve_wikidata']
                 ):
                     continue
                 # legacy support - imposm3 used to use "fields" instead of "columns"
@@ -237,7 +235,7 @@ def find_tables(tileset_path, table_prefix='osm_'):
     tables = list(sorted(tables))
     print(f"Found {len(tables)} tables with the 'tags' hstore fields")
     for table in tables:
-        print(f"  * {table}")
+        print(f'  * {table}')
     return tables
 
 
@@ -251,7 +249,7 @@ SELECT DISTINCT id
 FROM (({') UNION ('.join(part)})) as t
 WHERE id SIMILAR TO 'Q[1-9][0-9]{{0,18}}'"""
     if verbose:
-        print(f"----------\n{query}\n----------")
+        print(f'----------\n{query}\n----------')
     for row in await conn.fetch(query):
         # Validate that the ID is an integer, and convert it back to Q-number strings
         ids.append(f"Q{int(row['id'][1:])}")
