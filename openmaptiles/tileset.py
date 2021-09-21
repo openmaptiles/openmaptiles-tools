@@ -116,7 +116,7 @@ class Layer:
             requires = requires.copy()  # dict will be modified to detect unrecognized properties
 
         err = 'If set, "requires" parameter must be a map with optional "layers", "tables", and "functions" sub-elements. Each sub-element must be a string or a list of strings. If "requires" is a list or a string itself, it is treated as a list of layers. ' + \
-            'Additionally a sub-element "helpText" can be defined, which is thrown as error message if one of the "requires" values are not existing.'
+            'Optionally add "helpText" sub-element string to help the user with generating missing tables and functions.'
         self.requires_layers = get_requires_prop(
             requires, 'layers',
             err + '"requires.layers" must be an ID of another layer, or a list of layer IDs.')

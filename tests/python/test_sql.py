@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import List, Union, Dict
 from unittest import main, TestCase
 
-from openmaptiles.sql import collect_sql
+from openmaptiles.sql import collect_sql, sql_assert_table, sql_assert_func
 from openmaptiles.tileset import ParsedData, Tileset
 
 
@@ -18,36 +18,12 @@ class Case:
 def expected_sql(case: Case):
     result = f"DO $$ BEGIN RAISE NOTICE 'Processing layer {case.id}'; END$$;\n\n"
     if isinstance(case.reqs, dict):
-
+        # Use helper functions for SQL generation. Actual SQL is tested by integration tests
         for table in case.reqs.get('tables', []):
-            tableErrorText = f"The required table '{table}' is not existing for the layer '{case.id}'"
-            if case.reqs.get('helpText'):
-                tableErrorText = case.reqs.get('helpText')
-
-            tableErrorText = tableErrorText.replace("'",'"')
-
-            result += f"-- Assert {table} exists\n" + \
-                    "do $$\nbegin\n" + \
-                    f"   PERFORM '{table}'::regclass;\n" + \
-                    "exception when undefined_table then\n" + \
-                    f"	RAISE EXCEPTION '%! {tableErrorText}', SQLERRM;" + \
-                    "end;\n$$ language 'plpgsql';\n\n"
-
+            result += sql_assert_table(table, case.reqs.get('helpText'), case.id)
         for func in case.reqs.get('functions', []):
-            functionErrorText = f"The required function '{func}' is not existing for the layer '{case.id}'"
-            if case.reqs.get('helpText'):
-                functionErrorText = case.reqs.get('helpText')
+            result += sql_assert_func(func, case.reqs.get('helpText'), case.id)
 
-            functionErrorText = functionErrorText.replace("'",'"')
-
-            result += f"-- Assert {func} exists\n" + \
-                    "do $$\nbegin\n" + \
-                    f"   PERFORM '{func}'::regprocedure;\n" + \
-                    "exception when undefined_function then\n" + \
-                    f"	RAISE EXCEPTION '%! {functionErrorText}', SQLERRM;\n" + \
-                    "when invalid_text_representation then\n" + \
-                    f"	RAISE EXCEPTION '%! The arguments of the required function \"{func}\" of the layer \"{case.id}\" are missing. Example: \"{func}(TEXT, TEXT)\"', SQLERRM;\n" + \
-                    "end;\n$$ language 'plpgsql';\n\n"
     result += f"""\
 -- Layer {case.id} - {case.id}_s.yaml
 
@@ -119,14 +95,6 @@ $$ LANGUAGE SQL IMMUTABLE;
                          msg=f"{name} - parallel")
 
     def test_require(self):
-
-
-        c12 = Case("c12", "SELECT 12;", reqs=dict(functions=["fnc1", "fnc2"]))
-        self._test("a18", [c12], dict(c12=[c12]))
-
-        return
-
-
         c1 = Case("c1", "SELECT 1;")
         c2 = Case("c2", "SELECT 2;")
         c3r2 = Case("c3", "SELECT 3;", reqs="c2")
@@ -139,8 +107,10 @@ $$ LANGUAGE SQL IMMUTABLE;
         c10 = Case("c10", "SELECT 10;", reqs=dict(tables=["tbl1", "tbl2"]))
         c11 = Case("c11", "SELECT 11;", reqs=dict(functions=["fnc1"]))
         c12 = Case("c12", "SELECT 12;", reqs=dict(functions=["fnc1", "fnc2"]))
-        c13 = Case("c13", "SELECT 13;", reqs=dict(functions=["fnc1", "fnc2"], helpText="Custom 'ERROR MESSAGE' for missing function - single quote"))
-        c14 = Case("c14", "SELECT 14;", reqs=dict(tables=["tbl1"], helpText='Custom "ERROR MESSAGE" for missing table - double quote'))
+        c13 = Case("c13", "SELECT 13;", reqs=dict(functions=["fnc1", "fnc2"],
+                                                  helpText="Custom 'ERROR MESSAGE' for missing function - single quote"))
+        c14 = Case("c14", "SELECT 14;",
+                   reqs=dict(tables=["tbl1"], helpText='Custom "ERROR MESSAGE" for missing table - double quote'))
 
         self._test("a18", [c12], dict(c12=[c12]))
         self._test("a01", [], {})

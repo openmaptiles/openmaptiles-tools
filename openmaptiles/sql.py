@@ -3,6 +3,7 @@ from typing import Union, Dict, Tuple
 
 from sys import stderr
 
+from openmaptiles.pgutils import quote_literal
 from openmaptiles.tileset import Tileset, Layer
 
 
@@ -76,38 +77,52 @@ def layer_to_sql(layer: Layer, nodata: bool):
     sql = f"DO $$ BEGIN RAISE NOTICE 'Processing layer {layer.id}'; END$$;\n\n"
 
     for table in layer.requires_tables:
-        tableErrorText = f"The required table '{table}' is not existing for the layer '{layer.id}'"
-        if layer.requires_helpText:
-            tableErrorText = layer.requires_helpText
-        tableErrorText = tableErrorText.replace("'", '"')
-
-        sql += f'-- Assert {table} exists\n' + \
-            'do $$\nbegin\n' + \
-            f"   PERFORM '{table}'::regclass;\n" + \
-            'exception when undefined_table then\n' + \
-            f"	RAISE EXCEPTION '%! {tableErrorText}', SQLERRM;\n" + \
-            "end;\n$$ language 'plpgsql';\n\n"
+        sql += sql_assert_table(table, layer.requires_helpText, layer.id)
 
     for func in layer.requires_functions:
-        functionErrorText = f"The required function '{func}' is not existing for the layer '{layer.id}'"
-        if layer.requires_helpText:
-            functionErrorText = layer.requires_helpText
-        functionErrorText = functionErrorText.replace("'", '"')
-
-        sql += f'-- Assert {func} exists\n' + \
-            'do $$\nbegin\n' + \
-            f"   PERFORM '{func}'::regprocedure;\n" + \
-            'exception when undefined_function then\n' + \
-            f"	RAISE EXCEPTION '%! {functionErrorText}', SQLERRM;\n" + \
-            'when invalid_text_representation then\n' + \
-            f"	RAISE EXCEPTION '%! The arguments of the required function \"{func}\" of the layer \"{layer.id}\" are missing. Example: \"{func}(TEXT, TEXT)\"', SQLERRM;\n" + \
-            "end;\n$$ language 'plpgsql';\n\n"
+        sql += sql_assert_func(func, layer.requires_helpText, layer.id)
 
     for schema in layer.schemas:
         sql += to_sql(schema, layer, nodata) + '\n\n'
     sql += f"DO $$ BEGIN RAISE NOTICE 'Finished layer {layer.id}'; END$$;\n"
 
     return sql
+
+
+def _sql_hint_clause(hint):
+    if hint:
+        return f',\n                    HINT = {quote_literal(hint)}'
+    else:
+        return ''
+
+
+def sql_assert_table(table, hint, layer_id):
+    return f"""\
+DO $$ BEGIN
+    PERFORM {quote_literal(table)}::regclass;
+EXCEPTION
+    WHEN undefined_table THEN
+        RAISE EXCEPTION '%', SQLERRM
+            USING DETAIL = 'this table or view is required for layer "{layer_id}"'{_sql_hint_clause(hint)};
+END;
+$$ LANGUAGE 'plpgsql';\n
+"""
+
+
+def sql_assert_func(func, hint, layer_id):
+    return f"""\
+DO $$ BEGIN
+    PERFORM {quote_literal(func)}::regprocedure;
+EXCEPTION
+    WHEN undefined_function THEN
+        RAISE EXCEPTION '%', SQLERRM
+            USING DETAIL = 'this function is required for layer "{layer_id}"'{_sql_hint_clause(hint)};
+    WHEN invalid_text_representation THEN
+        RAISE EXCEPTION '%', SQLERRM
+            USING DETAIL = 'Required function "{func}" in layer "{layer_id}" is incorrectly declared. Use full function signature with parameter types, e.g. "my_magic_func(TEXT, TEXT)"';
+END;
+$$ LANGUAGE 'plpgsql';\n
+"""
 
 
 def get_slice_language_tags(tileset):
