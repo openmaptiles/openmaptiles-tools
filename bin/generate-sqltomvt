@@ -21,7 +21,7 @@ Options:
   -f --function         Generate function generation SQL [default]
   -p --prepared         Generate prepared statement SQL
   -q --query            Generate a query SQL with $1,$2,$3 meaning zoom,x,y
-  -d --psql             Generate a query SQL with :zoom,:x,:y vars to simplify PSQL debugging with  \set zoom 5
+  -d --psql             Generate a query SQL with :zoom,:x,:y vars to simplify PSQL debugging with  \\set zoom 5
   -r --raw              Generate raw query without any wrappers (good for debugging SQL)
   -l --layer=<layer>    If set, limit tile generation to just this layer (could be multiple)
   -x --exclude-layers   If set, uses all layers except the ones listed with -l (-l is required)

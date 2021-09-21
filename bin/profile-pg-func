@@ -47,6 +47,7 @@ import asyncio
 import asyncpg
 import statistics
 from datetime import datetime as dt, timedelta
+# noinspection PyProtectedMember
 from docopt import docopt, DocoptExit
 from tabulate import tabulate
 from typing import List
@@ -60,7 +61,7 @@ def get_int(args, param, min_val) -> int:
     try:
         v = int(args[param])
         if v < min_val:
-            raise DocoptExit(f"{param} must be an integer >= {min_val}")
+            raise DocoptExit(f'{param} must be an integer >= {min_val}')
         return v
     except ValueError:
         raise DocoptExit(f"{param} must be an integer, but '{args[param]}' was given")
@@ -94,7 +95,7 @@ class Stat:
         res = self.function
         if not verbose:
             res = shorten_str(res, 50)
-        return f"{self.index}) {res}"
+        return f'{self.index}) {res}'
 
 
 async def main(args):
@@ -108,7 +109,7 @@ async def main(args):
     verbose = args['--verbose']
 
     if trim * 2 >= runs:
-        raise DocoptExit("--trim must be less than half of --runs")
+        raise DocoptExit('--trim must be less than half of --runs')
 
     conn = await asyncpg.connect(
         database=dbname, host=pghost, port=pgport, user=user, password=password,
@@ -116,23 +117,22 @@ async def main(args):
     pg_warnings = PgWarnings(conn, delay_printing=True)
 
     for file in files:
-        print(f"Importing {file}...")
-        await conn.execute(Path(file).read_text("utf-8"))
+        print(f'Importing {file}...')
+        await conn.execute(Path(file).read_text('utf-8'))
 
-    print(f"Running {len(functions)} functions x {runs} runs x {calls:,} each...")
+    print(f'Running {len(functions)} functions x {runs} runs x {calls:,} each...')
     stats = [Stat(idx, func) for idx, func in enumerate(functions, start=1)]
     for run in range(runs):
         for stat in stats:
             if raw:
                 query = stat.function
             else:
-                query = f"\
-SELECT count(*) FROM (SELECT {stat.function} FROM generate_series(1, {calls})) call_idx"
+                query = f'SELECT count(*) FROM (SELECT {stat.function} FROM generate_series(1, {calls})) call_idx'
 
             for k, v in {
-                "{calls}": str(calls),
-                "{run_idx}": str(run),
-                "{random_geopoint}": "st_setsrid(st_makepoint(random()*40000000-20000000, random()*40000000-20000000), 3857)",
+                '{calls}': str(calls),
+                '{run_idx}': str(run),
+                '{random_geopoint}': 'st_setsrid(st_makepoint(random()*40000000-20000000, random()*40000000-20000000), 3857)',
             }.items():
                 query = query.replace(k, v)
 
@@ -145,7 +145,7 @@ SELECT count(*) FROM (SELECT {stat.function} FROM generate_series(1, {calls})) c
                 took = dt.utcnow() - start
             except asyncpg.PostgresError as err:
                 took = dt.utcnow() - start
-                print_query_error(f"ERROR running {stat.function} ({took:.2f}s)",
+                print_query_error(f'ERROR running {stat.function} ({took:.2f}s)',
                                   err, pg_warnings, verbose, query)
                 return
 
@@ -168,17 +168,17 @@ SELECT count(*) FROM (SELECT {stat.function} FROM generate_series(1, {calls})) c
             stat.slower_by = (stat.mean - first_mean) / first_mean
 
     print()
-    mean_hdr = f"AVG of {runs - trim * 2} runs"
+    mean_hdr = f'AVG of {runs - trim * 2} runs'
     results = [{
-        "% slower": "" if stat.slower_by is None else f"{stat.slower_by:,.1%}",
-        "Function": stat.format_func(verbose),
+        '% slower': '' if stat.slower_by is None else f'{stat.slower_by:,.1%}',
+        'Function': stat.format_func(verbose),
         mean_hdr: stat.mean,
-        "MIN": stat.min,
-        "MAX": stat.max,
-        "STDEV": stat.stdev,
+        'MIN': stat.min,
+        'MAX': stat.max,
+        'STDEV': stat.stdev,
     } for stat in stats_by_speed]
 
-    print(tabulate(results, headers="keys"))
+    print(tabulate(results, headers='keys'))
 
 
 if __name__ == '__main__':

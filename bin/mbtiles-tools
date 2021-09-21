@@ -115,7 +115,7 @@ def main():
         elif args['--exist'] == 'fail':
             on_conflict = 'FAIL'
         else:
-            raise DocoptExit(f'Invalid value for --exist parameter.')
+            raise DocoptExit('Invalid value for --exist parameter.')
 
         TileCopier(source=Metadata(args['<mbtiles-file>'], args['--show-json'],
                                    args['--show-ranges']),

@@ -41,16 +41,16 @@ if __name__ == '__main__':
                 file.unlink()
                 deleted_files += 1
             else:
-                print_err(f"Unexpected file {file} is ignored")
+                print_err(f'Unexpected file {file} is ignored')
 
         if deleted_files:
-            print_err(f"Removed {deleted_files} existing files in dir {parallel_dir}")
+            print_err(f'Removed {deleted_files} existing files in dir {parallel_dir}')
 
         (path / 'run_first.sql').write_text(run_first)
         (path / 'run_last.sql').write_text(run_last)
         for file, sql in parallel_sql.items():
-            (parallel_dir / f"{file}.sql").write_text(sql)
+            (parallel_dir / f'{file}.sql').write_text(sql)
 
         print_err(
-            f"Created {len(parallel_sql)} sql files for parallel execution at {path}"
+            f'Created {len(parallel_sql)} sql files for parallel execution at {path}'
         )
