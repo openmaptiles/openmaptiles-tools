@@ -1,5 +1,6 @@
 from asyncio import sleep
 from unittest import IsolatedAsyncioTestCase, main
+
 from openmaptiles.utils import Action, run_actions, Bbox
 
 
@@ -27,12 +28,12 @@ class UtilsTestCase(IsolatedAsyncioTestCase):
 
     def test_bbox(self):
         bbox = Bbox()
-        self.assertEqual(bbox.bounds_str(), "-180.0,-85.0511,180.0,85.0511")
+        self.assertEqual(bbox.bounds_str(), '-180.0,-85.0511,180.0,85.0511')
         self.assertEqual(bbox.to_tiles(0), (0, 0, 0, 0))
         self.assertEqual(bbox.to_tiles(10), (0, 0, 1023, 1023))
 
-        bbox = Bbox("40.463151,-74.088020,40.755840,-73.426377")
-        self.assertEqual(bbox.bounds_str(), "40.463151,-74.08802,40.75584,-73.426377")
+        bbox = Bbox('40.463151,-74.088020,40.755840,-73.426377')
+        self.assertEqual(bbox.bounds_str(), '40.463151,-74.08802,40.75584,-73.426377')
         self.assertEqual(bbox.to_tiles(0), (0, 0, 0, 0))
         self.assertEqual(bbox.to_tiles(10), (627, 825, 627, 832))
 

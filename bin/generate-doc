@@ -15,17 +15,17 @@ from openmaptiles.tileset import Layer, Field
 
 
 def generate_field_doc(field: Field):
-    field_doc = f"### {field.name}\n\n{field.description}\n"
+    field_doc = f'### {field.name}\n\n{field.description}\n'
     if field.values:
-        field_doc += "\nPossible values:\n\n"
-        field_doc += '\n'.join((f"- `{v}`" for v in field.values)) + "\n\n"
+        field_doc += '\nPossible values:\n\n'
+        field_doc += '\n'.join((f'- `{v}`' for v in field.values)) + '\n\n'
     return field_doc
 
 
 def main(args):
     layer = Layer.parse(args['<layer-definition>'])
     fields_doc = '\n'.join((generate_field_doc(f) for f in layer.fields))
-    print(f"{layer.description}\n\n## Fields\n\n{fields_doc}\n\n\n")
+    print(f'{layer.description}\n\n## Fields\n\n{fields_doc}\n\n\n')
 
 
 if __name__ == '__main__':
