@@ -2,10 +2,10 @@
 """
 Usage:
   run-psql <path>...
-           [--parallel=<num> [--on-err-stop | --on-err-interrupt]]
+           [--parallel=<num> [--print-err=<num>]]
            [--pghost=<host>] [--pgport=<port>] [--dbname=<db>]
            [--user=<user>] [--password=<password>] [--verbose]
-           [--print-err=<num>] [-- <psql-args>...]
+           [-- <psql-args>...]
   run-psql --help
   run-psql --version
 
@@ -16,9 +16,6 @@ Options:
                         up to <num> at the same time. [default: 1]
   -e --print-err=<num>  If psql exits with an error, print last <num> output lines
                         after all other psql imports finish. Disabled if 0. [default: 10]
-  --on-err-stop         If psql fails during parallel run, wait for other files to finish,
-                        but do not start any files that have not been started yet.
-  --on-err-interrupt    Same as --on-err-stop, but also sends an SIGINT to all running psql.
   -v --verbose          Print additional debugging information
   --help                Show this screen.
   --version             Show version.
