@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-set -o errexit
+set -o errexit  # set -e
 set -o pipefail
-set -o nounset
+set -o nounset  # set -u
 shopt -s nullglob
 
 # For backward compatibility, allow both PG* and POSTGRES_* forms,
@@ -13,69 +13,52 @@ export PGUSER="${POSTGRES_USER:-${PGUSER?}}"
 export PGPASSWORD="${POSTGRES_PASSWORD:-${PGPASSWORD?}}"
 export PGPORT="${POSTGRES_PORT:-${PGPORT:-5432}}"
 
+PSQL="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/run-psql"
 
-function exec_psql_file() {
-    local file_name="$1"
-    # Allows additional parameters to be passed to psql
-    # For example, PSQL_OPTIONS='-a -A' would echo everything and disable output alignment
-    # Using eval allows complex cases with quotes, like PSQL_OPTIONS=" -a -c 'select ...' "
-    eval "local psql_opts=(${PSQL_OPTIONS:-})"
-
-    echo "Importing $file_name (md5 $(md5sum < "$file_name")  $(wc -l < "$file_name") lines) into Postgres..."
-
-    # shellcheck disable=SC2154
-    psql \
-        -v ON_ERROR_STOP="1" \
-        -c '\timing on' \
-        -f "$file_name" \
-        "${psql_opts[@]}"
-}
 
 function import_all_sql_files() {
     local dir="$1"
-    local sql_file
 
     if [[ -d "$dir/parallel" ]]; then
       # Assume this dir may contain run_first.sql, parallel/*.sql, and run_last.sql
       # use parallel execution
       if [[ -f "$dir/run_first.sql" ]]; then
-        exec_psql_file "$dir/run_first.sql"
+        "${PSQL}" "$dir/run_first.sql"
       else
         echo "File $dir/run_first.sql not found, skipping"
       fi
 
       # Run import-sql script in parallel, up to MAX_PARALLEL_PSQL processes at the same time
-      : "${MAX_PARALLEL_PSQL:=5}"
-      echo "Importing $(find "$dir/parallel" -name "*.sql" | wc -l) sql files from $dir/parallel/, up to $MAX_PARALLEL_PSQL files at the same time"
-      find "$dir/parallel" -name "*.sql" -print0 | xargs -0 -I{} -P "$MAX_PARALLEL_PSQL" sh -c "\"$0\" \"{}\" || exit 255"
-      echo "Finished importing sql files matching '$dir/parallel/*.sql'"
+      "${PSQL}" --parallel "${MAX_PARALLEL_PSQL:=5}" "$dir/parallel"
 
       if [[ -f "$dir/run_last.sql" ]]; then
-        exec_psql_file "$dir/run_last.sql"
+        "${PSQL}" "$dir/run_last.sql"
       else
         echo "File $dir/run_last.sql not found, skipping"
       fi
     else
-      for sql_file in "$dir"/*.sql; do
-        exec_psql_file "$sql_file"
-      done
+      "${PSQL}" "$dir"
     fi
 }
 
 # If there are no arguments, imports everything,
 # otherwise the first argument is the name of a file to be imported.
 if [[ $# -eq 0 ]]; then
-  if [[ "${SQL_TOOLS_DIR:-}" == "" ]]; then
-    echo "ENV variable SQL_TOOLS_DIR is not set. It should contain directory with .sql files, e.g. postgis-vt-util.sql and language.sql"
+  if [[ "${SQL_TOOLS_DIR:-}" == "" ]] || [[ ! -d "${SQL_TOOLS_DIR}" ]]; then
+    echo "ENV variable SQL_TOOLS_DIR is not set or there are no files. It should contain directory with .sql files, e.g. postgis-vt-util.sql and language.sql"
     exit 1
+  else
+    echo "SQL_TOOLS_DIR=$SQL_TOOLS_DIR"
   fi
-  if [[ "${SQL_DIR:-}" == "" ]]; then
-    echo "ENV variable SQL_DIR is not set. It should contain directory with .sql files, e.g. tileset.sql, or run_first.sql, run_last.sql, and parallel/*.sql"
+  if [[ "${SQL_DIR:-}" == "" ]] || [[ ! -d "${SQL_DIR}" ]]; then
+    echo "ENV variable SQL_DIR is not set or there are no files. It should contain directory with .sql files, e.g. tileset.sql, or run_first.sql, run_last.sql, and parallel/*.sql"
     exit 1
+  else
+    echo "SQL_DIR=$SQL_DIR"
   fi
 
   import_all_sql_files "$SQL_TOOLS_DIR"  # import postgis-vt-util.sql and all other tools SQL files from /sql
   import_all_sql_files "$SQL_DIR"  # import compiled tileset.sql
 else
-  exec_psql_file "$1"
+  "${PSQL}" "$1"
 fi
