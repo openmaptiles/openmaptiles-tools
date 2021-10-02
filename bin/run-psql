@@ -95,9 +95,9 @@ def run_psql(file: Path, params: Params):
         'PGPORT': params.pgport,
     }
 
-    sql_content = file.read_text()
+    sql_content = file.read_bytes()
     md5sum = md5(sql_content).hexdigest()
-    lines = sql_content.count('\n')
+    lines = sql_content.decode('utf-8').count('\n')
     print(f'Importing {file} (md5 {md5sum}  {lines} lines) into Postgres...')
     if params.verbose:
         print(f'   {list2cmdline(cmd)}')
