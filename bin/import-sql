@@ -29,7 +29,7 @@ function import_all_sql_files() {
       fi
 
       # Run import-sql script in parallel, up to MAX_PARALLEL_PSQL processes at the same time
-      "${PSQL}" --parallel "${MAX_PARALLEL_PSQL:=5}" "$dir/parallel"
+      "${PSQL}" --parallel "${MAX_PARALLEL_PSQL:=1}" "$dir/parallel"
 
       if [[ -f "$dir/run_last.sql" ]]; then
         "${PSQL}" "$dir/run_last.sql"
