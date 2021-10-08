@@ -21,6 +21,9 @@ The above `postgis` image pre-loaded with the `import-data`. This image is mostl
 ##### generate-vectortiles [![](https://img.shields.io/docker/pulls/openmaptiles/generate-vectortiles?label=downloads)](https://hub.docker.com/r/openmaptiles/generate-vectortiles) [![](https://img.shields.io/docker/stars/openmaptiles/generate-vectortiles?label=stars)](https://hub.docker.com/r/openmaptiles/generate-vectortiles)
 Legacy Mapnik-based image that simplifies `tilelive-copy` tile generation. Mapnik is outdated and is not actively maintained. Instead, use `generate-tiles` script from the openmaptiles-tools docker image.
 
+## Documentation
+
+You will find different documentations in [/docs](./docs)
 
 ## Usage
 
