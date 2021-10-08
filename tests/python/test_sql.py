@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import List, Union, Dict
 from unittest import main, TestCase
 
-from openmaptiles.sql import collect_sql
+from openmaptiles.sql import collect_sql, sql_assert_table, sql_assert_func
 from openmaptiles.tileset import ParsedData, Tileset
 
 
@@ -18,10 +18,12 @@ class Case:
 def expected_sql(case: Case):
     result = f"DO $$ BEGIN RAISE NOTICE 'Processing layer {case.id}'; END$$;\n\n"
     if isinstance(case.reqs, dict):
+        # Use helper functions for SQL generation. Actual SQL is tested by integration tests
         for table in case.reqs.get('tables', []):
-            result += f"-- Assert {table} exists\nSELECT '{table}'::regclass;\n\n"
+            result += sql_assert_table(table, case.reqs.get('helpText'), case.id)
         for func in case.reqs.get('functions', []):
-            result += f"-- Assert {func} exists\nSELECT '{func}'::regprocedure;\n\n"
+            result += sql_assert_func(func, case.reqs.get('helpText'), case.id)
+
     result += f"""\
 -- Layer {case.id} - {case.id}_s.yaml
 
@@ -105,7 +107,12 @@ $$ LANGUAGE SQL IMMUTABLE;
         c10 = Case('c10', 'SELECT 10;', reqs=dict(tables=['tbl1', 'tbl2']))
         c11 = Case('c11', 'SELECT 11;', reqs=dict(functions=['fnc1']))
         c12 = Case('c12', 'SELECT 12;', reqs=dict(functions=['fnc1', 'fnc2']))
+        c13 = Case('c13', 'SELECT 13;', reqs=dict(functions=['fnc1', 'fnc2'],
+                                                  helpText="Custom 'ERROR MESSAGE' for missing function - single quote"))
+        c14 = Case('c14', 'SELECT 14;',
+                   reqs=dict(tables=['tbl1'], helpText='Custom "ERROR MESSAGE" for missing table - double quote'))
 
+        self._test('a18', [c12], dict(c12=[c12]))
         self._test('a01', [], {})
         self._test('a02', [c1], dict(c1=c1))
         self._test('a03', [c1, c2], dict(c1=c1, c2=c2))
@@ -127,6 +134,8 @@ $$ LANGUAGE SQL IMMUTABLE;
         self._test('a16', [c10], dict(c10=[c10]))
         self._test('a17', [c11], dict(c11=[c11]))
         self._test('a18', [c12], dict(c12=[c12]))
+        self._test('a19', [c13], dict(c13=[c13]))
+        self._test('a20', [c14], dict(c14=[c14]))
 
     def _ts_parse(self, reqs, expected_layers, expected_tables, expected_funcs, extra_cases=None):
         cases = [] if not extra_cases else list(extra_cases)
