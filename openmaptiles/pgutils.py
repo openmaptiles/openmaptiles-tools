@@ -164,3 +164,8 @@ def print_query_error(error_msg, err, pg_warnings, verbose, query, layer_sql=Non
             query_msg += f'\n\n== MVT SQL\n{layer_sql}'
         print(query_msg)
     print(f'{line}\n')
+
+
+def quote_literal(string):
+    """Adapted from asyncpg.utils"""
+    return "'{}'".format(string.replace("'", "''"))
