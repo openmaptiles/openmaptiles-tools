@@ -39,7 +39,7 @@ RUN set -eux  ;\
         libkakasi2-dev \
         libgdal-dev \
     ;\
-    ## Install specific GEOS version 
+    ## Install specific GEOS version
     cd /opt/  ;\
     curl -o /opt/geos.tar.bz2 http://download.osgeo.org/geos/geos-${GEOS_VER}.tar.bz2  ;\
     mkdir /opt/geos  ;\
