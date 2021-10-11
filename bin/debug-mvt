@@ -55,9 +55,7 @@ These legacy environment variables should not be used, but they are still suppor
 """
 import asyncio
 import gzip
-from functools import cmp_to_key
 from pathlib import Path
-from typing import List
 
 import asyncpg
 import requests
