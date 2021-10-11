@@ -3,12 +3,12 @@
 Shows content of a single MVT tile as layer tables.
 
 Usage:
-  debug-mvt dump <file_or_url> [--summary] [--show-names]
+  debug-mvt dump <file_or_url> [--summary] [--show-names] [--sort-output]
   debug-mvt <tileset> <tile_zxy> [--dump] [--layer=<layer>]... [--exclude-layers]
                       [--column=<column>]... [--show-names] [--show-geometry]
                       [--no-geom-test] [--no-mvtgeometry] [--null] [--verbose]
                       [--pghost=<host>] [--pgport=<port>] [--dbname=<db>]
-                      [--user=<user>] [--password=<password>]
+                      [--user=<user>] [--password=<password>] [--sort-output]
   debug-mvt <tileset> <tile_zxy> --summary [--key] [--gzip [<gzlevel>]] [--sort-layers]
                       [--layer=<layer>]... [--exclude-layers]
                       [--no-geom-test] [--dump] [--show-names] [--verbose]
@@ -28,6 +28,7 @@ Options:
   --key                 If set with --summary, will show a `key` column (md5 of the mvt data)
   --gzip                If set with --summary, will compress MVT with gzip, with optional level=0..9.
                         `gzip()` is available from https://github.com/pramsey/pgsql-gzip
+  --sort-output         Sort output layers and features inside the layer to simplify diffing.
   --sort-layers         Force layers to return in the same order as declared in tileset.
   -l --layer=<layer>    If set, limit tile generation to just this layer (could be multiple)
   -x --exclude-layers   If set, uses all layers except the ones listed with -l (-l is required)
@@ -54,7 +55,9 @@ These legacy environment variables should not be used, but they are still suppor
 """
 import asyncio
 import gzip
+from functools import cmp_to_key
 from pathlib import Path
+from typing import List
 
 import asyncpg
 import requests
@@ -64,14 +67,13 @@ from tabulate import tabulate
 from time import time
 
 import openmaptiles
-from openmaptiles.pgutils import parse_pg_args, get_postgis_version, PgWarnings, \
-    print_query_error
+from openmaptiles.pgutils import parse_pg_args, get_postgis_version, PgWarnings, print_query_error
 from openmaptiles.sqltomvt import MvtGenerator
 from openmaptiles.tileset import Tileset
-from openmaptiles.utils import parse_zxy_param, print_tile
+from openmaptiles.utils import parse_zxy_param, print_tile, dict_comparator
 
 
-def dump_tile(file_or_url: str, show_names: bool, summary: bool):
+def dump_tile(file_or_url: str, show_names: bool, summary: bool, sort_output: bool):
     if file_or_url == '-':
         tile = sys.stdin.buffer.read()
         file_or_url = 'STDIN'
@@ -79,8 +81,7 @@ def dump_tile(file_or_url: str, show_names: bool, summary: bool):
         r = requests.get(
             file_or_url,
             headers={
-                'User-Agent': f'OpenMapTiles debug-mvt {openmaptiles.__version__}'
-                              '(https://github.com/openmaptiles/openmaptiles)'
+                'User-Agent': f'OpenMapTiles debug-mvt {openmaptiles.__version__}(https://github.com/openmaptiles/openmaptiles)'
             })
         try:
             if not r.ok:
@@ -91,14 +92,15 @@ def dump_tile(file_or_url: str, show_names: bool, summary: bool):
             r.close()
     else:
         tile = Path(file_or_url).read_bytes()
-    print_tile(tile, show_names, summary, f'from {file_or_url}')
+    print_tile(tile, show_names, summary, f'from {file_or_url}', sort_output)
 
 
 async def main(args):
     show_names = args['--show-names']
     summary = args['--summary']
+    sort_output = args['--sort-output']
     if args['dump']:
-        return dump_tile(args['<file_or_url>'], show_names, summary)
+        return dump_tile(args['<file_or_url>'], show_names, summary, sort_output)
     pghost, pgport, dbname, user, password = parse_pg_args(args)
     dump = args['--dump']
     exclude_layers = args['--exclude-layers']
@@ -153,7 +155,7 @@ async def main(args):
                 extras = ', '.join(f'{k}={v}' for k, v in result.items() if k != 'mvt')
                 if extras:
                     info += ', ' + extras + ','
-                print_tile(mvt_data, show_names, summary, info)
+                print_tile(mvt_data, show_names, summary, info, sort_output)
                 return
             print(f'======= Tile {info} =======')
             tile_size = f'{len(mvt_data):,} bytes'
@@ -186,7 +188,10 @@ async def main(args):
             res += geom_info(f'ST_AsText({mvt_geom})')
         return res
 
-    for layer_id, layer_def in mvt.get_layers():
+    layer_definitions = mvt.get_layers()
+    if sort_output:
+        layer_definitions = sorted(layer_definitions, key=lambda v: v[0])
+    for layer_id, layer_def in layer_definitions:
         geom_fld = layer_def.geometry_field
 
         if show_geometry:
@@ -246,6 +251,9 @@ async def main(args):
         if result:
             print(f'======= Layer {layer_id}: {layer_mvt:,} bytes in MVT =======')
             pg_warnings.print()
+            if sort_output:
+                keys = list(result[0].keys())
+                result.sort(key=dict_comparator(keys))
             print(tabulate(result, headers='keys'))
         else:
             info = layer_mvt and f' (layer data had non-zero {layer_mvt:,} bytes)' or ''
