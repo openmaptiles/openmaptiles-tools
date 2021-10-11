@@ -7,7 +7,7 @@ from asyncio.futures import Future
 from collections import defaultdict
 from datetime import timedelta
 from functools import cmp_to_key
-from typing import List, Callable, Any, Dict, Awaitable, Iterable, TypeVar, Union, Optional
+from typing import List, Callable, Any, Dict, Awaitable, Iterable, TypeVar, Union, Optional, Tuple
 
 from betterproto import which_one_of
 # noinspection PyProtectedMember
@@ -255,21 +255,33 @@ def parse_tags(feature: TileFeature, layer: TileLayer, show_names: bool,
 
 
 def dict_comparator(keys: List[str]):
-    """Returns a key= comparator function that decides which of two dictionaries (rows) should be shown first"""
+    """Returns a key= comparator function that decides which of two dictionaries (rows) should be shown first.
+    Basic logic: sort first by the type of a value, followed by the value itself.
+    Try to parse a str value as an int and a float."""
     type_priorities = {type(None): 0, bool: 1, int: 2, float: 3, str: 4}
+
+    def get_val_type(value: dict, key: str) -> Tuple[int, Any]:
+        val = value.get(key, None)
+        val_type = type_priorities.get(type(val), None)
+        if val_type is None:
+            val = str(val)
+            val_type = 100
+        if val_type == 4 or val_type == 100:
+            try:
+                val = int(val)
+                val_type = 2
+            except ValueError:
+                try:
+                    val = float(val)
+                    val_type = 3
+                except ValueError:
+                    pass
+        return val_type, val
 
     def comparator(value1: dict, value2: dict) -> int:
         for key in keys:
-            val1 = value1.get(key, None)
-            val2 = value2.get(key, None)
-            type1 = type_priorities.get(type(val1), None)
-            if type1 is None:
-                val1 = str(val1)
-                type1 = 100
-            type2 = type_priorities.get(type(val2), None)
-            if type2 is None:
-                val2 = str(val2)
-                type2 = 100
+            type1, val1 = get_val_type(value1, key)
+            type2, val2 = get_val_type(value2, key)
             if type1 != type2:
                 return type2 - type1
             if val1 != val2:
