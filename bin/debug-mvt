@@ -5,7 +5,8 @@ Shows content of a single MVT tile as layer tables.
 Usage:
   debug-mvt dump <file_or_url> [--summary] [--show-names] [--sort-output]
   debug-mvt <tileset> <tile_zxy> [--dump] [--layer=<layer>]... [--exclude-layers]
-                      [--column=<column>]... [--show-names] [--show-geometry]
+                      ([--column=<name>]... | [--hide-column=<name>]...)
+                      [--show-names] [--show-geometry]
                       [--no-geom-test] [--no-mvtgeometry] [--null] [--verbose]
                       [--pghost=<host>] [--pgport=<port>] [--dbname=<db>]
                       [--user=<user>] [--password=<password>] [--sort-output]
@@ -32,11 +33,12 @@ Options:
   --sort-layers         Force layers to return in the same order as declared in tileset.
   -l --layer=<layer>    If set, limit tile generation to just this layer (could be multiple)
   -x --exclude-layers   If set, uses all layers except the ones listed with -l (-l is required)
-  -c --column=<layer>   If set, limits output to just the given field (could be multiple)
+  -c --column=<name>    If set, limits output to just the given field (could be multiple)
                         All shown layers must have all of these fields, or use -l to limit.
-  -n --show-names       if set, includes all localized names
-  -g --show-geometry    If set, shows geometry/mvtgeometry as text instead of type+length
-  -m --no-mvtgeometry   Do not include resulting MVT geomeetry in the output
+  --hide-column=<name>  If set, do not show this column in the output. (could be multiple)
+  -n --show-names       if set, includes all localized names.
+  -g --show-geometry    If set, shows geometry/mvtgeometry as text instead of type+length.
+  -m --no-mvtgeometry   Do not include resulting MVT geometry in the output.
   -t --no-geom-test     Do not validate all geometries produced by ST_AsMvtGeom().
   --null                Show nulls for all values and not just for geometries.
   -v --verbose          Print additional debugging information
@@ -104,6 +106,7 @@ async def main(args):
     exclude_layers = args['--exclude-layers']
     layers = args['--layer']
     columns = args['--column']
+    hide_columns = set(args['--hide-column'])
     show_geometry = args['--show-geometry']
     show_mvt_geometry = not args['--no-mvtgeometry']
     show_nulls = args['--null']
@@ -240,7 +243,7 @@ async def main(args):
                 vals.sort(key=lambda v: names[v[0]] if v[0] in names else v[0])
             vals = {
                 k: '<null>' if v is None and (show_nulls or k in names) else v
-                for k, v in vals if k != '_hidden_names_'
+                for k, v in vals if k != '_hidden_names_' and k not in hide_columns
             }
             result.append(vals)
 
