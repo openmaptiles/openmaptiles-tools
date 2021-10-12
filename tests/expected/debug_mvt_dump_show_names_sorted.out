@@ -1,0 +1,27 @@
+Uncompressed tile from tests/http/osm_13_4388_2568.mvt size=2,222 bytes, gzipped=1,248 bytes, 3 layers
+
+======= Layer transportation: 11 features, extent=4096, version=2 =======
+  *ID*    GeoSize  GeoType     class     subclass      oneway    ramp  brunnel      layer  surface
+------  ---------  ----------  --------  ----------  --------  ------  ---------  -------  ---------
+     0          6  LINESTRING  rail      rail               0       0  bridge           1
+     0          8  LINESTRING  motorway                     1       0  bridge           2  paved
+     0          8  LINESTRING  motorway                     1       0  bridge           2  paved
+     0          8  LINESTRING  rail      rail               0       0  bridge           1
+     0          8  LINESTRING  rail      rail               0       0  bridge           1
+     0         12  LINESTRING  rail      rail               0       0  bridge           1
+     0         22  LINESTRING  rail      rail               0       0  bridge           1
+     0         32  LINESTRING  motorway                     1       0  bridge           2  paved
+     0         32  LINESTRING  motorway                     1       0  bridge           2  paved
+     0         32  LINESTRING  rail      rail               0       0  bridge           1
+     0         69  POLYGON     bridge                       0       0  bridge           2
+
+======= Layer transportation_name: 2 features, extent=4096, version=2 =======
+  *ID*    GeoSize  GeoType     name_en    name_de    name:da             ref      ref_length  network    class
+------  ---------  ----------  ---------  ---------  ------------------  -----  ------------  ---------  --------
+     0         36  LINESTRING                        Øresundsmotorvejen  E 20              4  road       motorway
+     0         36  LINESTRING                        Øresundsmotorvejen  E 20              4  road       motorway
+
+======= Layer water: 1 features, extent=4096, version=2 =======
+  *ID*    GeoSize  GeoType    class
+------  ---------  ---------  -------
+     0        304  POLYGON    ocean

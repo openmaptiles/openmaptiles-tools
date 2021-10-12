@@ -6,7 +6,8 @@ import sys
 from asyncio.futures import Future
 from collections import defaultdict
 from datetime import timedelta
-from typing import List, Callable, Any, Dict, Awaitable, Iterable, TypeVar, Union, Optional
+from functools import cmp_to_key
+from typing import List, Callable, Any, Dict, Awaitable, Iterable, TypeVar, Union, Optional, Tuple
 
 from betterproto import which_one_of
 # noinspection PyProtectedMember
@@ -253,7 +254,44 @@ def parse_tags(feature: TileFeature, layer: TileLayer, show_names: bool,
     return res
 
 
-def print_tile(data: bytes, show_names: bool, summary: bool, info: str) -> None:
+def dict_comparator(keys: List[str]):
+    """Returns a key= comparator function that decides which of two dictionaries (rows) should be shown first.
+    Basic logic: sort first by the type of a value, followed by the value itself.
+    Try to parse a str value as an int and a float."""
+    type_priorities = {type(None): 0, bool: 1, int: 2, float: 3, str: 4}
+
+    def get_val_type(value: dict, key: str) -> Tuple[int, Any]:
+        val = value.get(key, None)
+        val_type = type_priorities.get(type(val), None)
+        if val_type is None:
+            val = str(val)
+            val_type = 100
+        if val_type == 4 or val_type == 100:
+            try:
+                val = int(val)
+                val_type = 2
+            except ValueError:
+                try:
+                    val = float(val)
+                    val_type = 3
+                except ValueError:
+                    pass
+        return val_type, val
+
+    def comparator(value1: dict, value2: dict) -> int:
+        for key in keys:
+            type1, val1 = get_val_type(value1, key)
+            type2, val2 = get_val_type(value2, key)
+            if type1 != type2:
+                return type2 - type1
+            if val1 != val2:
+                return 1 if val2 < val1 else -1
+        return 0
+
+    return cmp_to_key(comparator)
+
+
+def print_tile(data: bytes, show_names: bool, summary: bool, info: str, sort_output: bool = False) -> None:
     info = shorten_str(info, 60)
     try:
         tile_raw = gzip.decompress(data)
@@ -264,10 +302,12 @@ def print_tile(data: bytes, show_names: bool, summary: bool, info: str) -> None:
         gzipped_size = len(gzip.compress(data))
         info = 'Uncompressed tile ' + info
     tile = Tile().parse(tile_raw)
-    print(f'{info} size={len(tile_raw):,} bytes, '
-          f'gzipped={gzipped_size:,} bytes, {len(tile.layers)} layers')
+    print(f'{info} size={len(tile_raw):,} bytes, gzipped={gzipped_size:,} bytes, {len(tile.layers)} layers')
     res = []
-    for layer in tile.layers:
+    layers = tile.layers
+    if sort_output:
+        layers.sort(key=lambda v: v.name)
+    for layer in layers:
         tags = [parse_tags(f, layer, show_names, summary) for f in layer.features]
         features = len(layer.features)
         if summary:
@@ -324,6 +364,9 @@ def print_tile(data: bytes, show_names: bool, summary: bool, info: str) -> None:
             print(f'\n======= Layer {layer.name}: '
                   f'{features} features, extent={layer.extent}, '
                   f'version={layer.version}{extra} =======')
+            if sort_output:
+                keys = list(tags[0].keys())
+                tags.sort(key=dict_comparator(keys))
             print(tabulate(tags, headers='keys'))
     if summary:
         print(tabulate(res, headers='keys', disable_numparse=True,
