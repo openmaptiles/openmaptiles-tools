@@ -13,12 +13,12 @@ export PGPORT="${POSTGRES_PORT:-${PGPORT:-5432}}"
 
 # List of postgres servers
 # "xxx.xxx.xxx.xxx&host=xxx.xxx.xxx.xxx&host=..."
-if [[ -z "${PGHOSTS_LIST}" ]]
-then
+if [[ -z "${PGHOSTS_LIST}" ]]; then
   export HOST_COUNT=1
   export PGHOSTS="${POSTGRES_HOST:-${PGHOST?}}"
 else
-  export HOST_COUNT=`awk -F"&" '{print NF}' <<< "${PGHOSTS_LIST}"`
+  HOST_COUNT=$(awk -F"&" '{print NF}' <<< "${PGHOSTS_LIST}")
+  export HOST_COUNT
   export PGHOSTS="${PGHOSTS_LIST}"
 fi
 

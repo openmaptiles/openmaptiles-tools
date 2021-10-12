@@ -1,6 +1,6 @@
 ## Connect local `openmaptiles-tools` with local `openmaptiles`:
 
-Very helpful for contributors who want to develop and test `openmaptiles-tools` with `openmaptiles` together. 
+Very helpful for contributors who want to develop and test `openmaptiles-tools` with `openmaptiles` together.
 
 ### Change docker path in `docker-compose.yml`
 
