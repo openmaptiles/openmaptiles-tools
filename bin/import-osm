@@ -26,9 +26,9 @@ function import_pbf() {
 
     if [ "$DIFF_MODE" = true ]; then
         extra_flags="$extra_flags -diff"
-        mode_msg="NORMAL"
-    else
         mode_msg="DIFF"
+    else
+        mode_msg="NORMAL"
     fi
 
     if [ "$APPEND_MODE" = true ]; then
