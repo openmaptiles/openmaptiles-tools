@@ -3,38 +3,58 @@ set -o errexit
 set -o pipefail
 set -o nounset
 
+#
+# Generate tiles from postgres using tilelive-copy and tilelive-pgquery
+#
+# If run without MID_ZOOM parameter, this script will generate all tiles from MIN_ZOOM to MAX_ZOOM
+# If MID_ZOOM is set, it will first generate all tiles from MIN_ZOOM to MID_ZOOM. Afterwards,
+# the script will generate one zoom level at a time, making sure to only generate non-empty tiles.
+# A non-empty tile is a tile that has some data in the previous zoom. All other tiles will be imputed
+# using "mbtiles-tools impute" command.
+#
+
 # For backward compatibility, allow both PG* and POSTGRES_* forms,
 # with the non-standard POSTGRES_* form taking precedence.
 # An error will be raised if neither form is given, except for the PGPORT
-export PGDATABASE="${POSTGRES_DB:-${PGDATABASE?}}"
-export PGUSER="${POSTGRES_USER:-${PGUSER?}}"
-export PGPASSWORD="${POSTGRES_PASSWORD:-${PGPASSWORD?}}"
-export PGPORT="${POSTGRES_PORT:-${PGPORT:-5432}}"
+: "${PGDATABASE:=${POSTGRES_DB:-${PGDATABASE?}}}"
+: "${PGUSER:=${POSTGRES_USER:-${PGUSER?}}}"
+: "${PGPASSWORD:=${POSTGRES_PASSWORD:-${PGPASSWORD?}}}"
+: "${PGPORT:=${POSTGRES_PORT:-${PGPORT:-5432}}}"
 
 # List of postgres servers
 # "xxx.xxx.xxx.xxx&host=xxx.xxx.xxx.xxx&host=..."
-if [[ -z "${PGHOSTS_LIST}" ]]; then
-  export HOST_COUNT=1
-  export PGHOSTS="${POSTGRES_HOST:-${PGHOST?}}"
+if [[ -z "${PGHOSTS_LIST-}" ]]; then
+  : "${HOST_COUNT:=1}"
+  : "${PGHOSTS:=${POSTGRES_HOST:-${PGHOST?}}}"
 else
-  HOST_COUNT=$(awk -F"&" '{print NF}' <<< "${PGHOSTS_LIST}")
-  export HOST_COUNT
-  export PGHOSTS="${PGHOSTS_LIST}"
+  : "${HOST_COUNT:=$(awk -F"&" '{print NF}' <<< "${PGHOSTS_LIST}")}"
+  : "${PGHOSTS:=${PGHOSTS_LIST}}"
 fi
 
-export FUNC_ZXY=${FUNC_ZXY:-getmvt}
-export COPY_CONCURRENCY=${COPY_CONCURRENCY:-1}  # number of CPUs per postgres server
-export MAX_HOST_CONNECTIONS=${MAX_HOST_CONNECTIONS:-${COPY_CONCURRENCY}}
-export ALL_STREAMS=$(( MAX_HOST_CONNECTIONS * HOST_COUNT ))
+: "${FUNC_ZXY:=${FUNC_ZXY:-getmvt}}"
+: "${COPY_CONCURRENCY:=${COPY_CONCURRENCY:-1}}"  # number of CPUs per postgres server
+: "${MAX_HOST_CONNECTIONS:=${MAX_HOST_CONNECTIONS:-${COPY_CONCURRENCY}}}"
+: "${ALL_STREAMS:=$(( MAX_HOST_CONNECTIONS * HOST_COUNT ))}"
 
-export EXPORT_DIR=${EXPORT_DIR:-/export}
-export MBTILES_FILE=${MBTILES_FILE:-tiles.mbtiles}
-export RENDER_SCHEME=${RENDER_SCHEME:-pyramid}
-export RETRY=${RETRY:-2}
-export BBOX=${BBOX:-"-180.0,-85.0511,180.0,85.0511"}
-export TIMEOUT=${TIMEOUT:-1800000}
-export MIN_ZOOM=${MIN_ZOOM:-0}
-export MAX_ZOOM=${MAX_ZOOM:-14}
+: "${EXPORT_DIR:=${EXPORT_DIR:-/export}}"
+: "${MBTILES_FILE:=${MBTILES_FILE:-tiles.mbtiles}}"
+: "${MBTILES_PATH:=${MBTILES_PATH:-${EXPORT_DIR}/${MBTILES_FILE}}}"
+
+: "${RETRY:=${RETRY:-2}}"
+: "${BBOX:=${BBOX:-"-180.0,-85.0511,180.0,85.0511"}}"
+: "${MIN_ZOOM:=${MIN_ZOOM:-0}}"
+: "${MAX_ZOOM:=${MAX_ZOOM:-14}}"
+
+if [[ -z "${TILESET_FILE:-}" ]]; then
+  echo "WARNING: Env var TILESET_FILE is not set to a valid tileset yaml file. Unable to load min/max zooms. Metadata will not be generated"
+elif [[ ! -f "${TILESET_FILE:-}" ]]; then
+  echo "Invalid tileset file: TILESET_FILE='$TILESET_FILE'"
+  exit 1
+else
+  # Get tileset min/max zooms for pgquery info. If the yaml file cannot be parsed, will use min/max zooms from above
+  : "${TILESET_MIN_ZOOM:=${TILESET_MIN_ZOOM:-$(grep -Poh '(?<=minzoom:)[^\n]+' < "$TILESET_FILE" |xargs)}}"
+  : "${TILESET_MAX_ZOOM:=${TILESET_MAX_ZOOM:-$(grep -Poh '(?<=maxzoom:)[^\n]+' < "$TILESET_FILE" |xargs)}}"
+fi
 
 PGQUERY="pgquery://\
 ?database=${PGDATABASE}\
@@ -44,28 +64,63 @@ PGQUERY="pgquery://\
 &password=${PGPASSWORD}\
 &funcZXY=${FUNC_ZXY}\
 &maxpool=${MAX_HOST_CONNECTIONS}\
-&minzoom=${MIN_ZOOM}\
-&maxzoom=${MAX_ZOOM}\
+&minzoom=${TILESET_MIN_ZOOM:-$MIN_ZOOM}\
+&maxzoom=${TILESET_MAX_ZOOM:-$MAX_ZOOM}\
 ${GZIP:+&gzip=${GZIP}}\
 ${NOGZIP:+&nogzip=${NOGZIP}}\
 ${USE_KEY_COLUMN:+&key=${USE_KEY_COLUMN}}\
 ${TEST_ON_STARTUP_TILE:+&testOnStartup=${TEST_ON_STARTUP}}"
 
-export PGQUERY
-
-function export_local_mbtiles() {
-  echo "Generating zoom $MIN_ZOOM..$MAX_ZOOM from $HOST_COUNT servers, using $MAX_HOST_CONNECTIONS connections per server, $ALL_STREAMS parallel streams..."
-  set -x
-  exec tilelive-copy \
-        --scheme="$RENDER_SCHEME" \
+function run_tilelive_copy() {
+  set -x -o errexit
+  tilelive-copy "${@}" \
+        --exit \
         --retry="$RETRY" \
-        --bounds="$BBOX" \
-        --timeout="$TIMEOUT" \
-        --minzoom="$MIN_ZOOM" \
-        --maxzoom="$MAX_ZOOM" \
         --concurrency="$ALL_STREAMS" \
         "$PGQUERY" \
-        "mbtiles://${EXPORT_DIR}/${MBTILES_FILE}"
+        "mbtiles://${MBTILES_PATH}"
+  { set +x ;} 2> /dev/null
 }
 
-export_local_mbtiles
+
+if [[ -z "${MID_ZOOM-}" ]]; then
+
+  # One pass zoom - generate all tiles in one pass
+  echo "$(date '+%Y-%m-%d %H-%M-%S') Generating zoom $MIN_ZOOM..$MAX_ZOOM from $HOST_COUNT servers, using $MAX_HOST_CONNECTIONS connections per server, $ALL_STREAMS parallel streams..."
+  run_tilelive_copy --scheme="${RENDER_SCHEME:-pyramid}" --bounds="$BBOX" --minzoom="$MIN_ZOOM" --maxzoom="$MAX_ZOOM" --timeout="${TIMEOUT:-1800000}"
+
+elif [[ -n "${RENDER_SCHEME-}" ]]; then
+  echo "RENDER_SCHEME must not be set when using MID_ZOOM"
+  exit 1
+else
+
+  # Generate all tiles up to MID_ZOOM. Afterwards only generate those tiles where zoom-1 is not empty
+  echo "$(date '+%Y-%m-%d %H-%M-%S') Generating zoom $MIN_ZOOM..$MID_ZOOM pyramid from $HOST_COUNT servers, using $MAX_HOST_CONNECTIONS connections per server, $ALL_STREAMS parallel streams..."
+  run_tilelive_copy --scheme=pyramid --bounds="$BBOX" --minzoom="$MIN_ZOOM" --maxzoom="$MID_ZOOM" --timeout="${TIMEOUT:-1800000}"
+
+  # Do not print extra info more than once
+  PGQUERY="${PGQUERY}&serverInfo=&specInfo="
+
+  for (( ZOOM=MID_ZOOM+1; ZOOM<=MAX_ZOOM; ZOOM++ )); do
+    LIST_FILE="$EXPORT_DIR/tiles_$ZOOM.txt"
+    echo "$(date '+%Y-%m-%d %H-%M-%S') Imputing tiles for zoom $ZOOM"
+    set -x
+    mbtiles-tools impute "$MBTILES_PATH" --zoom "$ZOOM" --output "$LIST_FILE" --verbose
+    { set +x ;} 2> /dev/null
+    echo "$(date '+%Y-%m-%d %H-%M-%S') Generating zoom $ZOOM using a tile list $LIST_FILE from $HOST_COUNT servers, using $MAX_HOST_CONNECTIONS connections per server, $ALL_STREAMS streams"
+    # Use smaller timeout by default because high zooms should generate faster
+    run_tilelive_copy --scheme=list "--list=$LIST_FILE" --timeout="${TIMEOUT:-180000}"
+  done
+
+fi
+
+if [[ -z "${TILESET_FILE:-}" ]]; then
+  echo "WARNING: Env var TILESET_FILE is not set to a valid tileset yaml file. Skipping metadata generation"
+else
+  echo "$(date '+%Y-%m-%d %H-%M-%S') Updating generated tile metadata from $TILESET_FILE"
+  set -x
+  mbtiles-tools meta-generate "$MBTILES_PATH" "$TILESET_FILE" --auto-minmax --show-ranges
+  { set +x ;} 2> /dev/null
+fi
+
+echo "$(date '+%Y-%m-%d %H-%M-%S') Tile generation complete!"
