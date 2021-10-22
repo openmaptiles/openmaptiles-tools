@@ -35,6 +35,12 @@ export BBOX=${BBOX:-"-180.0,-85.0511,180.0,85.0511"}
 export TIMEOUT=${TIMEOUT:-1800000}
 export MIN_ZOOM=${MIN_ZOOM:-0}
 export MAX_ZOOM=${MAX_ZOOM:-14}
+if [[ "${MAX_ZOOM}" -lt 14 ]]; then
+  (( DIVIDER = 2**( 14-MAX_ZOOM ) ))
+  (( TEST_X = 9268 / DIVIDER ))
+  (( TEST_Y = 3575 / DIVIDER ))
+  export TEST_ON_STARTUP_TILE="${MAX_ZOOM},${TEST_X},${TEST_Y}"
+fi
 
 PGQUERY="pgquery://\
 ?database=${PGDATABASE}\
@@ -49,7 +55,7 @@ PGQUERY="pgquery://\
 ${GZIP:+&gzip=${GZIP}}\
 ${NOGZIP:+&nogzip=${NOGZIP}}\
 ${USE_KEY_COLUMN:+&key=${USE_KEY_COLUMN}}\
-${TEST_ON_STARTUP_TILE:+&testOnStartup=${TEST_ON_STARTUP}}"
+${TEST_ON_STARTUP_TILE:+&testOnStartup=${TEST_ON_STARTUP_TILE}}"
 
 export PGQUERY
 
