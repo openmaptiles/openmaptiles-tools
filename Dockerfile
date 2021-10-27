@@ -60,7 +60,7 @@ RUN set -eux ;\
 
 
 # Primary image
-FROM python:3.8-slim
+FROM python:3.10-slim
 LABEL maintainer="Yuri Astrakhan <YuriAstrakhan@gmail.com>"
 
 ARG PG_MAJOR=12
