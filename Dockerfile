@@ -31,7 +31,7 @@ RUN set -eux ;\
 
 
 # Build osmborder
-FROM python:3.8 as c-builder
+FROM python:3.10 as c-builder
 ARG OSMBORDER_REV=e3ae8f7a2dcdcd6dc80abab4679cb5edb7dc6fa5
 
 RUN set -eux ;\
