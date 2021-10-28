@@ -103,7 +103,7 @@ build-sql-tests: prepare build-docker
 	@echo "   Running Postgres SQL tests"
 	@echo ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"
 	docker-compose --file tests/sql/docker-compose.yml rm -f && \
-	timeout 60 docker-compose --file tests/sql/docker-compose.yml up --abort-on-container-exit && \
+	timeout 180 docker-compose --file tests/sql/docker-compose.yml up --abort-on-container-exit && \
 	docker-compose --file tests/sql/docker-compose.yml rm -f
 
 .PHONY: build-bin-tests
