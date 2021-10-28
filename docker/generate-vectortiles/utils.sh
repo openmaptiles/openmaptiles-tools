@@ -40,4 +40,3 @@ function replace_db_connection() {
     sed -i "$replace_expr_4" "$DEST_PROJECT_FILE"
     sed -i "$replace_expr_5" "$DEST_PROJECT_FILE"
 }
-

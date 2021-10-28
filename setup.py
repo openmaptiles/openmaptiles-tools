@@ -18,7 +18,7 @@ with (path / "requirements.txt").open(encoding="utf-8") as fh:
     # Requirements will contain a list of libraries without version restrictions
     # It seems this is a common practice for the setup.py vs requirements.txt
     requirements = [m.group(1) for m in
-                    (re.match(r'^[ \t]*([^>=<!#\n]+).*', l) for l in fh.readlines())
+                    (re.match(r'^[ \t]*([^>=<!#\n]+).*', line) for line in fh.readlines())
                     if m]
 
 scripts = [str(p) for p in path.glob('bin/*') if p.is_file()]

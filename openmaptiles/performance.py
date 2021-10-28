@@ -79,7 +79,7 @@ class PerfTester:
             with path.open('r', encoding='utf-8') as fp:
                 self.old_run: PerfRoot = PerfRoot.from_dict(json.load(fp))
             since = round_td(dt.utcnow() - dt.fromisoformat(self.old_run.created))
-            print(f"Comparing results with a previous run created {since} ago: {path}")
+            print(f'Comparing results with a previous run created {since} ago: {path}')
         else:
             self.old_run = None
 
@@ -95,7 +95,7 @@ class PerfTester:
             if test not in self.all_test_cases:
                 cases = '\n'.join(map(TestCase.fmt_table, self.all_test_cases.values()))
                 raise DocoptExit(f"Test '{test}' is not defined. "
-                                 f"Available tests are:\n{cases}\n")
+                                 f'Available tests are:\n{cases}\n')
         if test_all:
             # Do this after validating individual tests, they are ignored but validated
             tests = [v for v in self.all_test_cases.keys() if v != 'null']
@@ -114,8 +114,8 @@ class PerfTester:
         print(f'Connecting to PostgreSQL at {self.pghost}:{self.pgport}, '
               f'db={self.dbname}, user={self.user}...')
         async with asyncpg.create_pool(
-            database=self.dbname, host=self.pghost, port=self.pgport, user=self.user,
-            password=self.password, min_size=1, max_size=1,
+                database=self.dbname, host=self.pghost, port=self.pgport, user=self.user,
+                password=self.password, min_size=1, max_size=1,
         ) as pool:
             async with pool.acquire() as conn:
                 self.results.created = dt.utcnow().isoformat()
@@ -126,7 +126,7 @@ class PerfTester:
 
     async def _run(self, conn: Connection):
         self.results.pg_settings = await show_settings(conn)
-        print("\nValidating SQL fields in all layers of the tileset")
+        print('\nValidating SQL fields in all layers of the tileset')
         self.mvt = MvtGenerator(
             self.tileset,
             postgis_ver=await get_postgis_version(conn),
@@ -147,19 +147,20 @@ class PerfTester:
                     tc = self.create_testcase(test, z, layer or self.layers)
                     if old_tests:
                         tc.old_result = next(
-                            (v for v in old_tests if v.id == tc.id and
-                             v.layers == tc.layers_id and v.zoom == tc.zoom), None)
+                            (v for v in old_tests
+                             if v.id == tc.id and v.layers == tc.layers_id and v.zoom == tc.zoom),
+                            None)
                     self.test_cases.append(tc)
         for testcase in self.test_cases:
             await self.run_test(conn, testcase)
-        print(f"\n\n================ SUMMARY ================")
+        print('\n\n================ SUMMARY ================')
         self.print_summary_graphs('test_summary', lambda t: t.id,
-                                  lambda t: f"in test {t.id}", 'Per-test')
+                                  lambda t: f'in test {t.id}', 'Per-test')
         self.print_summary_graphs('zoom_summary', lambda v: str(v.zoom),
-                                  lambda t: f"at z{t.zoom}", 'Per-zoom')
+                                  lambda t: f'at z{t.zoom}', 'Per-zoom')
         if self.per_layer:
             self.print_summary_graphs('layer_summary', lambda t: t.layers_id,
-                                      lambda t: f"at {t.fmt_layers()}", 'Per-layer')
+                                      lambda t: f'at {t.fmt_layers()}', 'Per-layer')
         self.results.summary = PerfSummary(
             duration=sum((v.result.duration for v in self.test_cases), timedelta()),
             tiles=sum(v.size() for v in self.test_cases),
@@ -172,7 +173,7 @@ class PerfTester:
         self.mvt.set_layer_ids(layers)
         query = self.mvt.generate_sql()
         if self.key_column:
-            query = f"SELECT mvt FROM ({query}) AS perfdata"
+            query = f'SELECT mvt FROM ({query}) AS perfdata'
         prefix = 'CAST($1 as int) as z, xval.x as x, yval.y as y,' \
             if not self.summary else 'sum'
         query = f"""\
@@ -184,7 +185,7 @@ generate_series(CAST($4 as int), CAST($5 as int)) AS yval(y);
 
     async def run_test(self, conn: Connection, test: TestCase):
         results = []
-        print(f"\nRunning {test.format()}...")
+        print(f'\nRunning {test.format()}...')
         if self.verbose:
             print(f'Using SQL query:\n\n-------\n\n{test.query}\n\n-------\n\n')
         args = [
@@ -207,9 +208,9 @@ generate_series(CAST($4 as int), CAST($5 as int)) AS yval(y);
             print(test.result.perf_format(old))
             return
         if test.size() != len(results):
-            print(f"WARNING: Requested {test.size():,} tiles != got {len(results):,}")
+            print(f'WARNING: Requested {test.size():,} tiles != got {len(results):,}')
         if not results:
-            print(f"Query returned no data after {test.result.duration}")
+            print(f'Query returned no data after {test.result.duration}')
             return
 
         test.tiles = len(results)
@@ -241,10 +242,10 @@ generate_series(CAST($4 as int), CAST($5 as int)) AS yval(y);
 
         old_buckets = old and old.buckets or []
         print_graph(
-            f"Tile sizes for {test.tiles:,} tiles "
-            f"(~{test.tiles / buckets:.0f}/line) done in "
-            f"{round_td(test.result.duration)} "
-            f"({test.result.gen_speed:,.1f} tiles/s"
+            f'Tile sizes for {test.tiles:,} tiles '
+            f'(~{test.tiles / buckets:.0f}/line) done in '
+            f'{round_td(test.result.duration)} '
+            f'({test.result.gen_speed:,.1f} tiles/s'
             f"{change(old.gen_speed, test.result.gen_speed, True) if old else ''})",
             [v.graph_msg(old_buckets[ind] if ind < len(old_buckets) else None)
              for ind, v in enumerate(test.result.buckets)],
@@ -274,12 +275,12 @@ generate_series(CAST($4 as int), CAST($5 as int)) AS yval(y);
             speed_data.append(stats[grp].graph_msg(True, grp_desc, old))
             size_data.append(stats[grp].graph_msg(False, grp_desc, old))
 
-        print_graph(f"{long_msg} generation speed (longer is better)", speed_data)
-        print_graph(f"{long_msg} average tile sizes (shorter is better)",
+        print_graph(f'{long_msg} generation speed (longer is better)', speed_data)
+        print_graph(f'{long_msg} average tile sizes (shorter is better)',
                     size_data, is_bytes=True)
 
     def save_results(self):
         if self.save_to:
-            print(f"Saving results to {self.save_to}")
+            print(f'Saving results to {self.save_to}')
             with self.save_to.open('w', encoding='utf-8') as fp:
                 json.dump(self.results.to_dict(), fp, indent=2)

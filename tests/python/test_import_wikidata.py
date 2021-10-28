@@ -1,12 +1,7 @@
-import os
+import shutil
 from importlib.machinery import SourceFileLoader
 from pathlib import Path
 from unittest import IsolatedAsyncioTestCase, main
-
-import asyncpg
-import shutil
-
-from openmaptiles.pgutils import PgWarnings, parse_pg_args
 
 test_dir = Path(__file__).parent
 
@@ -14,7 +9,7 @@ wd_path = shutil.which('import-wikidata')
 if not wd_path:
     wd_path = shutil.which('import-wikidata', path=test_dir / '../../bin')
     if not wd_path:
-        raise ValueError("Unable to locate import-wikidata script")
+        raise ValueError('Unable to locate import-wikidata script')
 
 importer = SourceFileLoader('import-wikidata', wd_path).load_module()
 

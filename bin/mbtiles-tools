@@ -8,6 +8,10 @@ Usage:
   mbtiles-tools impute <mbtiles-file> --zoom=<zoom>
                 [--key=<hash>... | --keyfile=<file>] [--output=<file>]
                 [--min-dups=<count>] [--verbose]
+ mbtiles-tools copy <mbtiles-file> <target-mbtiles-file>
+                ([--zoom=<zoom>]... | [--minzoom=<min>] [--maxzoom=<max>])
+                [--reset] [--auto-minmax] [--show-json] [--show-ranges]
+                [--exist=<ignore|replace|fail>] [--bbox=<bbox>] [--verbose]
   mbtiles-tools meta-all <mbtiles-file> [--show-json] [--show-ranges]
   mbtiles-tools meta-get <mbtiles-file> <metakey>
   mbtiles-tools meta-set <mbtiles-file> <metakey> [<newvalue>]
@@ -38,6 +42,8 @@ Actions:
                  Use --output to record all tiles that were NOT imputed (i.e. still need
                  to be generated) to a tile text file ("z/x/y" - one per line).
                  By default requires at least 20 (50 for z13+) duplicates.
+  copy           Copy tiles from one mbtiles file to another. Copying can be limited by
+                 one or more zooms, and a bounding box. This action also runs meta-copy command.
   meta-all       validates and prints all values in the metadata table
   meta-get       Gets a single value from metadata table
   meta-set       Sets a single value in the metadata table, or deletes it if no value.
@@ -59,14 +65,16 @@ Options:
   -i --min-dups=<count> Number of times a tile is repeated before considering it a dup.
   -m --minzoom=<min>    Process all zooms beginning with this one (inclusive).
   -n --maxzoom=<max>    Process all zooms ending at this one (inclusive).
+  -e --exist=<mode>     When copying tiles, specify what to do if tile with the same
+                        coordinates already exists in the target file.
   -k --key=<hash>       Key of the tile (i.e. an MD5 hash). Could be multiple.
   -f --keyfile=<file>   A file with tile Keys, one per line.
   -o --output=<file>    Write a list of tiles to this file. Use '-' for stdout.
   -j --show-json        Print out the entire JSON field (compact-pretty-printed) when showing metadata.
   -r --show-ranges      Show tile counts and ranges statistics for each zoom in mbtiles.
   -v --verbose          Print additional debugging information.
-  --reset               For meta-generate and meta-copy, clear all existing metadata first.
-  -a --auto-minmax      For meta-generate and meta-copy, query data tables for available min/max zoom.
+  --reset               For meta-generate, copy, and meta-copy, clear all existing metadata first.
+  -a --auto-minmax      For meta-generate, copy, and meta-copy, query data tables for available min/max zoom.
   --show-names          if set, includes all localized names when showing tile content
   --summary             if set, show just the content summary when showing tile content
   --help                Show this screen.
@@ -88,9 +96,9 @@ from pathlib import Path
 from docopt import docopt, DocoptExit
 
 import openmaptiles
-from openmaptiles.mbtile_tools import Imputer, KeyFinder, Metadata
+from openmaptiles.mbtile_tools import Imputer, KeyFinder, Metadata, TileCopier
 from openmaptiles.pgutils import parse_pg_args
-from openmaptiles.utils import parse_zxy_param
+from openmaptiles.utils import parse_zxy_param, parse_zoom, parse_zoom_list, Bbox
 
 
 def main():
@@ -99,6 +107,27 @@ def main():
         find_dups(args)
     elif args['impute']:
         impute(args)
+    elif args['copy']:
+        if args['--exist'] is None or args['--exist'] == 'ignore':
+            on_conflict = 'IGNORE'
+        elif args['--exist'] == 'replace':
+            on_conflict = 'REPLACE'
+        elif args['--exist'] == 'fail':
+            on_conflict = 'FAIL'
+        else:
+            raise DocoptExit('Invalid value for --exist parameter.')
+
+        TileCopier(source=Metadata(args['<mbtiles-file>'], args['--show-json'],
+                                   args['--show-ranges']),
+                   target=args['<target-mbtiles-file>'],
+                   zooms=parse_zoom_list(args['--zoom']),
+                   minzoom=parse_zoom(args['--minzoom']),
+                   maxzoom=parse_zoom(args['--maxzoom']),
+                   reset=args['--reset'],
+                   on_conflict=on_conflict,
+                   auto_minmax=args['--auto-minmax'],
+                   bbox=Bbox(bbox=args['--bbox']) if args['--bbox'] else None,
+                   verbose=bool(args['--verbose'])).run()
     elif args['meta-all']:
         Metadata(args['<mbtiles-file>'], args['--show-json'],
                  args['--show-ranges']).print_all()
@@ -131,7 +160,7 @@ def find_dups(args):
     KeyFinder(
         mbtiles=args['<mbtiles-file>'],
         outfile=args['--output'] or '-',
-        zoom=args['--zoom'],
+        zoom=parse_zoom(args['--zoom']),
         min_dup_count=args['--min-dups'],
         verbose=args['--verbose'] or (args['--output'] and args['--output'] != '-'),
     ).run()
@@ -140,7 +169,7 @@ def find_dups(args):
 def impute(args):
     file = args['<mbtiles-file>']
     verbose = args['--verbose']
-    zoom = int(args['--zoom'])
+    zoom = parse_zoom(args['--zoom'])
     if zoom <= 0:
         raise DocoptExit(f'Zooms must be more than 0, {zoom} was given.')
     outfile = args['--output']

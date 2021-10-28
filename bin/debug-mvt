@@ -3,12 +3,13 @@
 Shows content of a single MVT tile as layer tables.
 
 Usage:
-  debug-mvt dump <file_or_url> [--summary] [--show-names]
+  debug-mvt dump <file_or_url> [--summary] [--show-names] [--sort-output]
   debug-mvt <tileset> <tile_zxy> [--dump] [--layer=<layer>]... [--exclude-layers]
-                      [--column=<column>]... [--show-names] [--show-geometry]
+                      ([--column=<name>]... | [--hide-column=<name>]...)
+                      [--show-names] [--show-geometry]
                       [--no-geom-test] [--no-mvtgeometry] [--null] [--verbose]
                       [--pghost=<host>] [--pgport=<port>] [--dbname=<db>]
-                      [--user=<user>] [--password=<password>]
+                      [--user=<user>] [--password=<password>] [--sort-output]
   debug-mvt <tileset> <tile_zxy> --summary [--key] [--gzip [<gzlevel>]] [--sort-layers]
                       [--layer=<layer>]... [--exclude-layers]
                       [--no-geom-test] [--dump] [--show-names] [--verbose]
@@ -28,14 +29,16 @@ Options:
   --key                 If set with --summary, will show a `key` column (md5 of the mvt data)
   --gzip                If set with --summary, will compress MVT with gzip, with optional level=0..9.
                         `gzip()` is available from https://github.com/pramsey/pgsql-gzip
+  --sort-output         Sort output layers and features inside the layer to simplify diffing.
   --sort-layers         Force layers to return in the same order as declared in tileset.
   -l --layer=<layer>    If set, limit tile generation to just this layer (could be multiple)
   -x --exclude-layers   If set, uses all layers except the ones listed with -l (-l is required)
-  -c --column=<layer>   If set, limits output to just the given field (could be multiple)
+  -c --column=<name>    If set, limits output to just the given field (could be multiple)
                         All shown layers must have all of these fields, or use -l to limit.
-  -n --show-names       if set, includes all localized names
-  -g --show-geometry    If set, shows geometry/mvtgeometry as text instead of type+length
-  -m --no-mvtgeometry   Do not include resulting MVT geomeetry in the output
+  --hide-column=<name>  If set, do not show this column in the output. (could be multiple)
+  -n --show-names       if set, includes all localized names.
+  -g --show-geometry    If set, shows geometry/mvtgeometry as text instead of type+length.
+  -m --no-mvtgeometry   Do not include resulting MVT geometry in the output.
   -t --no-geom-test     Do not validate all geometries produced by ST_AsMvtGeom().
   --null                Show nulls for all values and not just for geometries.
   -v --verbose          Print additional debugging information
@@ -64,14 +67,13 @@ from tabulate import tabulate
 from time import time
 
 import openmaptiles
-from openmaptiles.pgutils import parse_pg_args, get_postgis_version, PgWarnings, \
-    print_query_error
+from openmaptiles.pgutils import parse_pg_args, get_postgis_version, PgWarnings, print_query_error
 from openmaptiles.sqltomvt import MvtGenerator
 from openmaptiles.tileset import Tileset
-from openmaptiles.utils import parse_zxy_param, print_tile
+from openmaptiles.utils import parse_zxy_param, print_tile, dict_comparator
 
 
-def dump_tile(file_or_url: str, show_names: bool, summary: bool):
+def dump_tile(file_or_url: str, show_names: bool, summary: bool, sort_output: bool):
     if file_or_url == '-':
         tile = sys.stdin.buffer.read()
         file_or_url = 'STDIN'
@@ -79,8 +81,7 @@ def dump_tile(file_or_url: str, show_names: bool, summary: bool):
         r = requests.get(
             file_or_url,
             headers={
-                'User-Agent': f'OpenMapTiles debug-mvt {openmaptiles.__version__}'
-                              '(https://github.com/openmaptiles/openmaptiles)'
+                'User-Agent': f'OpenMapTiles debug-mvt {openmaptiles.__version__}(https://github.com/openmaptiles/openmaptiles)'
             })
         try:
             if not r.ok:
@@ -91,19 +92,21 @@ def dump_tile(file_or_url: str, show_names: bool, summary: bool):
             r.close()
     else:
         tile = Path(file_or_url).read_bytes()
-    print_tile(tile, show_names, summary, f"from {file_or_url}")
+    print_tile(tile, show_names, summary, f'from {file_or_url}', sort_output)
 
 
 async def main(args):
     show_names = args['--show-names']
     summary = args['--summary']
+    sort_output = args['--sort-output']
     if args['dump']:
-        return dump_tile(args['<file_or_url>'], show_names, summary)
+        return dump_tile(args['<file_or_url>'], show_names, summary, sort_output)
     pghost, pgport, dbname, user, password = parse_pg_args(args)
     dump = args['--dump']
     exclude_layers = args['--exclude-layers']
     layers = args['--layer']
     columns = args['--column']
+    hide_columns = set(args['--hide-column'])
     show_geometry = args['--show-geometry']
     show_mvt_geometry = not args['--no-mvtgeometry']
     show_nulls = args['--null']
@@ -132,43 +135,43 @@ async def main(args):
         mvt.test_geometry = test_geometry
         query = mvt.generate_sql()
         if verbose:
-            print(f"\n======= Querying Tile {zoom}/{x}/{y} =======")
-            print(f"{query.strip()}")
+            print(f'\n======= Querying Tile {zoom}/{x}/{y} =======')
+            print(f'{query.strip()}')
         start_ts = time()
         try:
             result = await conn.fetchrow(query)
             took = time() - start_ts
         except asyncpg.PostgresError as err:
             took = time() - start_ts
-            print_query_error(f"ERROR getting tile {zoom}/{x}/{y} ({took:.2f}s)",
+            print_query_error(f'ERROR getting tile {zoom}/{x}/{y} ({took:.2f}s)',
                               err, pg_warnings, verbose, query)
             return
         if result:
             mvt_data = result['mvt']
             pg_warnings.print()
-            info = f"{zoom}/{x}/{y} took {took:.2f}s"
+            info = f'{zoom}/{x}/{y} took {took:.2f}s'
             if layers or exclude_layers:
-                info += " (filtered layers only)"
+                info += ' (filtered layers only)'
             if dump:
-                extras = ", ".join(f"{k}={v}" for k, v in result.items() if k != "mvt")
+                extras = ', '.join(f'{k}={v}' for k, v in result.items() if k != 'mvt')
                 if extras:
-                    info += ", " + extras + ","
-                print_tile(mvt_data, show_names, summary, info)
+                    info += ', ' + extras + ','
+                print_tile(mvt_data, show_names, summary, info, sort_output)
                 return
-            print(f"======= Tile {info} =======")
-            tile_size = f"{len(mvt_data):,} bytes"
+            print(f'======= Tile {info} =======')
+            tile_size = f'{len(mvt_data):,} bytes'
             if args['--gzip']:
                 uncompressed = len(gzip.decompress(mvt_data))
                 res = {
-                    "compressed tile size": tile_size,
-                    "uncompressed tile size": f"{uncompressed:,} bytes",
+                    'compressed tile size': tile_size,
+                    'uncompressed tile size': f'{uncompressed:,} bytes',
                 }
             else:
-                res = {"tile size": tile_size}
-            res.update({k: str(v) for k, v in result.items() if k != "mvt"})
-            print(tabulate([res], headers="keys"))
+                res = {'tile size': tile_size}
+            res.update({k: str(v) for k, v in result.items() if k != 'mvt'})
+            print(tabulate([res], headers='keys'))
         else:
-            print(f"======= No data in tile {zoom}/{x}/{y} =======")
+            print(f'======= No data in tile {zoom}/{x}/{y} =======')
             pg_warnings.print()
         return
 
@@ -177,23 +180,26 @@ async def main(args):
 
     def mvt_wrapper(mvt_geom):
         if test_geometry:
-            res = f"ST_IsValid({mvt_geom}) AS is_valid_mvt, "
+            res = f'ST_IsValid({mvt_geom}) AS is_valid_mvt, '
         else:
             res = ''
         if show_geometry:
-            res += f"ST_AsText({mvt_geom})"
+            res += f'ST_AsText({mvt_geom})'
         else:
-            res += geom_info(f"ST_AsText({mvt_geom})")
+            res += geom_info(f'ST_AsText({mvt_geom})')
         return res
 
-    for layer_id, layer_def in mvt.get_layers():
+    layer_definitions = mvt.get_layers()
+    if sort_output:
+        layer_definitions = sorted(layer_definitions, key=lambda v: v[0])
+    for layer_id, layer_def in layer_definitions:
         geom_fld = layer_def.geometry_field
 
         if show_geometry:
             extra_columns = f"ST_SRID({geom_fld}) || ': ' || " \
-                            f"ST_AsText({geom_fld}) AS {geom_fld}"
+                            f'ST_AsText({geom_fld}) AS {geom_fld}'
         else:
-            extra_columns = f"{geom_info(geom_fld)} AS {geom_fld}"
+            extra_columns = f'{geom_info(geom_fld)} AS {geom_fld}'
         if test_geometry:
             extra_columns += f', ST_IsValid({geom_fld}) AS is_valid_geom'
 
@@ -210,8 +216,8 @@ async def main(args):
         )
         layer_sql = mvt.generate_layer(layer_def)
         if verbose:
-            print(f"\n======= Querying layer {layer_id} (#{layer_def.index}) =======\n"
-                  f"{query.strip()}\n== MVT SQL\n{layer_sql}")
+            print(f'\n======= Querying layer {layer_id} (#{layer_def.index}) =======\n'
+                  f'{query.strip()}\n== MVT SQL\n{layer_sql}')
 
         # Re-order columns - move osm_id and geometry fields to the right of the table
         names = {
@@ -224,9 +230,9 @@ async def main(args):
 
         try:
             fields = ','.join(columns) if columns else '*'
-            query_result = await conn.fetch(f"SELECT {fields} FROM {query}")
+            query_result = await conn.fetch(f'SELECT {fields} FROM {query}')
         except asyncpg.PostgresError as err:
-            print_query_error(f"ERROR in {layer_id} layer", err, pg_warnings, verbose,
+            print_query_error(f'ERROR in {layer_id} layer', err, pg_warnings, verbose,
                               query, layer_sql)
             continue
 
@@ -237,19 +243,22 @@ async def main(args):
                 vals.sort(key=lambda v: names[v[0]] if v[0] in names else v[0])
             vals = {
                 k: '<null>' if v is None and (show_nulls or k in names) else v
-                for k, v in vals if k != '_hidden_names_'
+                for k, v in vals if k != '_hidden_names_' and k not in hide_columns
             }
             result.append(vals)
 
         layer_mvt = len(await conn.fetchval(layer_sql))
 
         if result:
-            print(f"======= Layer {layer_id}: {layer_mvt:,} bytes in MVT =======")
+            print(f'======= Layer {layer_id}: {layer_mvt:,} bytes in MVT =======')
             pg_warnings.print()
-            print(tabulate(result, headers="keys"))
+            if sort_output:
+                keys = list(result[0].keys())
+                result.sort(key=dict_comparator(keys))
+            print(tabulate(result, headers='keys'))
         else:
             info = layer_mvt and f' (layer data had non-zero {layer_mvt:,} bytes)' or ''
-            print(f"======= No data in layer {layer_id}{info} =======")
+            print(f'======= No data in layer {layer_id}{info} =======')
             pg_warnings.print()
 
 

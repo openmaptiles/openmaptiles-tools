@@ -1,0 +1,3 @@
+[flake8]
+# do not warn for line length > 80
+ignore = E501,W503

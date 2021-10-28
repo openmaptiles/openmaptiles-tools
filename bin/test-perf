@@ -61,19 +61,18 @@ import openmaptiles
 from openmaptiles.performance import PerfTester
 from openmaptiles.perfutils import COLOR
 from openmaptiles.pgutils import parse_pg_args
+from openmaptiles.utils import parse_zoom_list
 
 
 def main(args):
     if args['--no-color']:
         COLOR.enable(False)
-    zooms = [int(v) for v in args['--zoom']]
-    if not zooms:
-        zooms = list(range(int(args['--minzoom']), int(args['--maxzoom']) + 1))
+    zooms = parse_zoom_list(args['--zoom'], args['--minzoom'], args['--maxzoom'])
     pghost, pgport, dbname, user, password = parse_pg_args(args)
 
     tests = args['--test']
     if not tests and not args['--test-all'] and not args['--bbox']:
-        tests = ["us-across"]
+        tests = ['us-across']
 
     perf = PerfTester(
         tileset=args['<tileset>'],

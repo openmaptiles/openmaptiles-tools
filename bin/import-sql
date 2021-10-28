@@ -16,7 +16,7 @@ export PGPORT="${POSTGRES_PORT:-${PGPORT:-5432}}"
 
 function exec_psql_file() {
     local file_name="$1"
-    # Allws additional parameters to be passed to psql
+    # Allows additional parameters to be passed to psql
     # For example, PSQL_OPTIONS='-a -A' would echo everything and disable output alignment
     # Using eval allows complex cases with quotes, like PSQL_OPTIONS=" -a -c 'select ...' "
     eval "local psql_opts=(${PSQL_OPTIONS:-})"
@@ -36,7 +36,7 @@ function import_all_sql_files() {
     local sql_file
 
     if [[ -d "$dir/parallel" ]]; then
-      # Asseme this dir may contain run_first.sql, parallel/*.sql, and run_last.sql
+      # Assume this dir may contain run_first.sql, parallel/*.sql, and run_last.sql
       # use parallel execution
       if [[ -f "$dir/run_first.sql" ]]; then
         exec_psql_file "$dir/run_first.sql"

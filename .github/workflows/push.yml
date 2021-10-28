@@ -40,6 +40,12 @@ jobs:
             # This means that the two-part version image will always point to latest patch.
             export VERSION="${BASH_REMATCH[1]}.${BASH_REMATCH[2]}.${BASH_REMATCH[3]} \
                             ${BASH_REMATCH[1]}.${BASH_REMATCH[2]}"
+            echo "Current content of openmaptiles/__init__.py:"
+            cat openmaptiles/__init__.py
+            echo "Updating version in openmaptiles/__init__.py to ${BASH_REMATCH[1]}.${BASH_REMATCH[2]}.${BASH_REMATCH[3]}"
+            sed -i -e 's/^__version__ = '"'"'[0-9]\+[.][0-9]\+[.][0-9]\+'"'"'/__version__ = '"'${BASH_REMATCH[1]}.${BASH_REMATCH[2]}.${BASH_REMATCH[3]}'"'/g' openmaptiles/__init__.py
+            echo "New content of openmaptiles/__init__.py:"
+            cat openmaptiles/__init__.py
           else
             echo "Unrecognized ref ${GITHUB_REF}, no docker images are built or uploaded"
             exit 0
@@ -65,10 +71,6 @@ jobs:
           make build-docker
           push_docker openmaptiles-tools
 
-          df -h .
-          make build-generate-vectortiles
-          push_docker generate-vectortiles
-
           # Github has a very low disk limit, get rid of some data
           df -h .
           sudo docker system prune --all --force
@@ -79,3 +81,10 @@ jobs:
           push_docker import-data
           push_docker postgis-preloaded
           df -h .
+
+          # The generate-vectortiles docker image often fails build, so leave it as last step
+          df -h .
+          sudo docker system prune --all --force
+          df -h .
+          make build-generate-vectortiles
+          push_docker generate-vectortiles
