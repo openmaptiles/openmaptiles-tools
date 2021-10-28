@@ -16,6 +16,12 @@ DOCKER_OPTS  ?= -i --rm -u $$(id -u $${USER}):$$(id -g $${USER})
 # Optionally pass in extra parameters to the docker build command
 DOCKER_BUILD_EXTRAS ?=
 
+ifneq ($(strip $(NO_REFRESH)),)
+	@echo "Skipping docker image refresh"
+else
+  DOCKER_BUILD_EXTRAS := $(DOCKER_BUILD_EXTRAS) --pull
+endif
+
 # Current dir is shared with the docker, allowing scripts to write to the dir as a current user
 WORKDIR      ?= $$( pwd -P )
 RUN_CMD := docker run ${DOCKER_OPTS} -v "$(WORKDIR):/tileset"

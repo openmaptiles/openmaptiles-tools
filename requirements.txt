@@ -1,5 +1,11 @@
 ## This list is also used by setup.py - install_requires
 ## But there it removes all version restrictions
+## To upgrade this list, run
+##     make bash
+##     pip install pip-upgrader
+##     /home/openmaptiles/.local/bin/pip-upgrade --skip-virtualenv-check
+##     cat requirements.txt
+##     <copy-paste the shown content to this file>
 aiohttp==3.7.4
 ascii_graph==1.5.1
 asyncpg==0.24.0
@@ -8,11 +14,11 @@ betterproto==1.2.5
 dataclasses-json==0.5.6
 deprecated==1.2.13
 docopt-ng==0.7.2
-flake8==3.9.2
-flake8-quotes==3.3.0
+flake8==4.0.1
+flake8-quotes==3.3.1
 graphviz==0.17
 psycopg2-binary==2.9.1
-pyyaml==5.4.1
+pyyaml==6.0
 requests==2.26.0
 tabulate==0.8.9
 tornado==6.1
