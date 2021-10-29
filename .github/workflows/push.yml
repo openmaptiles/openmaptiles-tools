@@ -76,7 +76,8 @@ jobs:
           sudo docker system prune --all --force
           df -h .
 
-          make build-postgis-preloaded
+          # TODO: fix unavailable image error inside the make target
+          NO_REFRESH=1 make build-postgis-preloaded
           push_docker postgis
           push_docker import-data
           push_docker postgis-preloaded
