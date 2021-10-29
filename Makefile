@@ -17,7 +17,7 @@ DOCKER_OPTS  ?= -i --rm -u $$(id -u $${USER}):$$(id -g $${USER})
 DOCKER_BUILD_EXTRAS ?=
 
 ifneq ($(strip $(NO_REFRESH)),)
-	@echo "Skipping docker image refresh"
+  $(info Skipping docker image refresh)
 else
   DOCKER_BUILD_EXTRAS := $(DOCKER_BUILD_EXTRAS) --pull
 endif
