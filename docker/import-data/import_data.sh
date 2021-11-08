@@ -71,7 +71,7 @@ if [ -z ${1+x} ] || [ "$1" = "lake-centerline" ]; then
   PGCLIENTENCODING=UTF8 ogr2ogr \
     -progress \
     -f Postgresql \
-    -s_srs EPSG:4326 \
+    -s_srs EPSG:3857 \
     -t_srs EPSG:3857 \
     "PG:$PGCONN" \
     -lco OVERWRITE=YES \

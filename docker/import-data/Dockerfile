@@ -8,7 +8,7 @@ RUN set -eux  ;\
     mkdir -p "$DIR"  ;\
     cd "$DIR"  ;\
     apk add --no-cache sqlite  ;\
-    wget --quiet https://naturalearth.s3.amazonaws.com/packages/natural_earth_vector.sqlite.zip ;\
+    wget --quiet https://dev.maptiler.download/geodata/omt/natural_earth_vector.sqlite.zip ;\
     unzip -oj natural_earth_vector.sqlite.zip  ;\
     ../clean-natural-earth.sh natural_earth_vector.sqlite  ;\
     rm ../clean-natural-earth.sh  ;\
@@ -28,7 +28,7 @@ RUN set -eux  ;\
     DIR=/downloads/lake_centerline  ;\
     mkdir -p "$DIR"  ;\
     cd "$DIR"  ;\
-    wget --quiet https://github.com/lukasmartinelli/osm-lakelines/releases/download/v0.9/lake_centerline.geojson
+    wget --quiet https://dev.maptiler.download/geodata/omt/lake_centerline.geojson
 
 
 FROM osgeo/gdal:alpine-normal-3.0.2
