@@ -9,7 +9,7 @@ if (( $(id -u) != 0 )); then
 fi
 
 UTF8PROC_TAG=v2.5.0
-MAPNIK_GERMAN_L10N_TAG=v2.5.8
+MAPNIK_GERMAN_L10N_TAG=v2.5.9.1
 PGSQL_GZIP_TAG=v1.0.0
 
 CURL="curl --silent --show-error --location"
@@ -60,7 +60,7 @@ cd /opt
 rm -rf utf8proc
 
 echo "Installing mapnik-german-l10n"
-git clone --branch "$MAPNIK_GERMAN_L10N_TAG" --depth 1 https://github.com/giggls/mapnik-german-l10n.git
+git clone --branch "$MAPNIK_GERMAN_L10N_TAG" --depth 1 https://github.com/openmaptiles/mapnik-german-l10n.git
 cd mapnik-german-l10n
 git checkout -q
 make
