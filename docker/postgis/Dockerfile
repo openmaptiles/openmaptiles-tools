@@ -18,9 +18,9 @@ ARG PGSQL_GZIP_REPO=https://github.com/pramsey/pgsql-gzip.git
 ARG UTF8PROC_TAG=v2.5.0
 ARG UTF8PROC_REPO=https://github.com/JuliaLang/utf8proc.git
 
-# osml10n - https://github.com/giggls/mapnik-german-l10n/releases
-ARG MAPNIK_GERMAN_L10N_TAG=v2.5.9
-ARG MAPNIK_GERMAN_L10N_REPO=https://github.com/giggls/mapnik-german-l10n.git
+# osml10n - https://github.com/openmaptiles/mapnik-german-l10n/releases
+ARG MAPNIK_GERMAN_L10N_TAG=v2.5.9.1
+ARG MAPNIK_GERMAN_L10N_REPO=https://github.com/openmaptiles/mapnik-german-l10n.git
 
 
 RUN set -eux  ;\
