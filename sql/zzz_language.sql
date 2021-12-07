@@ -34,7 +34,7 @@ CREATE OR REPLACE FUNCTION remove_latin(text) RETURNS text AS $$
 $$ LANGUAGE 'plpgsql' IMMUTABLE;
 
 -- See osml10n_is_latin
--- https://github.com/giggls/mapnik-german-l10n/blob/ea5da9cdfa6c931ae73eac747849140547ecd321/plpgsql/get_localized_name.sql#L19
+-- https://github.com/openmaptiles/mapnik-german-l10n/blob/ea5da9cdfa6c931ae73eac747849140547ecd321/plpgsql/get_localized_name.sql#L19
 CREATE or REPLACE FUNCTION omt_is_latin(text) RETURNS BOOLEAN AS $$
   DECLARE
     i integer;
