@@ -20,7 +20,6 @@ ARG UTF8PROC_REPO=https://github.com/JuliaLang/utf8proc.git
 
 # osml10n - https://github.com/giggls/mapnik-german-l10n/releases
 ARG MAPNIK_GERMAN_L10N_TAG=v2.5.9
-ARG MAPNIK_GERMAN_L10N_COMMIT=7e0a6aa13b5bf812370250a0af4c8776091bf278
 ARG MAPNIK_GERMAN_L10N_REPO=https://github.com/giggls/mapnik-german-l10n.git
 
 
@@ -70,10 +69,8 @@ RUN set -eux  ;\
     ##
     ## osml10n extension (originally Mapnik German)
     cd /opt/  ;\
-    #git clone --quiet --depth 1 -b $MAPNIK_GERMAN_L10N_TAG $MAPNIK_GERMAN_L10N_REPO  ;\
-    git clone --quiet $MAPNIK_GERMAN_L10N_REPO  ;\
+    git clone --quiet --depth 1 -b $MAPNIK_GERMAN_L10N_TAG $MAPNIK_GERMAN_L10N_REPO  ;\
     cd mapnik-german-l10n  ;\
-    git checkout -b temporal_branch $MAPNIK_GERMAN_L10N_COMMIT ;\
     make  ;\
     make install  ;\
     rm -rf /opt/mapnik-german-l10n  ;\
