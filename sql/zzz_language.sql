@@ -71,7 +71,7 @@ CREATE OR REPLACE FUNCTION get_latin_name(tags hstore, geometry geometry) RETURN
       NULLIF(tags->'int_name', ''),
       NULLIF(osml10n_get_name_without_brackets_from_tags(tags, 'en', geometry), '')
     );
-$$ LANGUAGE SQL IMMUTABLE STRICT;
+$$ LANGUAGE SQL IMMUTABLE;
 
 
 CREATE OR REPLACE FUNCTION get_nonlatin_name(tags hstore) RETURNS text AS $$
@@ -114,7 +114,7 @@ BEGIN
   END IF;
   RETURN hstore(tags_array);
 END;
-$$ STRICT
+$$
 LANGUAGE plpgsql IMMUTABLE;
 
 -- The wd_names table may also be created by the import-wikidata
