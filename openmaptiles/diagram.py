@@ -81,6 +81,8 @@ class EtlGraph(GraphGenerator):
             path = self.output_dir / layer.id / 'etl_diagram'
         else:
             path = self.output_dir / f'etl_{layer.id}'
+        # A workaround for https://github.com/xflr6/graphviz/issues/157
+        lines = [v + "\n" for v in lines]
         return Digraph('G', graph_attr=dict(rankdir='LR'), body=lines), path
 
     @staticmethod
