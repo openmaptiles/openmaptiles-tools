@@ -2,6 +2,7 @@ import json
 import os
 import sqlite3
 from datetime import datetime
+from os import getenv
 from pathlib import Path
 from sqlite3 import Cursor
 from typing import Dict, List, Optional, Tuple
@@ -315,7 +316,7 @@ GROUP BY zoom_level
 
     def _update_metadata(self, metadata, auto_minmax, reset, file, center_zoom=None):
         def update_from_env(param, env_var):
-            val = os.environ.get(env_var)
+            val = getenv(env_var)
             if val is not None:
                 metadata[param] = val
 
@@ -328,10 +329,10 @@ GROUP BY zoom_level
 
         metadata['filesize'] = os.path.getsize(file)
 
-        bbox_str = os.environ.get('BBOX')
+        bbox_str = getenv('BBOX')
         if bbox_str:
             bbox = Bbox(bbox=bbox_str,
-                        center_zoom=os.environ.get('CENTER_ZOOM', center_zoom))
+                        center_zoom=getenv('CENTER_ZOOM', center_zoom))
             metadata['bounds'] = bbox.bounds_str()
             metadata['center'] = bbox.center_str()
 

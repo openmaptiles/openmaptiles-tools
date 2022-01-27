@@ -1,6 +1,7 @@
 from dataclasses import dataclass
+from os import getenv
 from pathlib import Path
-from typing import List, Union, Dict, Any, Callable
+from typing import List, Union, Dict, Any, Callable, Optional
 
 import sys
 import warnings
@@ -181,7 +182,30 @@ class Layer:
 
     @property
     def buffer_size(self) -> int:
-        return self.definition['layer']['buffer_size']
+        """Each layer must have a default buffer size, with either `buffer_size` or `min_buffer_size` or both.
+        If both are set, buffer_size must be >= min_buffer_size.
+        min_buffer_size is only used when there is a global buffer size override,
+        e.g. if global is set to 0, and layer's min_buffer_size is set to 4, the result is 4.
+        """
+        size = self.definition['layer'].get('buffer_size')
+        min_size = self.definition['layer'].get('min_buffer_size')
+        if size is None and min_size is None:
+            raise ValueError(f'Layer "{self.id}" is missing an integer buffer_size and/or min_buffer_size')
+        elif size is not None and min_size is not None:
+            if size < min_size:
+                raise ValueError(f'Layer "{self.id}" has buffer_size less than min_buffer_size')
+        elif size is None:
+            # size is not set, use min_size as default
+            size = min_size
+        else:
+            # size is set, min_size is not set
+            min_size = 0
+
+        override = self.tileset.override_buffer_size if self.tileset else None
+        if override is not None:
+            size = max(override, min_size)
+
+        return size
 
     @property
     def max_size(self) -> int:
@@ -359,6 +383,22 @@ class Tileset:
     @property
     def name(self) -> str:
         return self.definition['name']
+
+    @property
+    def overrides(self) -> dict:
+        return self.definition.get('overrides', {})
+
+    @property
+    def override_buffer_size(self) -> Optional[int]:
+        """Layer's buffer size can be overridden globally with a TILE_BUFFER_SIZE env var (used first),
+           or with the `overrides.buffer_size` value in the tileset yaml file."""
+        size = getenv('TILE_BUFFER_SIZE')
+        if size is not None:
+            try:
+                return int(size)
+            except ValueError:
+                raise ValueError('Unable to parse TILE_BUFFER_SIZE env var as an integer')
+        return self.overrides.get('buffer_size')
 
     @property
     def pixel_scale(self) -> int:
