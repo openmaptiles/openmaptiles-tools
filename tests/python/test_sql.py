@@ -1,7 +1,7 @@
 import warnings
 from dataclasses import dataclass
 from pathlib import Path
-from typing import List, Union, Dict
+from typing import List, Union, Dict, Optional
 from unittest import main, TestCase
 
 from openmaptiles.sql import collect_sql, sql_assert_table, sql_assert_func
@@ -43,16 +43,16 @@ def parsed_data(layers: Union[Case, List[Case]]):
             defaults=dict(srs='test_srs', datasource=dict(srid='test_datasource')),
             id='id1',
             layers=[
-                ParsedData(dict(
+                dict(file=ParsedData(dict(
                     layer=dict(
-                        buffer_size='test_buffer_size',
+                        buffer_size='10',
                         datasource=dict(query='test_query'),
                         id=v.id,
                         fields={},
                         requires=[v.reqs] if isinstance(v.reqs, str) else v.reqs or []
                     ),
                     schema=[ParsedData(v.query, Path(v.id + '_s.yaml'))] if v.query else [],
-                ), Path(f'./{v.id}.yaml')) for v in ([layers] if isinstance(layers, Case) else layers)
+                ), Path(f'./{v.id}.yaml'))) for v in ([layers] if isinstance(layers, Case) else layers)
             ],
             maxzoom='test_maxzoom',
             minzoom='test_minzoom',
@@ -158,6 +158,7 @@ $$ LANGUAGE SQL IMMUTABLE;
         self.assertEqual(layer.requires_layers, expected_layers)
         self.assertEqual(layer.requires_tables, expected_tables)
         self.assertEqual(layer.requires_functions, expected_funcs)
+        self.assertEqual(layer.buffer_size, 10)
 
         # This test can be deleted once we remove the deprecated property in some future version
         with warnings.catch_warnings():
@@ -180,6 +181,55 @@ $$ LANGUAGE SQL IMMUTABLE;
         self._ts_parse(dict(functions=['x', 'y']), [], [], ['x', 'y'])
         self._ts_parse(dict(layers=['c1'], tables=['a', 'b'], functions=['x', 'y']),
                        ['c1'], ['a', 'b'], ['x', 'y'], extra)
+
+    def _ts_overrides(self, expected_layer: dict,
+                      layer: Optional[dict] = None,
+                      override_ts: Optional[dict] = None,
+                      override_layer: Optional[dict] = None,
+                      env: Optional[dict] = None):
+        data = parsed_data([Case('my_id', 'my_query;')])
+
+        ts_data = data.data['tileset']
+        if override_ts is not None:
+            ts_data['overrides'] = override_ts
+        if layer is not None:
+            ts_data['layers'][0]['file'].data['layer'].update(layer)
+        if override_layer is not None:
+            ts_data['layers'][0].update(override_layer)
+
+        ts = Tileset(data, getenv=env.get if env else None)
+        for k in expected_layer.keys():
+            self.assertEqual(getattr(ts.layers_by_id['my_id'], k), expected_layer[k])
+
+    def test_overrides(self):
+        buf_0 = dict(buffer_size=0)
+        buf_1 = dict(buffer_size=1)
+        buf_2 = dict(buffer_size=2)
+        buf_3 = dict(buffer_size=3)
+        min_1 = dict(min_buffer_size=1)
+        min_2 = dict(min_buffer_size=2)
+        min_3 = dict(min_buffer_size=3)
+
+        self._ts_overrides(buf_2, buf_2)
+        self._ts_overrides(buf_0, buf_2, override_ts=buf_0)
+        self._ts_overrides(buf_1, buf_2, override_ts=buf_1)
+        self._ts_overrides(buf_3, buf_2, override_ts=buf_3)
+        self._ts_overrides(buf_1, min_1 | buf_2, override_ts=buf_0)
+        self._ts_overrides(buf_1, buf_2, override_layer=buf_1)
+        self._ts_overrides(buf_2, min_2 | buf_3, override_layer=buf_1)
+        self._ts_overrides(buf_3, min_1 | buf_2, override_layer=min_3)
+        self._ts_overrides(buf_3, min_1 | buf_2, override_layer=min_2 | buf_3, override_ts=buf_0)
+
+        env_0 = dict(TILE_BUFFER_SIZE='0')
+        env_2 = dict(TILE_BUFFER_SIZE='2')
+        self._ts_overrides(buf_2, min_1 | buf_2, override_layer=min_2 | buf_3, override_ts=buf_0, env=env_0)
+        self._ts_overrides(buf_2, buf_1, env=env_2)
+        self._ts_overrides(buf_2, min_2 | buf_3, env=env_0)
+        self._ts_overrides(buf_2, min_1 | buf_3, override_ts=buf_0, env=env_2)
+        self._ts_overrides(buf_2, buf_2, dict(TILE_BUFFER_SIZE=''))
+
+        # str parsing
+        self._ts_overrides(dict(buffer_size=2), dict(buffer_size='2'))
 
 
 if __name__ == '__main__':
