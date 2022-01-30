@@ -3,7 +3,7 @@
 Usage:
   generate-tm2source <tileset>
                      [--pghost=<host>] [--pgport=<port>] [--dbname=<db>]
-                     [--user=<user>] [--password=<password>] [--verbose]
+                     [--user=<user>] [--password=<password>]
                      [--host=<host>] [--port=<port>] [--database=<db>]
   generate-tm2source --help
   generate-tm2source --version
