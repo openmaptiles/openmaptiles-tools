@@ -196,13 +196,26 @@ class Layer:
 
     @property
     def buffer_size(self) -> int:
-        """Each layer must have a default buffer size, with either `buffer_size` or `min_buffer_size` or both.
-        If both are set, `buffer_size` must be >= `min_buffer_size`.
-        min_buffer_size is only used when there is a global buffer size override,
-        e.g. if global `buffer_size` is set to 0, and layer's `min_buffer_size` is set to 4, the result is 4.
-        Per layer tileset overrides are allowed for both `buffer_size` and `min_buffer_size`.
-        Per layer overrides have higher priority than global overrides, but less than ENV var.
         """
+        Layer's buffer size is computed from `buffer_size` and `min_buffer_size` from layer and tileset files,
+        as well the TILE_BUFFER_SIZE env var using this logic:
+
+        max(
+          first_found_value(
+            TILE_BUFFER_SIZE env variable,
+            buffer_size set in the tileset yaml file layer's section (per layer override),
+            buffer_size set in the tileset yaml file at the top level (global override),
+            buffer_size set in the layer yaml file,
+            0),
+          first_found_value(
+            min_buffer_size set in the tileset yaml file layer's section (per layer override),
+            min_buffer_size set in the layer yaml file,
+            0)
+        )
+
+        Note that the layer yaml file must define either buffer_size or min_buffer_size or both.
+        """
+        # Read layer yaml file
         size = assert_int(self.definition['layer'].get('buffer_size'), 'buffer_size', min_val=0)
         min_size = assert_int(self.definition['layer'].get('min_buffer_size'), 'min_buffer_size', min_val=0)
         if size is None and min_size is None:
@@ -211,16 +224,17 @@ class Layer:
             if size < min_size:
                 raise ValueError(f'Layer "{self.id}" has buffer_size less than min_buffer_size')
         elif size is None:
-            # size is not set, use min_size as default
-            size = min_size
+            # size is not set, will use min_size as default (at the end)
+            size = 0
         else:
             # size is set, min_size is not set
             min_size = 0
-
+        # Override with tileset global values
         if self.tileset:
             val = assert_int(self.tileset.overrides.get('buffer_size'), 'buffer_size global override', min_val=0)
             if val is not None:
                 size = val
+        # Override with tileset per-layer values
         if self.overrides:
             val = assert_int(self.overrides.get('buffer_size'), 'buffer_size layer override', min_val=0)
             min_val = assert_int(self.overrides.get('min_buffer_size'), 'min_buffer_size layer override', min_val=0)
@@ -230,12 +244,14 @@ class Layer:
                 size = val
             if min_val is not None:
                 min_size = min_val
+        # Override with ENV variables
         # Allow empty env var to be the same as unset.
         getenv = self.tileset.getenv if self.tileset else os.getenv
         tbs = getenv('TILE_BUFFER_SIZE', '')
         val = assert_int(tbs if tbs != '' else None, 'TILE_BUFFER_SIZE env var', min_val=0)
         if val is not None:
             size = val
+        # Ensure buffer is no less than the minimum
         if size < min_size:
             size = min_size
         return size
