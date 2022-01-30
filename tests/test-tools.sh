@@ -15,6 +15,9 @@ set -x
 
 generate-tm2source "$TESTLAYERS/testmaptiles.yaml" \
       --host="pghost" --port=5432 --database="pgdb" --user="pguser" --password="pgpswd" > "$BUILD/tm2source.yml"
+generate-tm2source "$TESTLAYERS/testmaptiles.yaml" \
+      --pghost="pghost" --pgport=5432 --dbname="pgdb" --user="pguser" --password="pgpswd" > "$BUILD/tm2source2.yml"
+generate-tm2source "$TESTLAYERS/testmaptiles.yaml" > "$BUILD/tm2source3.yml"
 
 generate-imposm3  "$TESTLAYERS/testmaptiles.yaml"                                 > "$BUILD/imposm3.yaml"
 

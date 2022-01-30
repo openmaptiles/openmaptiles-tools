@@ -61,15 +61,21 @@ async def show_settings(conn: Connection, verbose=True) -> Dict[str, str]:
     return results
 
 
-def parse_pg_args(args):
+def parse_pg_args(args, legacy_params=False):
+    if legacy_params:
+        tmp_host = args.get('--host')
+        tmp_port = args.get('--port')
+        tmp_db = args.get('--database')
+    else:
+        tmp_host, tmp_port, tmp_db = None, None, None
     pghost = coalesce(
-        args.get('--pghost'), getenv('POSTGRES_HOST'), getenv('PGHOST'),
+        tmp_host, args.get('--pghost'), getenv('POSTGRES_HOST'), getenv('PGHOST'),
         'localhost')
     pgport = coalesce(
-        args.get('--pgport'), getenv('POSTGRES_PORT'), getenv('PGPORT'),
+        tmp_port, args.get('--pgport'), getenv('POSTGRES_PORT'), getenv('PGPORT'),
         '5432')
     dbname = coalesce(
-        args.get('--dbname'), getenv('POSTGRES_DB'), getenv('PGDATABASE'),
+        tmp_db, args.get('--dbname'), getenv('POSTGRES_DB'), getenv('PGDATABASE'),
         'openmaptiles')
     user = coalesce(
         args.get('--user'), getenv('POSTGRES_USER'), getenv('PGUSER'),
