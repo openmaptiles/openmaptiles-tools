@@ -197,7 +197,7 @@ class Layer:
     @property
     def buffer_size(self) -> int:
         """Each layer must have a default buffer size, with either `buffer_size` or `min_buffer_size` or both.
-        If both are set, buffer_size must be >= min_buffer_size.
+        If both are set, `buffer_size` must be >= `min_buffer_size`.
         min_buffer_size is only used when there is a global buffer size override,
         e.g. if global is set to 0, and layer's min_buffer_size is set to 4, the result is 4.
         Per layer tileset overrides are allowed for both buffer_size and min_buffer_size.
