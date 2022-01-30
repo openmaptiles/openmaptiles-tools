@@ -200,7 +200,7 @@ class Layer:
         If both are set, `buffer_size` must be >= `min_buffer_size`.
         min_buffer_size is only used when there is a global buffer size override,
         e.g. if global `buffer_size` is set to 0, and layer's `min_buffer_size` is set to 4, the result is 4.
-        Per layer tileset overrides are allowed for both buffer_size and min_buffer_size.
+        Per layer tileset overrides are allowed for both `buffer_size` and `min_buffer_size`.
         Per layer overrides have higher priority than global overrides, but less than ENV var.
         """
         size = assert_int(self.definition['layer'].get('buffer_size'), 'buffer_size', min_val=0)
