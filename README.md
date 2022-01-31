@@ -353,7 +353,7 @@ generate-doc <tileset>
 ### Generate MBTiles tile snapshot file
 
 `generate-tiles` script generate tiles from PostgreSQL using [tilelive-copy](https://github.com/mapbox/tilelive#bintilelive-copy) with [tilelive-pgquery](https://github.com/nyurik/tilelive-pgquery#tilelive-pgquery).
-If run with `LIST_FILE` environment variable, this script will only generate tiles list in the list file, and it will ignore min/mid/max zoom values. For example, set `LIST_FILE=/export/tiles.txt` to match what was previously done with `export-list.sh` script.
+If run with `LIST_FILE` environment variable, this script will only generate tiles given in the list file, and it will ignore min/mid/max zoom values. For example, set `LIST_FILE=/export/tiles.txt` to match what was previously done with `export-list.sh` script.
 
 If run without `LIST_FILE/MID_ZOOM` environment variables, this script will generate all tiles from `MIN_ZOOM` to `MAX_ZOOM` (inclusive).
 
