@@ -6,7 +6,7 @@ set -o nounset
 #
 # Generate tiles from postgres using tilelive-copy and tilelive-pgquery
 #
-# If run with LIST_FILE parameter, this script will only generate tiles list in the list file,
+# If run with LIST_FILE parameter, this script will only generate tiles given in the list file,
 # and it will ignore min/mid/max zoom values. For example, set LIST_FILE=/export/tiles.txt .
 # Otherwise, if run without MID_ZOOM parameter, generate all tiles from MIN_ZOOM to MAX_ZOOM.
 # If MID_ZOOM is set, it will first generate all tiles from MIN_ZOOM to MID_ZOOM. Afterwards,
