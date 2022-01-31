@@ -86,7 +86,7 @@ function run_tilelive_copy() {
 }
 
 
-if [[ -z "${LIST_FILE-}" ]]; then
+if [[ -n "${LIST_FILE-}" ]]; then
 
   # Generate all tiles given in a file LIST_FILE.
   echo "$(date '+%Y-%m-%d %H-%M-%S') Generating tiles from a list $LIST_FILE from $HOST_COUNT servers, using $MAX_HOST_CONNECTIONS connections per server, $ALL_STREAMS streams"
