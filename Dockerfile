@@ -1,4 +1,4 @@
-FROM golang:1.13 as go-builder
+FROM golang:1.17 as go-builder
 ARG IMPOSM_REPO="https://github.com/omniscale/imposm3.git"
 ARG IMPOSM_VERSION="v0.11.1"
 
