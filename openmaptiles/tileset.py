@@ -1,6 +1,7 @@
 from dataclasses import dataclass
+import os
 from pathlib import Path
-from typing import List, Union, Dict, Any, Callable
+from typing import List, Union, Dict, Any, Callable, Optional, NewType
 
 import sys
 import warnings
@@ -10,11 +11,33 @@ from deprecated import deprecated
 from .utils import print_err
 
 
+GetEnv = NewType('GetEnv', Callable[[str, Optional[str]], Optional[str]])
+
+
 def tag_fields_to_sql(fields):
     """Converts a list of fields stored in the tags hstore into a list of SQL fields:
         name:en   =>   NULLIF(tags->'name:en', '') AS name:en
     """
     return [f"NULLIF(tags->'{fld}', '') AS \"{fld}\"" for fld in fields]
+
+
+def assert_int(value, name: str, min_val: Optional[int] = None, max_val: Optional[int] = None, required=False):
+    if value is None:
+        if required:
+            raise ValueError(f'Value {name} does not exist')
+        return None
+    elif isinstance(value, str):
+        try:
+            value = int(value)
+        except ValueError:
+            raise ValueError(f'Unable to parse {name} value "{value}" as an integer')
+    elif not isinstance(value, int):
+        raise ValueError(f'The {name} value was expected to be an integer, but found {type(value).__name__} "{value}"')
+    if min_val is not None and value < min_val:
+        raise ValueError(f'The {name} value {value} is less than the minimum allowed {min_val}')
+    if max_val is not None and value > max_val:
+        raise ValueError(f'The {name} value {value} is more than the maximum allowed {max_val}')
+    return value
 
 
 @dataclass
@@ -70,14 +93,17 @@ class Layer:
     def __init__(self,
                  layer_source: Union[str, Path, ParsedData],
                  tileset: 'Tileset' = None,
-                 index: int = None):
+                 index: int = None,
+                 overrides: dict = None):
         """
         :param layer_source: load layer from this source, e.g. a file
         :param tileset: parent tileset object (optional)
         :param index: layer's position index within the tileset
+        :param overrides: additional override parameters for this layer
         """
         self.tileset = tileset
         self.index = index
+        self.overrides = overrides
 
         if isinstance(layer_source, ParsedData):
             self.filename = layer_source.path
@@ -116,7 +142,7 @@ class Layer:
             requires = requires.copy()  # dict will be modified to detect unrecognized properties
 
         err = 'If set, "requires" parameter must be a map with optional "layers", "tables", and "functions" sub-elements. Each sub-element must be a string or a list of strings. If "requires" is a list or a string itself, it is treated as a list of layers. ' + \
-            'Optionally add "helpText" sub-element string to help the user with generating missing tables and functions.'
+              'Optionally add "helpText" sub-element string to help the user with generating missing tables and functions.'
         self.requires_layers = get_requires_prop(
             requires, 'layers',
             err + '"requires.layers" must be an ID of another layer, or a list of layer IDs.')
@@ -147,17 +173,6 @@ class Layer:
             # osm_id column twice - once for feature_id, and once as an attribute
             raise ValueError('key_field_as_attribute=yes is not yet implemented')
 
-    @deprecated(version='3.2.0', reason='use named properties instead')
-    def __getitem__(self, attr):
-        if attr in self.definition:
-            return self.definition[attr]
-        elif attr == 'fields':
-            return {}
-        elif attr == 'description':
-            return ''
-        else:
-            raise KeyError
-
     def get_fields(self) -> List[str]:
         """Get a list of field names this layer generates.
            Geometry field is not included."""
@@ -181,7 +196,65 @@ class Layer:
 
     @property
     def buffer_size(self) -> int:
-        return self.definition['layer']['buffer_size']
+        """
+        Layer's buffer size is computed from `buffer_size` and `min_buffer_size` from layer and tileset files,
+        as well the TILE_BUFFER_SIZE env var using this logic:
+
+        max(
+          first_found_value(
+            TILE_BUFFER_SIZE env variable,
+            buffer_size set in the tileset yaml file layer's section (per layer override),
+            buffer_size set in the tileset yaml file at the top level (global override),
+            buffer_size set in the layer yaml file,
+            0),
+          first_found_value(
+            min_buffer_size set in the tileset yaml file layer's section (per layer override),
+            min_buffer_size set in the layer yaml file,
+            0)
+        )
+
+        Note that the layer yaml file must define either buffer_size or min_buffer_size or both.
+        """
+        # Read layer yaml file
+        size = assert_int(self.definition['layer'].get('buffer_size'), 'buffer_size', min_val=0)
+        min_size = assert_int(self.definition['layer'].get('min_buffer_size'), 'min_buffer_size', min_val=0)
+        if size is None and min_size is None:
+            raise ValueError(f'Layer "{self.id}" is missing an integer buffer_size and/or min_buffer_size')
+        elif size is not None and min_size is not None:
+            if size < min_size:
+                raise ValueError(f'Layer "{self.id}" has buffer_size less than min_buffer_size')
+        elif size is None:
+            # size is not set, will use min_size as default (at the end)
+            size = 0
+        else:
+            # size is set, min_size is not set
+            min_size = 0
+        # Override with tileset global values
+        if self.tileset:
+            val = assert_int(self.tileset.overrides.get('buffer_size'), 'buffer_size global override', min_val=0)
+            if val is not None:
+                size = val
+        # Override with tileset per-layer values
+        if self.overrides:
+            val = assert_int(self.overrides.get('buffer_size'), 'buffer_size layer override', min_val=0)
+            min_val = assert_int(self.overrides.get('min_buffer_size'), 'min_buffer_size layer override', min_val=0)
+            if val is not None and min_val is not None and val < min_val:
+                raise ValueError(f'Layer overrides for "{self.id}" have buffer_size less than min_buffer_size')
+            if val is not None:
+                size = val
+            if min_val is not None:
+                min_size = min_val
+        # Override with ENV variables
+        # Allow empty env var to be the same as unset.
+        getenv = self.tileset.getenv if self.tileset else os.getenv
+        tbs = getenv('TILE_BUFFER_SIZE', '')
+        val = assert_int(tbs if tbs != '' else None, 'TILE_BUFFER_SIZE env var', min_val=0)
+        if val is not None:
+            size = val
+        # Ensure buffer is no less than the minimum
+        if size < min_size:
+            size = min_size
+        return size
 
     @property
     def max_size(self) -> int:
@@ -255,24 +328,33 @@ class Tileset:
     filename: Path
     definition: dict
     layers: List[Layer]
+    getenv: GetEnv
 
     @staticmethod
     def parse(tileset_source: Union[str, Path, ParsedData]) -> 'Tileset':
         return Tileset(tileset_source)
 
-    def __init__(self, tileset_source: Union[str, Path, ParsedData]):
+    def __init__(self, tileset_source: Union[str, Path, ParsedData], getenv: GetEnv = None):
+        """Create a new tileset from a file (str|Path), or already parsed.
+        Optionally provide environment variables (used in unit testing)."""
+        self.getenv = getenv or os.getenv
         if isinstance(tileset_source, ParsedData):
             self.filename = tileset_source.path
-            self.definition = tileset_source.data
+            data = tileset_source.data
         else:
             self.filename = Path(tileset_source).resolve()
-            self.definition = parse_file(self.filename)
+            data = parse_file(self.filename)
 
-        self.definition = self.definition['tileset']
+        self.definition = data['tileset']
         self.layers = []
         self.layers_by_id = {}
-        for index, layer_filename in enumerate(self.definition['layers']):
-            layer = Layer(layer_filename, self, index)
+
+        layer_obj: Union[str, Path, ParsedData, dict]
+        for index, layer_obj in enumerate(self.definition['layers']):
+            if isinstance(layer_obj, dict):
+                layer = Layer(layer_obj['file'], self, index, layer_obj)
+            else:
+                layer = Layer(layer_obj, self, index, overrides=None)
             if layer.id in self.layers_by_id:
                 raise ValueError(f"Layer '{layer.id}' is defined more than once")
             self.layers.append(layer)
@@ -300,13 +382,6 @@ class Tileset:
                              + ', '.join(unresolved.keys()))
 
         validate_properties(self, f'Tileset {self.filename}')
-
-    @deprecated(version='3.2.0', reason='use named properties instead')
-    def __getitem__(self, attr):
-        if attr in self.definition:
-            return self.definition[attr]
-        else:
-            raise KeyError
 
     @property
     def attribution(self) -> str:
@@ -359,6 +434,10 @@ class Tileset:
     @property
     def name(self) -> str:
         return self.definition['name']
+
+    @property
+    def overrides(self) -> dict:
+        return self.definition.get('overrides', {})
 
     @property
     def pixel_scale(self) -> int:
