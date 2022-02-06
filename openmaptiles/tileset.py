@@ -85,6 +85,7 @@ class Layer:
     imposm_mappings: List[dict]
     schemas: List[str]
     fields: List[Field]
+    vars: Dict[str, Any]
 
     @staticmethod
     def parse(layer_source: Union[str, Path, ParsedData]) -> 'Layer':
@@ -172,6 +173,41 @@ class Layer:
             # If 'yes', we will need to generate a wrapper query that includes
             # osm_id column twice - once for feature_id, and once as an attribute
             raise ValueError('key_field_as_attribute=yes is not yet implemented')
+        self.vars = self.__init_vars()
+
+    def __init_vars(self):
+        vars_layer = self.definition['layer'].get('vars', {})
+
+        self.__vars_overrides_tileset(vars_layer)
+        self.__vars_overrides_layer(vars_layer)
+        self.__vars_overrides_environment(vars_layer)
+
+        return vars_layer
+
+    def __vars_overrides_tileset(self, vars_layer):
+        tileset_overrides_vars = self.tileset.overrides.get('vars', {}) if self.tileset else {}
+
+        for name, value in tileset_overrides_vars.items():
+            if name in vars_layer:
+                vars_layer[name] = value
+
+    def __vars_overrides_layer(self, vars_layer):
+        layer_overrides = self.overrides if self.overrides else {}
+        layer_overrides_vars = layer_overrides.get('vars', {})
+
+        for name, value in layer_overrides_vars.items():
+            if name in vars_layer:
+                vars_layer[name] = value
+            else:
+                raise ValueError(f'Variable {name} overrided is not defined in the layer')
+
+    def __vars_overrides_environment(self, vars_layer):
+        getenv = self.tileset.getenv if self.tileset else os.getenv
+
+        for name in vars_layer.keys():
+            env_var_value = getenv(f'OMT_VAR_{name}', None)
+            if env_var_value is not None:
+                vars_layer[name] = env_var_value
 
     def get_fields(self) -> List[str]:
         """Get a list of field names this layer generates.

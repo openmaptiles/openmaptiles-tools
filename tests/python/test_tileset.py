@@ -101,6 +101,56 @@ class TilesetTestCase(TestCase):
         self._ts_parse(dict(layers=['c1'], tables=['a', 'b'], functions=['x', 'y']),
                        ['c1'], ['a', 'b'], ['x', 'y'], extra)
 
+    def _ts_vars(self, expected_vars: dict,
+                 layer: Optional[dict] = None,
+                 override_ts: Optional[dict] = None,
+                 override_layer: Optional[dict] = None,
+                 env: Optional[dict] = None):
+        data = parsed_data([Case('my_id', 'my_query;')])
+
+        ts_data = data.data['tileset']
+        if override_ts is not None:
+            ts_data['overrides'] = override_ts
+        if layer is not None:
+            ts_data['layers'][0]['file'].data['layer'].update(layer)
+        if override_layer is not None:
+            ts_data['layers'][0].update(override_layer)
+
+        ts = Tileset(data, getenv=env.get if env else None)
+
+        for k in expected_vars.keys():
+            self.assertEqual(ts.layers_by_id['my_id'].vars.get(k), expected_vars[k])
+
+    def test_layer_var(self):
+        data = parsed_data([Case('my_id', 'my_query;')])
+        ts = Tileset(data)
+        self.assertEqual(ts.layers_by_id['my_id'].vars, {})
+        self._ts_vars(dict(custom_zoom=None))
+        self._ts_vars(dict(custom_zoom=14),
+                      dict(vars=dict(custom_zoom=14)))
+        self._ts_vars(dict(custom_zoom=12),
+                      dict(vars=dict(custom_zoom=14)),
+                      override_layer=dict(vars=dict(custom_zoom=12)))
+        self._ts_vars(dict(custom_zoom=12),
+                      dict(vars=dict(custom_zoom=14)),
+                      override_ts=dict(vars=dict(custom_zoom=12)))
+        self._ts_vars(dict(custom_zoom=None),
+                      dict(),
+                      override_ts=dict(vars=dict(custom_zoom=12)))
+        self._ts_vars(dict(custom_zoom=13),
+                      dict(vars=dict(custom_zoom=14)),
+                      override_layer=dict(vars=dict(custom_zoom=13)),
+                      override_ts=dict(vars=dict(custom_zoom=12)))
+        self.assertRaises(ValueError, self._ts_vars,
+                          dict(custom_zoom=14),
+                          dict(vars=dict(custom_zoom=14)),
+                          override_layer=dict(vars=dict(custom_zoom2=12)))
+
+        env = dict(OMT_VAR_custom_zoom=12)
+        self._ts_vars(dict(custom_zoom=12),
+                      dict(vars=dict(custom_zoom=13)),
+                      env=env)
+
 
 if __name__ == '__main__':
     main()
