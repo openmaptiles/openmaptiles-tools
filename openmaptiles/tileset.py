@@ -10,7 +10,6 @@ from deprecated import deprecated
 
 from .utils import print_err
 
-
 GetEnv = NewType('GetEnv', Callable[[str, Optional[str]], Optional[str]])
 
 
@@ -85,7 +84,6 @@ class Layer:
     imposm_mappings: List[dict]
     schemas: List[str]
     fields: List[Field]
-    vars: Dict[str, Any]
 
     @staticmethod
     def parse(layer_source: Union[str, Path, ParsedData]) -> 'Layer':
@@ -104,7 +102,8 @@ class Layer:
         """
         self.tileset = tileset
         self.index = index
-        self.overrides = overrides
+        self.overrides = overrides if overrides is not None else {}
+        self._getenv = self.tileset.getenv if self.tileset else os.getenv
 
         if isinstance(layer_source, ParsedData):
             self.filename = layer_source.path
@@ -173,41 +172,29 @@ class Layer:
             # If 'yes', we will need to generate a wrapper query that includes
             # osm_id column twice - once for feature_id, and once as an attribute
             raise ValueError('key_field_as_attribute=yes is not yet implemented')
-        self.vars = self.__init_vars()
 
-    def __init_vars(self):
-        vars_layer = self.definition['layer'].get('vars', {})
+        self._vars = self._assemble_vars()
 
-        self.__vars_overrides_tileset(vars_layer)
-        self.__vars_overrides_layer(vars_layer)
-        self.__vars_overrides_environment(vars_layer)
+    def _assemble_vars(self) -> Dict[str, str]:
+        # Compute layer variables including the override logic.
+        # Priority order (last wins):  layer, tileset global, tileset per layer, env vars
+        result = self.definition['layer'].get('vars', {})
+        if self.tileset:
+            for name, value in self.tileset.overrides.get('vars', {}).items():
+                if name in result:
+                    result[name] = value
+        for name, value in self.overrides.get('vars', {}).items():
+            if name not in result:
+                raise ValueError(f'Layer override variable "{name}" is not defined in the layer')
+            result[name] = value
+        for name in result.keys():
+            result[name] = self.getenv(f'OMT_VAR_{name}', result[name])
+        return result
 
-        return vars_layer
-
-    def __vars_overrides_tileset(self, vars_layer):
-        tileset_overrides_vars = self.tileset.overrides.get('vars', {}) if self.tileset else {}
-
-        for name, value in tileset_overrides_vars.items():
-            if name in vars_layer:
-                vars_layer[name] = value
-
-    def __vars_overrides_layer(self, vars_layer):
-        layer_overrides = self.overrides if self.overrides else {}
-        layer_overrides_vars = layer_overrides.get('vars', {})
-
-        for name, value in layer_overrides_vars.items():
-            if name in vars_layer:
-                vars_layer[name] = value
-            else:
-                raise ValueError(f'Variable {name} overrided is not defined in the layer')
-
-    def __vars_overrides_environment(self, vars_layer):
-        getenv = self.tileset.getenv if self.tileset else os.getenv
-
-        for name in vars_layer.keys():
-            env_var_value = getenv(f'OMT_VAR_{name}', None)
-            if env_var_value is not None:
-                vars_layer[name] = env_var_value
+    def getenv(self, name: str, default: str = '') -> str:
+        # Allow empty env var to be the same as unset.
+        value = self._getenv(name, '')
+        return value if value != '' else default
 
     def get_fields(self) -> List[str]:
         """Get a list of field names this layer generates.
@@ -281,9 +268,7 @@ class Layer:
             if min_val is not None:
                 min_size = min_val
         # Override with ENV variables
-        # Allow empty env var to be the same as unset.
-        getenv = self.tileset.getenv if self.tileset else os.getenv
-        tbs = getenv('TILE_BUFFER_SIZE', '')
+        tbs = self.getenv('TILE_BUFFER_SIZE')
         val = assert_int(tbs if tbs != '' else None, 'TILE_BUFFER_SIZE env var', min_val=0)
         if val is not None:
             size = val
@@ -343,6 +328,11 @@ class Layer:
         else:
             fields = tag_fields_to_sql(Tileset.auto_language_fields)
         return self.raw_query.format(name_languages=(', '.join(fields)))
+
+    def get_var(self, name: str) -> str:
+        if name not in self._vars:
+            raise ValueError(f'Variable {name} does not exist in layer {self.id}')
+        return str(self._vars[name])
 
     @property
     @deprecated(version='5.4.0', reason='use requires_layers property instead')

@@ -253,22 +253,24 @@ def to_sql(sql: str, layer: Layer, nodata: bool):
     """Clean up SQL, and perform any needed code injections"""
     sql = sql.strip()
 
-    # Replace '%%FIELD_MAPPING: <field_name>%%' with fields from layer definition
-    def field_map(match):
-        return FieldExpander(match.group(2), layer, match.group(1)).parse()
+    # Substitute  "%% <cmd> : <param> %%"   with cmd-specific value:
+    #   * FIELD_MAPPING: field_name  -> generated SQL CASE statement
+    #   * VAR: var_name              -> a variable value from the layer
+    def substitute(match):
+        indent = match.group(1)
+        cmd = match.group(2)
+        param = match.group(3)
+        if cmd == 'FIELD_MAPPING':
+            return FieldExpander(param, layer, indent).parse()
+        elif cmd == 'VAR':
+            result = layer.get_var(param)
+            if result is None:
+                raise ValueError(f'Variable {param} does not exist in layer {layer.id}')
+            return indent + result
+        else:
+            raise ValueError(f'Unrecognized substitution {cmd}')
 
-    # replace FIELD_MAPPING:<field_name> param with the generated SQL CASE statement
-    sql = re.sub(r'( *)%%\s*FIELD_MAPPING\s*:\s*([a-zA-Z0-9_-]+)\s*%%', field_map, sql)
-
-    def var_substitution(match):
-        var_name = match.group(1)
-        value = layer.vars.get(var_name)
-        if value is None:
-            raise ValueError(f'Variable {var_name} is not defined on the layer')
-        return str(value)
-
-    # replace %%VAR:<variable_name>%% with the corresponding layer variable
-    sql = re.sub(r'%%\s*VAR\s*:\s*([a-zA-Z0-9_-]+)\s*%%', var_substitution, sql)
+    sql = re.sub(r'( *)%%\s*(\w+)\s*:\s*(\w+)\s*%%', substitute, sql)
 
     # inject 'WITH NO DATA' for the materialized views
     if nodata:
