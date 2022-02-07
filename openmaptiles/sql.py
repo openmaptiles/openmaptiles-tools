@@ -260,6 +260,16 @@ def to_sql(sql: str, layer: Layer, nodata: bool):
     # replace FIELD_MAPPING:<field_name> param with the generated SQL CASE statement
     sql = re.sub(r'( *)%%\s*FIELD_MAPPING\s*:\s*([a-zA-Z0-9_-]+)\s*%%', field_map, sql)
 
+    def var_substitution(match):
+        var_name = match.group(1)
+        value = layer.vars.get(var_name)
+        if value is None:
+            raise ValueError(f'Variable {var_name} is not defined on the layer')
+        return str(value)
+
+    # replace %%VAR:<variable_name>%% with the corresponding layer variable
+    sql = re.sub(r'%%\s*VAR\s*:\s*([a-zA-Z0-9_-]+)\s*%%', var_substitution, sql)
+
     # inject 'WITH NO DATA' for the materialized views
     if nodata:
         sql = re.sub(

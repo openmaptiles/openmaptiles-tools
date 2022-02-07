@@ -2,7 +2,8 @@ from typing import List, Union, Dict
 from unittest import main, TestCase
 from tests.python.test_helpers import Case, parsed_data
 
-from openmaptiles.sql import collect_sql, sql_assert_table, sql_assert_func
+from openmaptiles.tileset import Tileset
+from openmaptiles.sql import collect_sql, sql_assert_table, sql_assert_func, to_sql
 
 
 def expected_sql(case: Case):
@@ -98,6 +99,17 @@ $$ LANGUAGE SQL IMMUTABLE;
         self._test('a18', [c12], dict(c12=[c12]))
         self._test('a19', [c13], dict(c13=[c13]))
         self._test('a20', [c14], dict(c14=[c14]))
+
+    def test_var_substitution(self):
+        vars = dict(vars=dict(var_substitution_1=14, var_substitution_2='az'))
+        data = parsed_data(Case('my_id', ''))
+        data.data['tileset']['layers'][0]['file'].data['layer'].update(vars)
+        ts = Tileset(data)
+        layer = ts.layers_by_id['my_id']
+
+        self.assertEqual(to_sql('SELECT * from test where zoom > %%VAR:var_substitution_1%%', layer, False), 'SELECT * from test where zoom > 14')
+        self.assertEqual(to_sql("SELECT * from test where zoom > '%%VAR:var_substitution_2%%'", layer, False), "SELECT * from test where zoom > 'az'")
+        self.assertRaises(ValueError, to_sql, 'SELECT * from test where zoom > %%VAR:var_substitution_3%%', layer, False)
 
 
 if __name__ == '__main__':
