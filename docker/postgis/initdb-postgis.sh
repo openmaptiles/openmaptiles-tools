@@ -8,8 +8,8 @@ echo "  Loading OMT postgis extensions"
 echo "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
 
 for db in template_postgis "$POSTGRES_DB"; do
-echo "Loading extensions into $db"
-PGUSER="$POSTGRES_USER" psql --dbname="$db" <<-'EOSQL'
+  echo "Loading extensions into $db"
+  PGUSER="$POSTGRES_USER" "${psql[@]}" --dbname="$db" <<-'EOSQL'
     -- Cleanup. Ideally parent container shouldn't pre-install those.
     DROP EXTENSION IF EXISTS postgis_tiger_geocoder;
     DROP EXTENSION IF EXISTS postgis_topology;
