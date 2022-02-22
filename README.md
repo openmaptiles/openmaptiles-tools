@@ -5,6 +5,7 @@ It includes tools to prepare Imposm mappings and SQL files based on layers defin
 We encourage other people to use this for their vector tile projects as well since this approach works well for us.
 
 ## Docker Images
+The repository hosts the code for the following Docker images. They can be built using `make build-all-dockers`.
 ##### openmaptiles-tools [![](https://img.shields.io/docker/pulls/openmaptiles/openmaptiles-tools?label=downloads)](https://hub.docker.com/r/openmaptiles/openmaptiles-tools) [![](https://img.shields.io/docker/stars/openmaptiles/openmaptiles-tools?label=stars)](https://hub.docker.com/r/openmaptiles/openmaptiles-tools)
 A collection of tools for downloading, parsing, and generating map tiles described below.
 
