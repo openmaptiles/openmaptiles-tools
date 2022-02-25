@@ -12,7 +12,7 @@ Usage:
   <min-zoom>            The minimum zoom for tile to be produced
   <max-zoom>            The maximum zoom for tile to be produced
 
-Origin: https://github.com/Kikehulk/makina-maps/blob/master/nginx/tile_multiplier.py
+Thanks @frodrigo for https://github.com/makina-maps/makina-maps/blob/master/nginx/tile_multiplier.py
 """
 
 import sys
