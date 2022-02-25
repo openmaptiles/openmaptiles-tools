@@ -20,6 +20,7 @@ from docopt import docopt
 
 import openmaptiles
 
+
 def main(args):
     min_zoom = int(args['<min-zoom>'])
     max_zoom = int(args['<max-zoom>'])
@@ -50,7 +51,8 @@ def main(args):
             s *= 2
             for sx in range(0, s):
                 for sy in range(0, s):
-                    print_once(zz, xx+sx, yy+sy)
+                    print_once(zz, xx + sx, yy + sy)
+
 
 if __name__ == '__main__':
     main(docopt(__doc__, version=openmaptiles.__version__))
