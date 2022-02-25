@@ -1,0 +1,56 @@
+#!/usr/bin/env python3
+"""
+Expand a list of changed tiles to higher and/or lower zoom levels.
+
+For each line of the form z/x/y in its standard input, representing a tile, the program outputs all tiles that overlap it for all zoom levels between <min_zoom> and <max_zoom>.
+Each tile will appear once in its output.
+The input zoom level need not be within the <min_zoom>..<max_zoom> range.
+
+Usage:
+  tile_miltiplier <min-zoom> <max-zoom>
+
+  <min-zoom>            The minimum zoom for tile to be produced
+  <max-zoom>            The maximum zoom for tile to be produced
+
+Origin: https://github.com/Kikehulk/makina-maps/blob/master/nginx/tile_multiplier.py
+"""
+
+import sys
+from docopt import docopt
+
+import openmaptiles
+
+def main(args):
+    min_zoom = int(args['<min-zoom>'])
+    max_zoom = int(args['<max-zoom>'])
+    tile_set = set()
+
+    def print_once(z, x, y):
+        if min_zoom <= z <= max_zoom:
+            tile = f'{z}/{x}/{y}'
+            num_tiles = len(tile_set)
+            tile_set.add(tile)
+            if num_tiles < len(tile_set):
+                print(tile)
+
+    for line in sys.stdin:
+        z, x, y = [int(i) for i in line.split('/')]
+        # Original zoom
+        print_once(z, x, y)
+        # Lower zoom levels
+        xx, yy = x, y
+        for zz in range(z - 1, min_zoom - 1, -1):
+            xx, yy = xx // 2, yy // 2
+            print_once(zz, xx, yy)
+        # Higher zoom levels
+        xx, yy = x, y
+        s = 1
+        for zz in range(z + 1, max_zoom + 1):
+            xx, yy = xx * 2, yy * 2
+            s *= 2
+            for sx in range(0, s):
+                for sy in range(0, s):
+                    print_once(zz, xx+sx, yy+sy)
+
+if __name__ == '__main__':
+    main(docopt(__doc__, version=openmaptiles.__version__))
