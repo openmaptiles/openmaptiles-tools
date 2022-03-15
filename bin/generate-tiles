@@ -74,16 +74,15 @@ ${NOGZIP:+&nogzip=${NOGZIP}}\
 ${USE_KEY_COLUMN:+&key=${USE_KEY_COLUMN}}\
 ${TEST_ON_STARTUP_TILE:+&testOnStartup=${TEST_ON_STARTUP}}"
 
-function run_tilelive_copy() {
-  set -x -o errexit
+function run_tilelive_copy() (
+  set -x
   tilelive-copy "${@}" \
         --exit \
         --retry="$RETRY" \
         --concurrency="$ALL_STREAMS" \
         "$PGQUERY" \
         "mbtiles://${MBTILES_PATH}"
-  { set +x ;} 2> /dev/null
-}
+)
 
 
 if [[ -n "${LIST_FILE-}" ]]; then
@@ -95,13 +94,13 @@ if [[ -n "${LIST_FILE-}" ]]; then
 elif [[ -z "${MID_ZOOM-}" ]]; then
 
   # One pass zoom - generate all tiles in one pass
-  echo "$(date '+%Y-%m-%d %H-%M-%S') Generating zoom $MIN_ZOOM..$MAX_ZOOM from $HOST_COUNT servers, using $MAX_HOST_CONNECTIONS connections per server, $ALL_STREAMS parallel streams..."
+  echo "$(date '+%Y-%m-%d %H-%M-%S') Generating zoom $MIN_ZOOM..$MAX_ZOOM inside (${BBOX}) from $HOST_COUNT servers, using $MAX_HOST_CONNECTIONS connections per server, $ALL_STREAMS parallel streams..."
   run_tilelive_copy --scheme="$RENDER_SCHEME" --bounds="$BBOX" --minzoom="$MIN_ZOOM" --maxzoom="$MAX_ZOOM" --timeout="${TIMEOUT:-1800000}"
 
 else
 
   # Generate all tiles up to MID_ZOOM. Afterwards only generate those tiles where zoom-1 is not empty
-  echo "$(date '+%Y-%m-%d %H-%M-%S') Generating zoom $MIN_ZOOM..$MID_ZOOM pyramid from $HOST_COUNT servers, using $MAX_HOST_CONNECTIONS connections per server, $ALL_STREAMS parallel streams..."
+  echo "$(date '+%Y-%m-%d %H-%M-%S') Generating zoom $MIN_ZOOM..$MID_ZOOM inside (${BBOX}) from $HOST_COUNT servers, using $MAX_HOST_CONNECTIONS connections per server, $ALL_STREAMS parallel streams..."
   run_tilelive_copy --scheme="$RENDER_SCHEME" --bounds="$BBOX" --minzoom="$MIN_ZOOM" --maxzoom="$MID_ZOOM" --timeout="${TIMEOUT:-1800000}"
 
   # Do not print extra info more than once
@@ -110,23 +109,12 @@ else
   for (( ZOOM=MID_ZOOM+1; ZOOM<=MAX_ZOOM; ZOOM++ )); do
     LIST_FILE="$EXPORT_DIR/tiles_$ZOOM.txt"
     echo "$(date '+%Y-%m-%d %H-%M-%S') Imputing tiles for zoom $ZOOM"
-    set -x
-    mbtiles-tools impute "$MBTILES_PATH" --zoom "$ZOOM" --output "$LIST_FILE" --verbose
-    { set +x ;} 2> /dev/null
+    (set -x; mbtiles-tools impute "$MBTILES_PATH" --zoom "$ZOOM" --output "$LIST_FILE" --verbose)
     echo "$(date '+%Y-%m-%d %H-%M-%S') Generating zoom $ZOOM using a tile list $LIST_FILE from $HOST_COUNT servers, using $MAX_HOST_CONNECTIONS connections per server, $ALL_STREAMS streams"
     # Use smaller timeout by default because high zooms should generate faster
     run_tilelive_copy --scheme=list "--list=$LIST_FILE" --timeout="${TIMEOUT:-180000}"
   done
 
-fi
-
-if [[ -z "${TILESET_FILE:-}" ]]; then
-  echo "WARNING: Env var TILESET_FILE is not set to a valid tileset yaml file. Skipping metadata generation"
-else
-  echo "$(date '+%Y-%m-%d %H-%M-%S') Updating generated tile metadata from $TILESET_FILE"
-  set -x
-  mbtiles-tools meta-generate "$MBTILES_PATH" "$TILESET_FILE" --auto-minmax --show-ranges
-  { set +x ;} 2> /dev/null
 fi
 
 echo "$(date '+%Y-%m-%d %H-%M-%S') Tile generation complete!"
