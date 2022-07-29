@@ -19,7 +19,7 @@ RUN set -eux ;\
     go get github.com/tools/godep ;\
     mkdir /build-bin ;\
     \
-    /bin/bash -c 'echo ""; echo ""; echo "##### Build imposm3 -- https://github.com/osm2vectortiles/imposm3"' >&2 ;\
+    /bin/bash -c 'echo ""; echo ""; echo "##### Build imposm3 -- $IMPOSM_REPO in version $IMPOSM_VERSION"' >&2 ;\
     #
     # get and build specific version of imposm
     git clone --quiet --depth 1 $IMPOSM_REPO -b $IMPOSM_VERSION \
@@ -63,7 +63,7 @@ RUN set -eux ;\
 FROM python:3.9-slim
 LABEL maintainer="Yuri Astrakhan <YuriAstrakhan@gmail.com>"
 
-ARG PG_MAJOR=12
+ARG PG_MAJOR=14
 ARG TOOLS_DIR=/usr/src/app
 
 WORKDIR ${TOOLS_DIR}
@@ -115,7 +115,7 @@ RUN set -eux ;\
         libprotobuf-dev \
         ;\
     # generate-tiles
-    curl -sL https://deb.nodesource.com/setup_12.x | bash -  ;\
+    curl -sL https://deb.nodesource.com/setup_14.x | bash -  ;\
     DEBIAN_FRONTEND=noninteractive apt-get update  ;\
     DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends  \
         nodejs build-essential ;\
@@ -123,7 +123,7 @@ RUN set -eux ;\
     npm config set unsafe-perm true  ;\
     npm install -g \
       @mapbox/mbtiles@0.12.1 \
-      @mapbox/tilelive@6.1.0 \
+      @mapbox/tilelive@6.1.1 \
       tilelive-pgquery@1.2.0 ;\
     \
     /bin/bash -c 'echo ""; echo ""; echo "##### Cleaning up"' >&2 ;\
