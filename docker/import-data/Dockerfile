@@ -31,7 +31,7 @@ RUN set -eux  ;\
     wget --quiet https://dev.maptiler.download/geodata/omt/lake_centerline.geojson
 
 
-FROM osgeo/gdal:alpine-normal-3.4.1
+FROM osgeo/gdal:alpine-normal-3.5.1
 LABEL maintainer="Yuri Astrakhan <YuriAstrakhan@gmail.com>"
 
 ENV DATA_DIR=/import
