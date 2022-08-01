@@ -23,7 +23,7 @@ RUN set -eux  ;\
     unzip -oj water-polygons-split-3857.zip  ;\
     rm water-polygons-split-3857.zip
 
-# Download lake centerlines from https://github.com/lukasmartinelli/osm-lakelines
+# Download lake centerlines from https://dev.maptiler.download/geodata/omt/lake_centerline.geojson
 RUN set -eux  ;\
     DIR=/downloads/lake_centerline  ;\
     mkdir -p "$DIR"  ;\

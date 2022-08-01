@@ -26,9 +26,7 @@ function drop_table() {
 echo "Cleaning up $NATURAL_EARTH_DB - removing all unneeded tables. Initial size $(du -h "$NATURAL_EARTH_DB" | cut -f1)"
 
 #
-# TODO: this list needs to be cleaned up, and maybe remove a few more tables
-# Previous version listed all tables to be dropped, so this list was created by listing
-# all available tables and removing the dropped ones
+# Keep selected tables before import to the PostgreSQL database.
 #
 count=0
 for tbl in $(echo \
