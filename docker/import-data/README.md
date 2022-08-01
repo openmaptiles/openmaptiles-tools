@@ -6,7 +6,7 @@ This is a Docker image containing several datasets used in OpenMapTiles project.
 Centered linestrings for labelling OpenStreetMap lakes from the [osm-lakelines](https://github.com/lukasmartinelli/osm-lakelines) repo.
 
 ### Natural Earth
-A subset of [NaturalEarth](http://www.naturalearthdata.com/) version [4.1](https://github.com/nvkelso/natural-earth-vector/releases/tag/v4.1.0).
+A subset of [NaturalEarth](http://www.naturalearthdata.com/) version [5.1.2](https://github.com/nvkelso/natural-earth-vector/releases/tag/v5.1.2).
 
 ### Water polygons
 Water polygons from [OpenStreetMapData](http://osmdata.openstreetmap.de/).
