@@ -44,9 +44,7 @@ for tbl in $(echo \
     "'ne_10m_lakes'," \
     "'ne_10m_ocean'," \
     "'ne_10m_populated_places'," \
-    "'ne_10m_rivers_lake_centerlines'," \
     "'ne_50m_admin_0_boundary_lines_land'," \
-    "'ne_50m_admin_1_states_provinces_lines'," \
     "'ne_50m_antarctic_ice_shelves_polys'," \
     "'ne_50m_glaciated_areas'," \
     "'ne_50m_lakes'," \
