@@ -11,8 +11,6 @@ abc xyz
 xyz
 ----------------------- meta-generate meta-generate
 Connecting to PostgreSQL at postgres:5432, db=openmaptiles, user=openmaptiles...
-Ignoring fields with unknown SQL types (OIDs): [class (705)]
-Ignoring fields with unknown SQL types (OIDs): [name (705), name_en (705), name_de (705), class (705)]
 New metadata values in /tmp/data.mbtiles
 abc         xyz
 attribution <a href="http://www.openstreetmap.org/about/" target="_blank">&copy; OpenStreetMap contributors</a>
@@ -28,11 +26,11 @@ name        TestMapTiles v1.0
 version     1.1.1
 json        (The value is a valid JSON, use --show-json for raw dump)
 
-layer            minZ    maxZ  fields                                                 description
--------------  ------  ------  -----------------------------------------------------  -----------------------------------------
-housenumber         0      10  housenumber, name_int, name:* (en,de,cs,latin,nonla…)  Everything in OpenStreetMap which contai…
-enumfield           0      10  osm_id                                                 Test for converting enumfields
-mountain_peak       0      10  osm_id, ele, ele_ft, rank                              [Natural peaks](http://wiki.openstreetma…
+layer            minZ    maxZ  fields                                                    description
+-------------  ------  ------  --------------------------------------------------------  -----------------------------------------
+housenumber         0      10  housenumber, name_int, name:* (en,de,cs,latin,nonla…)     Everything in OpenStreetMap which contai…
+enumfield           0      10  osm_id, class                                             Test for converting enumfields
+mountain_peak       0      10  osm_id, name, name_en, name_de, class, ele, ele_ft, rank  [Natural peaks](http://wiki.openstreetma…
 abc         xyz
 attribution <a href="http://www.openstreetmap.org/about/" target="_blank">&copy; OpenStreetMap contributors</a>
 bounds      -180.0,-85.0511,180.0,85.0511
@@ -47,11 +45,11 @@ name        TestMapTiles v1.0
 version     1.1.1
 json        (valid JSON value)
 
-layer            minZ    maxZ  fields                                                 description
--------------  ------  ------  -----------------------------------------------------  -----------------------------------------
-housenumber         0      10  housenumber, name_int, name:* (en,de,cs,latin,nonla…)  Everything in OpenStreetMap which contai…
-enumfield           0      10  osm_id                                                 Test for converting enumfields
-mountain_peak       0      10  osm_id, ele, ele_ft, rank                              [Natural peaks](http://wiki.openstreetma…
+layer            minZ    maxZ  fields                                                    description
+-------------  ------  ------  --------------------------------------------------------  -----------------------------------------
+housenumber         0      10  housenumber, name_int, name:* (en,de,cs,latin,nonla…)     Everything in OpenStreetMap which contai…
+enumfield           0      10  osm_id, class                                             Test for converting enumfields
+mountain_peak       0      10  osm_id, name, name_en, name_de, class, ele, ele_ft, rank  [Natural peaks](http://wiki.openstreetma…
 
 {
   "vector_layers": [
@@ -76,7 +74,8 @@ mountain_peak       0      10  osm_id, ele, ele_ft, rank                        
       "minzoom": 0,
       "maxzoom": 10,
       "fields": {
-        "osm_id": "Number"
+        "osm_id": "Number",
+        "class": "String"
       }
     },
     {
@@ -86,6 +85,10 @@ mountain_peak       0      10  osm_id, ele, ele_ft, rank                        
       "maxzoom": 10,
       "fields": {
         "osm_id": "Number",
+        "name": "String",
+        "name_en": "String",
+        "name_de": "String",
+        "class": "String",
         "ele": "Number",
         "ele_ft": "Number",
         "rank": "Number"
@@ -112,15 +115,13 @@ name        TestMapTiles v1.0
 version     1.1.1
 json        (The value is a valid JSON, use --show-json for raw dump)
 
-layer            minZ    maxZ  fields                                                 description
--------------  ------  ------  -----------------------------------------------------  -----------------------------------------
-housenumber         0      10  housenumber, name_int, name:* (en,de,cs,latin,nonla…)  Everything in OpenStreetMap which contai…
-enumfield           0      10  osm_id                                                 Test for converting enumfields
-mountain_peak       0      10  osm_id, ele, ele_ft, rank                              [Natural peaks](http://wiki.openstreetma…
+layer            minZ    maxZ  fields                                                    description
+-------------  ------  ------  --------------------------------------------------------  -----------------------------------------
+housenumber         0      10  housenumber, name_int, name:* (en,de,cs,latin,nonla…)     Everything in OpenStreetMap which contai…
+enumfield           0      10  osm_id, class                                             Test for converting enumfields
+mountain_peak       0      10  osm_id, name, name_en, name_de, class, ele, ele_ft, rank  [Natural peaks](http://wiki.openstreetma…
 ----------------------- meta-generate meta-generate --reset with overrides
 Connecting to PostgreSQL at postgres:5432, db=openmaptiles, user=openmaptiles...
-Ignoring fields with unknown SQL types (OIDs): [class (705)]
-Ignoring fields with unknown SQL types (OIDs): [name (705), name_en (705), name_de (705), class (705)]
 New metadata values in /tmp/data.mbtiles
 attribution set attr
 bounds      12.2403,35.8223,23.3262,45.8046
@@ -135,11 +136,11 @@ name        set name
 version     set ver
 json        (The value is a valid JSON, use --show-json for raw dump)
 
-layer            minZ    maxZ  fields                                                 description
--------------  ------  ------  -----------------------------------------------------  -----------------------------------------
-housenumber         0      10  housenumber, name_int, name:* (en,de,cs,latin,nonla…)  Everything in OpenStreetMap which contai…
-enumfield           0      10  osm_id                                                 Test for converting enumfields
-mountain_peak       0      10  osm_id, ele, ele_ft, rank                              [Natural peaks](http://wiki.openstreetma…
+layer            minZ    maxZ  fields                                                    description
+-------------  ------  ------  --------------------------------------------------------  -----------------------------------------
+housenumber         0      10  housenumber, name_int, name:* (en,de,cs,latin,nonla…)     Everything in OpenStreetMap which contai…
+enumfield           0      10  osm_id, class                                             Test for converting enumfields
+mountain_peak       0      10  osm_id, name, name_en, name_de, class, ele, ele_ft, rank  [Natural peaks](http://wiki.openstreetma…
 
   Zoom    Tile count  Found tile ranges
 ------  ------------  -------------------
@@ -158,11 +159,11 @@ name        set name
 version     set ver
 json        (valid JSON value)
 
-layer            minZ    maxZ  fields                                                 description
--------------  ------  ------  -----------------------------------------------------  -----------------------------------------
-housenumber         0      10  housenumber, name_int, name:* (en,de,cs,latin,nonla…)  Everything in OpenStreetMap which contai…
-enumfield           0      10  osm_id                                                 Test for converting enumfields
-mountain_peak       0      10  osm_id, ele, ele_ft, rank                              [Natural peaks](http://wiki.openstreetma…
+layer            minZ    maxZ  fields                                                    description
+-------------  ------  ------  --------------------------------------------------------  -----------------------------------------
+housenumber         0      10  housenumber, name_int, name:* (en,de,cs,latin,nonla…)     Everything in OpenStreetMap which contai…
+enumfield           0      10  osm_id, class                                             Test for converting enumfields
+mountain_peak       0      10  osm_id, name, name_en, name_de, class, ele, ele_ft, rank  [Natural peaks](http://wiki.openstreetma…
 
 {
   "vector_layers": [
@@ -187,7 +188,8 @@ mountain_peak       0      10  osm_id, ele, ele_ft, rank                        
       "minzoom": 0,
       "maxzoom": 10,
       "fields": {
-        "osm_id": "Number"
+        "osm_id": "Number",
+        "class": "String"
       }
     },
     {
@@ -197,6 +199,10 @@ mountain_peak       0      10  osm_id, ele, ele_ft, rank                        
       "maxzoom": 10,
       "fields": {
         "osm_id": "Number",
+        "name": "String",
+        "name_en": "String",
+        "name_de": "String",
+        "class": "String",
         "ele": "Number",
         "ele_ft": "Number",
         "rank": "Number"
@@ -224,11 +230,11 @@ name        set name
 version     set ver
 json        (The value is a valid JSON, use --show-json for raw dump)
 
-layer            minZ    maxZ  fields                                                 description
--------------  ------  ------  -----------------------------------------------------  -----------------------------------------
-housenumber         0      10  housenumber, name_int, name:* (en,de,cs,latin,nonla…)  Everything in OpenStreetMap which contai…
-enumfield           0      10  osm_id                                                 Test for converting enumfields
-mountain_peak       0      10  osm_id, ele, ele_ft, rank                              [Natural peaks](http://wiki.openstreetma…
+layer            minZ    maxZ  fields                                                    description
+-------------  ------  ------  --------------------------------------------------------  -----------------------------------------
+housenumber         0      10  housenumber, name_int, name:* (en,de,cs,latin,nonla…)     Everything in OpenStreetMap which contai…
+enumfield           0      10  osm_id, class                                             Test for converting enumfields
+mountain_peak       0      10  osm_id, name, name_en, name_de, class, ele, ele_ft, rank  [Natural peaks](http://wiki.openstreetma…
 ----------------------- mbtiles-tools meta-copy with overrides
 New metadata values in /tmp/data2.mbtiles
 attribution attr override
@@ -244,11 +250,11 @@ name        name override
 version     ver override
 json        (The value is a valid JSON, use --show-json for raw dump)
 
-layer            minZ    maxZ  fields                                                 description
--------------  ------  ------  -----------------------------------------------------  -----------------------------------------
-housenumber         0      10  housenumber, name_int, name:* (en,de,cs,latin,nonla…)  Everything in OpenStreetMap which contai…
-enumfield           0      10  osm_id                                                 Test for converting enumfields
-mountain_peak       0      10  osm_id, ele, ele_ft, rank                              [Natural peaks](http://wiki.openstreetma…
+layer            minZ    maxZ  fields                                                    description
+-------------  ------  ------  --------------------------------------------------------  -----------------------------------------
+housenumber         0      10  housenumber, name_int, name:* (en,de,cs,latin,nonla…)     Everything in OpenStreetMap which contai…
+enumfield           0      10  osm_id, class                                             Test for converting enumfields
+mountain_peak       0      10  osm_id, name, name_en, name_de, class, ele, ele_ft, rank  [Natural peaks](http://wiki.openstreetma…
 attribution set attr
 bounds      12.2403,35.8223,23.3262,45.8046
 center      17.8,40.8,6
@@ -262,11 +268,11 @@ name        set name
 version     set ver
 json        (The value is a valid JSON, use --show-json for raw dump)
 
-layer            minZ    maxZ  fields                                                 description
--------------  ------  ------  -----------------------------------------------------  -----------------------------------------
-housenumber         0      10  housenumber, name_int, name:* (en,de,cs,latin,nonla…)  Everything in OpenStreetMap which contai…
-enumfield           0      10  osm_id                                                 Test for converting enumfields
-mountain_peak       0      10  osm_id, ele, ele_ft, rank                              [Natural peaks](http://wiki.openstreetma…
+layer            minZ    maxZ  fields                                                    description
+-------------  ------  ------  --------------------------------------------------------  -----------------------------------------
+housenumber         0      10  housenumber, name_int, name:* (en,de,cs,latin,nonla…)     Everything in OpenStreetMap which contai…
+enumfield           0      10  osm_id, class                                             Test for converting enumfields
+mountain_peak       0      10  osm_id, name, name_en, name_de, class, ele, ele_ft, rank  [Natural peaks](http://wiki.openstreetma…
 ----------------------- mbtiles-tools meta-copy with auto-minmax
 New metadata values in /tmp/data2.mbtiles
 attribution set attr
@@ -282,11 +288,11 @@ name        set name
 version     set ver
 json        (The value is a valid JSON, use --show-json for raw dump)
 
-layer            minZ    maxZ  fields                                                 description
--------------  ------  ------  -----------------------------------------------------  -----------------------------------------
-housenumber         0      10  housenumber, name_int, name:* (en,de,cs,latin,nonla…)  Everything in OpenStreetMap which contai…
-enumfield           0      10  osm_id                                                 Test for converting enumfields
-mountain_peak       0      10  osm_id, ele, ele_ft, rank                              [Natural peaks](http://wiki.openstreetma…
+layer            minZ    maxZ  fields                                                    description
+-------------  ------  ------  --------------------------------------------------------  -----------------------------------------
+housenumber         0      10  housenumber, name_int, name:* (en,de,cs,latin,nonla…)     Everything in OpenStreetMap which contai…
+enumfield           0      10  osm_id, class                                             Test for converting enumfields
+mountain_peak       0      10  osm_id, name, name_en, name_de, class, ele, ele_ft, rank  [Natural peaks](http://wiki.openstreetma…
 
   Zoom    Tile count  Found tile ranges
 ------  ------------  -------------------
@@ -383,11 +389,11 @@ name        set name
 version     set ver
 json        (The value is a valid JSON, use --show-json for raw dump)
 
-layer            minZ    maxZ  fields                                                 description
--------------  ------  ------  -----------------------------------------------------  -----------------------------------------
-housenumber         0      10  housenumber, name_int, name:* (en,de,cs,latin,nonla…)  Everything in OpenStreetMap which contai…
-enumfield           0      10  osm_id                                                 Test for converting enumfields
-mountain_peak       0      10  osm_id, ele, ele_ft, rank                              [Natural peaks](http://wiki.openstreetma…
+layer            minZ    maxZ  fields                                                    description
+-------------  ------  ------  --------------------------------------------------------  -----------------------------------------
+housenumber         0      10  housenumber, name_int, name:* (en,de,cs,latin,nonla…)     Everything in OpenStreetMap which contai…
+enumfield           0      10  osm_id, class                                             Test for converting enumfields
+mountain_peak       0      10  osm_id, name, name_en, name_de, class, ele, ele_ft, rank  [Natural peaks](http://wiki.openstreetma…
 
   Zoom    Tile count  Found tile ranges
 ------  ------------  -------------------
@@ -437,11 +443,11 @@ name        set name
 version     set ver
 json        (The value is a valid JSON, use --show-json for raw dump)
 
-layer            minZ    maxZ  fields                                                 description
--------------  ------  ------  -----------------------------------------------------  -----------------------------------------
-housenumber         0      10  housenumber, name_int, name:* (en,de,cs,latin,nonla…)  Everything in OpenStreetMap which contai…
-enumfield           0      10  osm_id                                                 Test for converting enumfields
-mountain_peak       0      10  osm_id, ele, ele_ft, rank                              [Natural peaks](http://wiki.openstreetma…
+layer            minZ    maxZ  fields                                                    description
+-------------  ------  ------  --------------------------------------------------------  -----------------------------------------
+housenumber         0      10  housenumber, name_int, name:* (en,de,cs,latin,nonla…)     Everything in OpenStreetMap which contai…
+enumfield           0      10  osm_id, class                                             Test for converting enumfields
+mountain_peak       0      10  osm_id, name, name_en, name_de, class, ele, ele_ft, rank  [Natural peaks](http://wiki.openstreetma…
 
   Zoom    Tile count  Found tile ranges
 ------  ------------  -------------------
@@ -502,11 +508,11 @@ name        set name
 version     set ver
 json        (The value is a valid JSON, use --show-json for raw dump)
 
-layer            minZ    maxZ  fields                                                 description
--------------  ------  ------  -----------------------------------------------------  -----------------------------------------
-housenumber         0      10  housenumber, name_int, name:* (en,de,cs,latin,nonla…)  Everything in OpenStreetMap which contai…
-enumfield           0      10  osm_id                                                 Test for converting enumfields
-mountain_peak       0      10  osm_id, ele, ele_ft, rank                              [Natural peaks](http://wiki.openstreetma…
+layer            minZ    maxZ  fields                                                    description
+-------------  ------  ------  --------------------------------------------------------  -----------------------------------------
+housenumber         0      10  housenumber, name_int, name:* (en,de,cs,latin,nonla…)     Everything in OpenStreetMap which contai…
+enumfield           0      10  osm_id, class                                             Test for converting enumfields
+mountain_peak       0      10  osm_id, name, name_en, name_de, class, ele, ele_ft, rank  [Natural peaks](http://wiki.openstreetma…
 
   Zoom    Tile count  Found tile ranges
 ------  ------------  -------------------
