@@ -3,10 +3,10 @@
 This is a Docker image containing several datasets used in OpenMapTiles project. Prepared data can be imported into PostgreSQL using ogr2ogr utility.
 
 ### Lakelines
-Centered linestrings for labelling OpenStreetMap lakes from the [osm-lakelines](https://github.com/lukasmartinelli/osm-lakelines) repo.
+Centered linestrings for labelling OpenStreetMap lakes from the [osm-lakelines](https://dev.maptiler.download/geodata/omt/lake_centerline.geojson) repo.
 
 ### Natural Earth
-A subset of [NaturalEarth](http://www.naturalearthdata.com/) version [4.1](https://github.com/nvkelso/natural-earth-vector/releases/tag/v4.1.0).
+A subset of [NaturalEarth](http://www.naturalearthdata.com/) version [5.1.2](https://github.com/nvkelso/natural-earth-vector/releases/tag/v5.1.2).
 
 ### Water polygons
 Water polygons from [OpenStreetMapData](http://osmdata.openstreetmap.de/).

@@ -8,11 +8,11 @@ RUN set -eux  ;\
     mkdir -p "$DIR"  ;\
     cd "$DIR"  ;\
     apk add --no-cache sqlite  ;\
-    wget --quiet https://dev.maptiler.download/geodata/omt/natural_earth_vector.sqlite.zip ;\
-    unzip -oj natural_earth_vector.sqlite.zip  ;\
+    wget --quiet https://dev.maptiler.download/geodata/omt/natural_earth_vector.sqlite_v5.1.2.zip ;\
+    unzip -oj natural_earth_vector.sqlite_v5.1.2.zip  ;\
     ../clean-natural-earth.sh natural_earth_vector.sqlite  ;\
     rm ../clean-natural-earth.sh  ;\
-    rm natural_earth_vector.sqlite.zip
+    rm natural_earth_vector.sqlite_v5.1.2.zip
 
 # Download water polygons data from http://osmdata.openstreetmap.de
 RUN set -eux  ;\
@@ -23,7 +23,7 @@ RUN set -eux  ;\
     unzip -oj water-polygons-split-3857.zip  ;\
     rm water-polygons-split-3857.zip
 
-# Download lake centerlines from https://github.com/lukasmartinelli/osm-lakelines
+# Download lake centerlines from https://dev.maptiler.download/geodata/omt/lake_centerline.geojson
 RUN set -eux  ;\
     DIR=/downloads/lake_centerline  ;\
     mkdir -p "$DIR"  ;\
@@ -31,7 +31,7 @@ RUN set -eux  ;\
     wget --quiet https://dev.maptiler.download/geodata/omt/lake_centerline.geojson
 
 
-FROM osgeo/gdal:alpine-normal-3.4.1
+FROM osgeo/gdal:alpine-normal-3.5.1
 LABEL maintainer="Yuri Astrakhan <YuriAstrakhan@gmail.com>"
 
 ENV DATA_DIR=/import
