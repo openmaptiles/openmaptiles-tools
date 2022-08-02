@@ -3,6 +3,14 @@ set -o errexit
 set -o pipefail
 set -o nounset
 
+# Tune-up performance for `make import-sql`
+echo "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
+echo "  Pre-configuring Postgres 14 system"
+echo "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
+PGUSER="$POSTGRES_USER" "${psql[@]}" --dbname="$POSTGRES_DB" <<-'EOSQL'
+    ALTER SYSTEM SET jit = 'off';
+EOSQL
+
 echo "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
 echo "  Loading OMT postgis extensions"
 echo "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
