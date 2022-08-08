@@ -1,7 +1,3 @@
-# There is an issue updating to postgis 12:
-# the postgis base image has outdated ogr2ogr (gdal-bin package)
-# does not support PG12 yet, which means postgis-preloaded cannot be built easily.
-# Once it is updated, or there is a different way to build it, we can upgrade to 12.
 ARG BASE_POSTGIS_VER=14-3.2
 FROM postgis/postgis:$BASE_POSTGIS_VER
 
