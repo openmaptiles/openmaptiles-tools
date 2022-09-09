@@ -1,0 +1,40 @@
+#!/usr/bin/env python
+"""
+Usage:
+  style-tools split <tileset> <style>
+  style-tools merge <tileset> <style> <style_header>
+  style-tools recompose <tileset> <style> <style_header>
+  style-tools --help
+  style-tools --version
+
+Actions:
+  split           Break down style.json into separate jsons per yaml layer.
+  merge           Combine separate jsons into style.json.
+
+Options:
+  --help              Show this screen.
+  --version           Show version.
+"""
+from pathlib import Path
+from docopt import docopt
+import openmaptiles
+from openmaptiles.utils import print_err
+from openmaptiles.styleutils import merge, split
+
+if __name__ == '__main__':
+    args = docopt(__doc__, version=openmaptiles.__version__)
+    tileset = args['<tileset>']
+    tileset_fp = Path(tileset)
+    style = args['<style>']
+    style_fp = Path(style)
+    if args['split']:
+        split(tileset_fp, style_fp)
+    elif args['merge']:
+        style_header = args['<style_header>']
+        style_header_fp = Path(style_header)
+        merge(tileset_fp, style_fp, style_header_fp)
+    elif args['recompose']:
+        style_header = args['<style_header>']
+        style_header_fp = Path(style_header)
+        merge(tileset_fp, style_fp, style_header_fp)
+        split(tileset_fp, style_fp)

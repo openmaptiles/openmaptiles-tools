@@ -124,6 +124,7 @@ RUN set -eux ;\
     npm install -g \
       @mapbox/mbtiles@0.12.1 \
       @mapbox/tilelive@6.1.1 \
+      @beyondtracks/spritezero-cli@2.3.1 \
       tilelive-pgquery@1.2.0 ;\
     \
     /bin/bash -c 'echo ""; echo ""; echo "##### Cleaning up"' >&2 ;\
