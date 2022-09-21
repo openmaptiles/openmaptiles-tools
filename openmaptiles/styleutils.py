@@ -1,4 +1,3 @@
-import yaml
 import json
 from pathlib import Path
 from openmaptiles.tileset import Tileset
@@ -25,8 +24,8 @@ def add_order(lyrs: list) -> list:
     return lyrs
 
 
-def get_order(l: dict) -> int:
-    return int(l.get('order'))
+def get_order(layer: dict) -> int:
+    return int(layer.get('order'))
 
 
 def split(tileset_fp: Path, style_fp: Path):

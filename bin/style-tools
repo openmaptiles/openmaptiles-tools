@@ -18,7 +18,6 @@ Options:
 from pathlib import Path
 from docopt import docopt
 import openmaptiles
-from openmaptiles.utils import print_err
 from openmaptiles.styleutils import merge, split
 
 if __name__ == '__main__':
