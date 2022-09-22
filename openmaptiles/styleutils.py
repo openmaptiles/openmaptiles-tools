@@ -4,7 +4,7 @@ from openmaptiles.tileset import Tileset
 
 
 def fp_to_dict(fp: Path) -> dict:
-    return json.loads(fp.read_text(encoding="utf-8"))
+    return json.loads(fp.read_text(encoding='utf-8'))
 
 
 def get_ts_lyr_style_json_fp(yaml_fp: str) -> Path:
@@ -24,7 +24,7 @@ def add_order(lyrs: list) -> list:
 def get_order(layer: dict) -> int:
     order = layer.get('order')
     if order is None:
-        raise ValueError(f"Missing order value in layer {layer.get('id')}")
+        raise ValueError(f'Missing order value in layer {layer.get("id")}')
     return int(order)
 
 
@@ -36,7 +36,7 @@ def split(tileset_fp: Path, style_fp: Path):
     style = fp_to_dict(style_fp)
     lyrs = style.get('layers')
     if not lyrs:
-        raise ValueError(f"No layers in {style_fp}.")
+        raise ValueError(f'No layers in {style_fp}.')
     style_lyrs_w_order = add_order(lyrs)
 
     # ts_lyr is a layer in tileset.yaml (e.g. landuse, landcover, water, waterway...)
