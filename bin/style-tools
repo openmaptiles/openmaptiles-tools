@@ -20,10 +20,10 @@ from docopt import docopt
 import openmaptiles
 from openmaptiles.styleutils import merge, split
 
-if __name__ == '__main__':
+
+def main():
     args = docopt(__doc__, version=openmaptiles.__version__)
-    tileset = args['<tileset>']
-    tileset_fp = Path(tileset)
+    tileset_fp = Path(args['<tileset>'])
     style = args['<style>']
     style_fp = Path(style)
     if args['split']:
@@ -37,3 +37,7 @@ if __name__ == '__main__':
         style_header_fp = Path(style_header)
         merge(tileset_fp, style_fp, style_header_fp)
         split(tileset_fp, style_fp)
+
+
+if __name__ == '__main__':
+    main()

@@ -3,10 +3,8 @@ from pathlib import Path
 from openmaptiles.tileset import Tileset
 
 
-def fp_to_dict(fp: str) -> dict:
-    with open(fp, 'r') as f:
-        d = json.load(f)
-    return d
+def fp_to_dict(fp: Path) -> dict:
+    return json.loads(fp.read_text(encoding="utf-8"))
 
 
 def get_ts_lyr_style_json_fp(yaml_fp: str) -> Path:
@@ -18,14 +16,16 @@ def get_ts_lyr_style_json_fp(yaml_fp: str) -> Path:
 
 
 def add_order(lyrs: list) -> list:
-    for i in range(0, len(lyrs)):
-        lyr = lyrs[i]
+    for i, lyr in enumerate(lyrs):
         lyr['order'] = i
     return lyrs
 
 
 def get_order(layer: dict) -> int:
-    return int(layer.get('order'))
+    order = layer.get('order')
+    if order is None:
+        raise ValueError(f"Missing order value in layer {layer.get('id')}")
+    return int(order)
 
 
 def split(tileset_fp: Path, style_fp: Path):
@@ -34,21 +34,23 @@ def split(tileset_fp: Path, style_fp: Path):
 
     # Add order to each style layer (e.g. backgroud - 0, labels - 196)
     style = fp_to_dict(style_fp)
-    style_lyrs_w_order = add_order(style.get('layers'))
+    lyrs = style.get('layers')
+    if not lyrs:
+        raise ValueError(f"No layers in {style_fp}.")
+    style_lyrs_w_order = add_order(lyrs)
 
     # ts_lyr is a layer in tileset.yaml (e.g. landuse, landcover, water, waterway...)
     for ts_lyr in tileset_lyrs:
-        ts_lyr_style_json_fp = get_ts_lyr_style_json_fp(ts_lyr)
-        ts_lyr_style_lyrs = list()
+        snippet_fp = get_ts_lyr_style_json_fp(ts_lyr)
+        snippet_lyrs = list()
         for style_lyr in style_lyrs_w_order:
             source_layer = style_lyr.get('source-layer')
             if source_layer == ts_lyr.filename.stem:
-                ts_lyr_style_lyrs.append(style_lyr)
-        out_dict = {'layers': ts_lyr_style_lyrs}
+                snippet_lyrs.append(style_lyr)
+        out_dict = {'layers': snippet_lyrs}
 
         # write style layers with order to json for specific tileset layer
-        with open(ts_lyr_style_json_fp, 'w') as fout:
-            json.dump(out_dict, fout, indent=2)
+        snippet_fp.write_text(json.dumps(out_dict, indent=2))
 
 
 def merge(tileset_fp: Path, style_fp: Path, style_header_fp: Path):
@@ -66,8 +68,8 @@ def merge(tileset_fp: Path, style_fp: Path, style_header_fp: Path):
         ts_lyr_style_lyrs = in_dict.get('layers')
         for layer_style_layer in ts_lyr_style_lyrs:
             if layer_style_layer.get('order') is None:
-                raise ValueError(f'Style layer {layer_style_layer.get("id")} in {ts_lyr_style_json_fp} has not '
-                                 f'a defined order.')
+                raise ValueError(f'Missing order value in layer {layer_style_layer.get("id")} '
+                                 f'of snippet {ts_lyr_style_json_fp}.')
             else:
                 style_lyrs.append(layer_style_layer)
 
