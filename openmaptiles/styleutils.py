@@ -9,7 +9,7 @@ def fp_to_dict(fp: Path) -> dict:
 
 def get_ts_lyr_style_json_fp(yaml_fp: str) -> Path:
     yaml_path = yaml_fp.filename
-    json_name = Path(yaml_path.name).with_suffix('.json')
+    json_name = Path(yaml_path.name).with_name('defaultstyle.json')
     ts_lyr_dir = yaml_path.parent
 
     return ts_lyr_dir.joinpath(json_name)
