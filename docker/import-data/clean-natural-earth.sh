@@ -34,6 +34,7 @@ for tbl in $(echo \
   "WHERE type='table' AND name like 'ne%' and name not in (" \
     "'ne_10m_admin_0_boundary_lines_land'," \
     "'ne_10m_admin_0_countries'," \
+    "'ne_10m_admin_0_boundary_lines_map_units'," \
     "'ne_10m_admin_1_states_provinces'," \
     "'ne_10m_admin_1_states_provinces_lines'," \
     "'ne_10m_antarctic_ice_shelves_polys'," \
