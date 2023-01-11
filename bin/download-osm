@@ -658,7 +658,7 @@ async def main_async(args):
 
     urls, md5, repl_url = None, None, None
     exit_code = 0
-    async with aiohttp.ClientSession(trust_env=True,  headers={'User-Agent': USER_AGENT}) as session:
+    async with aiohttp.ClientSession(trust_env=True, headers={'User-Agent': USER_AGENT}) as session:
         force_latest = args['--force-latest']
         no_cache = args['--no-cache']
         if args.list:
