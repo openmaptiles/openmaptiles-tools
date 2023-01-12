@@ -65,4 +65,3 @@ done
 echo "$count tables have been dropped from $NATURAL_EARTH_DB, vacuuming..."
 echo "VACUUM;" | sqlite3 "$NATURAL_EARTH_DB"
 echo "Done with $NATURAL_EARTH_DB -- final size $(du -h "$NATURAL_EARTH_DB" | cut -f1)"
-
