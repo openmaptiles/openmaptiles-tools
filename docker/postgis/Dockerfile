@@ -1,4 +1,4 @@
-ARG BASE_POSTGIS_VER=14-3.2
+ARG BASE_POSTGIS_VER=14-3.3
 FROM postgis/postgis:$BASE_POSTGIS_VER
 
 LABEL maintainer="Yuri Astrakhan <YuriAstrakhan@gmail.com>"
