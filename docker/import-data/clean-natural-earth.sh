@@ -43,6 +43,7 @@ for tbl in $(echo \
     "'ne_10m_lakes'," \
     "'ne_10m_ocean'," \
     "'ne_10m_populated_places'," \
+    "'ne_10m_urban_areas'," \
     "'ne_50m_admin_0_boundary_lines_land'," \
     "'ne_50m_antarctic_ice_shelves_polys'," \
     "'ne_50m_glaciated_areas'," \
