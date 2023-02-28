@@ -50,7 +50,7 @@ CREATE OR REPLACE FUNCTION LabelCenterline(inGeometry geometry)
         WITH tbla AS (
             SELECT inGeometry as inPolygon WHERE ST_GeometryType(inGeometry) = 'ST_Polygon'
             UNION ALL
-            SELECT ST_ConcaveHull(ST_Points(ST_Simplify(inGeometry, 25)), 0.2) as inPolygon WHERE ST_GeometryType(inGeometry)='ST_MultiPolygon'
+            SELECT ST_ConcaveHull(ST_Simplify(inGeometry, 25), 0.2) as inPolygon WHERE ST_GeometryType(inGeometry)='ST_MultiPolygon'
         ),
         tblb AS (
             SELECT ST_MakePolygon(ST_ExteriorRing(inPolygon)) as shellPolygon
