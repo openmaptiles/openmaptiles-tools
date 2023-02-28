@@ -53,7 +53,6 @@ CREATE OR REPLACE FUNCTION LabelCenterline(input geometry) RETURNS geometry AS '
     tblc AS (
         SELECT polygon, (ST_Dump(ST_VoronoiLines(ST_LineInterpolatePoints(ST_Boundary(polygon), 0.0075)))).geom as lines
         FROM tblb
-        WHERE ST_GeometryType(polygon) = ''ST_Polygon''
     ),
     tbld AS (
         SELECT ST_LineMerge(ST_Collect(lines)) as polyline
