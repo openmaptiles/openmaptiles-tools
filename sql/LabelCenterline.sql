@@ -59,25 +59,28 @@ CREATE OR REPLACE FUNCTION LabelCenterline(inGeometry geometry)
     RETURNS geometry AS $$
     DECLARE outPolyline geometry;
     BEGIN
-        WITH tbla AS (
+        WITH polygons AS (
             SELECT inGeometry as inPolygon WHERE ST_GeometryType(inGeometry) = 'ST_Polygon'
             UNION ALL
-            SELECT ST_ConcaveHull(ST_Simplify(inGeometry, 25), 0.2) as inPolygon WHERE ST_GeometryType(inGeometry)='ST_MultiPolygon'
+            SELECT (ST_Dump(inGeometry)).geom as inPolygon WHERE ST_GeometryType(inGeometry)='ST_MultiPolygon'
         ),
-        tblb AS (
+        shellPolygons AS (
             SELECT ST_MakePolygon(ST_ExteriorRing(inPolygon)) as shellPolygon
-            FROM tbla
+            FROM polygons
         ),
-        tblc AS (
+        allVoroniLines AS (
             SELECT shellPolygon, (ST_Dump(ST_VoronoiLines(ST_LineInterpolatePoints(ST_Boundary(shellPolygon), 0.0075)))).geom as voroniLines
-            FROM tblb
+            FROM shellPolygons
         ),
-        tbld AS (
+        containedVoroniPolylines AS (
             SELECT ST_LineMerge(ST_Collect(voroniLines)) as voroniPolyline
-            FROM tblc
+            FROM allVoroniLines
             WHERE ST_Contains(shellPolygon, voroniLines)
+            GROUP BY shellPolygon
         )
-        SELECT ST_ChaikinSmoothing(ST_SimplifyPreserveTopology(TrimmedCenterline(voroniPolyline), 80), 3, false) INTO outPolyline FROM tbld;
+        SELECT ST_ChaikinSmoothing(ST_SimplifyPreserveTopology(ST_Collect(TrimmedCenterline(voroniPolyline)), 80), 3, false) as trimmedPolyline
+        INTO outPolyline
+        FROM containedVoroniPolylines;
         RETURN outPolyline;
     END
     $$ LANGUAGE plpgsql;
