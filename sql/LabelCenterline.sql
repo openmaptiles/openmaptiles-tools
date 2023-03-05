@@ -10,9 +10,9 @@ __Parameters:__
 __Returns:__ `geometry(multiline)`
 ******************************************************************************/
 CREATE OR REPLACE FUNCTION CountDisconnectedEndpoints(polyline geometry, testline geometry)
-    RETURNS integer AS $$
-    DECLARE count integer;
-    BEGIN
+    RETURNS integer
+    LANGUAGE sql IMMUTABLE STRICT PARALLEL SAFE
+    BEGIN ATOMIC
         WITH linesExceptTestline AS (
             SELECT (ST_Dump(polyline)).geom AS linestring
             EXCEPT
@@ -20,14 +20,12 @@ CREATE OR REPLACE FUNCTION CountDisconnectedEndpoints(polyline geometry, testlin
         )
         SELECT ST_NPoints(ST_RemoveRepeatedPoints(ST_Points(polyline)))
                     - ST_NPoints(ST_RemoveRepeatedPoints(ST_Points(ST_Collect(linestring))))
-                    - ST_NPoints(testline) + 2 INTO count FROM linesExceptTestline;
-        RETURN count;
-    END
-    $$ LANGUAGE plpgsql;
+                    - ST_NPoints(testline) + 2 FROM linesExceptTestline;
+    END;
 CREATE OR REPLACE FUNCTION TrimmedCenterline(inPolyline geometry)
-    RETURNS geometry AS $$
-    DECLARE outPolyline geometry;
-    BEGIN
+    RETURNS geometry
+    LANGUAGE sql IMMUTABLE STRICT PARALLEL SAFE
+    BEGIN ATOMIC
         WITH tbla AS (
             SELECT (ST_Dump(inPolyline)).geom AS edge
         ),
@@ -51,14 +49,12 @@ CREATE OR REPLACE FUNCTION TrimmedCenterline(inPolyline geometry)
         FROM tbld
         WHERE ST_NumGeometries(polyline) > 1
         UNION ALL
-        SELECT polyline INTO outPolyline FROM tbld;
-        RETURN outPolyline;
-    END
-    $$ LANGUAGE plpgsql;
+        SELECT polyline FROM tbld;
+    END;
 CREATE OR REPLACE FUNCTION LabelCenterline(inGeometry geometry)
-    RETURNS geometry AS $$
-    DECLARE outPolyline geometry;
-    BEGIN
+    RETURNS geometry
+    LANGUAGE sql IMMUTABLE STRICT PARALLEL SAFE
+    BEGIN ATOMIC
         WITH polygons AS (
             SELECT inGeometry AS inPolygon WHERE ST_GeometryType(inGeometry) = 'ST_Polygon'
             UNION ALL
@@ -79,8 +75,5 @@ CREATE OR REPLACE FUNCTION LabelCenterline(inGeometry geometry)
             GROUP BY shellPolygon
         )
         SELECT ST_ChaikinSmoothing(ST_SimplifyPreserveTopology(ST_Collect(TrimmedCenterline(voroniPolyline)), 80), 3, false) AS trimmedPolyline
-        INTO outPolyline
         FROM containedVoroniPolylines;
-        RETURN outPolyline;
-    END
-    $$ LANGUAGE plpgsql;
+    END;
