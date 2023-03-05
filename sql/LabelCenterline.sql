@@ -55,7 +55,6 @@ CREATE OR REPLACE FUNCTION TrimmedCenterline(inPolyline geometry)
         UNION ALL
         SELECT polyline FROM trimmedPolyline;
     END;
-DROP FUNCTION LabelCenterline(geometry, integer, float, float, integer);
 CREATE OR REPLACE FUNCTION LabelCenterline(
     inGeometry geometry,
     maxVoronoiVertices integer default 100,
