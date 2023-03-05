@@ -11,10 +11,17 @@ __Returns:__ `geometry(multiline)`
 ******************************************************************************/
 CREATE OR REPLACE FUNCTION CountDisconnectedEndpoints(polyline geometry, testline geometry)
     RETURNS integer AS $$
+    DECLARE count integer;
     BEGIN
-        RETURN ST_NPoints(ST_RemoveRepeatedPoints(ST_Points(polyline)))
-                    - ST_NPoints(ST_RemoveRepeatedPoints(ST_Points(ST_Difference(polyline, testline))))
-                    - ST_NPoints(testline) + 2;
+        WITH linesExceptTestline AS (
+            SELECT (ST_Dump(polyline)).geom as linestring
+            EXCEPT
+            SELECT testline as linestring
+        )
+        SELECT ST_NPoints(ST_RemoveRepeatedPoints(ST_Points(polyline)))
+                    - ST_NPoints(ST_RemoveRepeatedPoints(ST_Points(ST_Collect(linestring))))
+                    - ST_NPoints(testline) + 2 INTO count FROM linesExceptTestline;
+        RETURN count;
     END
     $$ LANGUAGE plpgsql;
 CREATE OR REPLACE FUNCTION TrimmedCenterline(inPolyline geometry)
@@ -22,24 +29,29 @@ CREATE OR REPLACE FUNCTION TrimmedCenterline(inPolyline geometry)
     DECLARE outPolyline geometry;
     BEGIN
         WITH tbla AS (
-            SELECT inPolyline as polyline, (ST_Dump(inPolyline)).geom as edge
+            SELECT (ST_Dump(inPolyline)).geom as edge
         ),
         tblb AS (
-            SELECT polyline, edge as shortestBranchLine
+            SELECT edge
             FROM tbla
-            WHERE CountDisconnectedEndpoints(polyline, edge) > 0
+            WHERE CountDisconnectedEndpoints(inPolyline, edge) > 0
             ORDER BY ST_Length(edge) ASC
             LIMIT 1
         ),
         tblc AS (
-            SELECT ST_LineMerge(ST_Difference(polyline, shortestBranchLine)) as polyline
-            FROM tblb
+            SELECT * FROM tbla
+            EXCEPT
+            SELECT * FROM tblb
+        ),
+        tbld AS (
+            SELECT ST_LineMerge(ST_Collect(edge)) as polyline
+            FROM tblc
         )
         SELECT TrimmedCenterline(polyline) as polyline
-        FROM tblc
+        FROM tbld
         WHERE ST_NumGeometries(polyline) > 1
         UNION ALL
-        SELECT polyline INTO outPolyline FROM tblc;
+        SELECT polyline INTO outPolyline FROM tbld;
         RETURN outPolyline;
     END
     $$ LANGUAGE plpgsql;
