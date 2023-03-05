@@ -14,9 +14,9 @@ CREATE OR REPLACE FUNCTION CountDisconnectedEndpoints(polyline geometry, testlin
     DECLARE count integer;
     BEGIN
         WITH linesExceptTestline AS (
-            SELECT (ST_Dump(polyline)).geom as linestring
+            SELECT (ST_Dump(polyline)).geom AS linestring
             EXCEPT
-            SELECT testline as linestring
+            SELECT testline AS linestring
         )
         SELECT ST_NPoints(ST_RemoveRepeatedPoints(ST_Points(polyline)))
                     - ST_NPoints(ST_RemoveRepeatedPoints(ST_Points(ST_Collect(linestring))))
@@ -29,7 +29,7 @@ CREATE OR REPLACE FUNCTION TrimmedCenterline(inPolyline geometry)
     DECLARE outPolyline geometry;
     BEGIN
         WITH tbla AS (
-            SELECT (ST_Dump(inPolyline)).geom as edge
+            SELECT (ST_Dump(inPolyline)).geom AS edge
         ),
         tblb AS (
             SELECT edge
@@ -44,10 +44,10 @@ CREATE OR REPLACE FUNCTION TrimmedCenterline(inPolyline geometry)
             SELECT * FROM tblb
         ),
         tbld AS (
-            SELECT ST_LineMerge(ST_Collect(edge)) as polyline
+            SELECT ST_LineMerge(ST_Collect(edge)) AS polyline
             FROM tblc
         )
-        SELECT TrimmedCenterline(polyline) as polyline
+        SELECT TrimmedCenterline(polyline) AS polyline
         FROM tbld
         WHERE ST_NumGeometries(polyline) > 1
         UNION ALL
@@ -60,25 +60,25 @@ CREATE OR REPLACE FUNCTION LabelCenterline(inGeometry geometry)
     DECLARE outPolyline geometry;
     BEGIN
         WITH polygons AS (
-            SELECT inGeometry as inPolygon WHERE ST_GeometryType(inGeometry) = 'ST_Polygon'
+            SELECT inGeometry AS inPolygon WHERE ST_GeometryType(inGeometry) = 'ST_Polygon'
             UNION ALL
-            SELECT (ST_Dump(inGeometry)).geom as inPolygon WHERE ST_GeometryType(inGeometry)='ST_MultiPolygon'
+            SELECT (ST_Dump(inGeometry)).geom AS inPolygon WHERE ST_GeometryType(inGeometry)='ST_MultiPolygon'
         ),
         shellPolygons AS (
-            SELECT ST_MakePolygon(ST_ExteriorRing(inPolygon)) as shellPolygon
+            SELECT ST_MakePolygon(ST_ExteriorRing(inPolygon)) AS shellPolygon
             FROM polygons
         ),
         allVoroniLines AS (
-            SELECT shellPolygon, (ST_Dump(ST_VoronoiLines(ST_LineInterpolatePoints(ST_Boundary(shellPolygon), 0.0075)))).geom as voroniLines
+            SELECT shellPolygon, (ST_Dump(ST_VoronoiLines(ST_LineInterpolatePoints(ST_Boundary(shellPolygon), 0.0075)))).geom AS voroniLines
             FROM shellPolygons
         ),
         containedVoroniPolylines AS (
-            SELECT ST_LineMerge(ST_Collect(voroniLines)) as voroniPolyline
+            SELECT ST_LineMerge(ST_Collect(voroniLines)) AS voroniPolyline
             FROM allVoroniLines
             WHERE ST_Contains(shellPolygon, voroniLines)
             GROUP BY shellPolygon
         )
-        SELECT ST_ChaikinSmoothing(ST_SimplifyPreserveTopology(ST_Collect(TrimmedCenterline(voroniPolyline)), 80), 3, false) as trimmedPolyline
+        SELECT ST_ChaikinSmoothing(ST_SimplifyPreserveTopology(ST_Collect(TrimmedCenterline(voroniPolyline)), 80), 3, false) AS trimmedPolyline
         INTO outPolyline
         FROM containedVoroniPolylines;
         RETURN outPolyline;
