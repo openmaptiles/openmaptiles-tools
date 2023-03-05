@@ -26,30 +26,30 @@ CREATE OR REPLACE FUNCTION TrimmedCenterline(inPolyline geometry)
     RETURNS geometry
     LANGUAGE sql IMMUTABLE STRICT PARALLEL SAFE
     BEGIN ATOMIC
-        WITH tbla AS (
+        WITH edges AS (
             SELECT (ST_Dump(inPolyline)).geom AS edge
         ),
-        tblb AS (
-            SELECT edge
-            FROM tbla
+        shortestBranchEdge AS (
+            SELECT *
+            FROM edges
             WHERE CountDisconnectedEndpoints(inPolyline, edge) > 0
             ORDER BY ST_Length(edge) ASC
             LIMIT 1
         ),
-        tblc AS (
-            SELECT * FROM tbla
+        edgesWithoutShortestBranch AS (
+            SELECT * FROM edges
             EXCEPT
-            SELECT * FROM tblb
+            SELECT * FROM shortestBranchEdge
         ),
-        tbld AS (
+        trimmedPolyline AS (
             SELECT ST_LineMerge(ST_Collect(edge)) AS polyline
-            FROM tblc
+            FROM edgesWithoutShortestBranch
         )
         SELECT TrimmedCenterline(polyline) AS polyline
-        FROM tbld
+        FROM trimmedPolyline
         WHERE ST_NumGeometries(polyline) > 1
         UNION ALL
-        SELECT polyline FROM tbld;
+        SELECT polyline FROM trimmedPolyline;
     END;
 CREATE OR REPLACE FUNCTION LabelCenterline(inGeometry geometry)
     RETURNS geometry
