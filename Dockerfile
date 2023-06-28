@@ -120,7 +120,6 @@ RUN set -eux ;\
     DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends  \
         nodejs npm build-essential ;\
     rm -rf /var/lib/apt/lists/  ;\
-    npm config set unsafe-perm true  ;\
     npm install -g \
       @mapbox/mbtiles@0.12.1 \
       @mapbox/tilelive@6.1.1 \
