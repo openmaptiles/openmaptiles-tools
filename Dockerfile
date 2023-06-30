@@ -118,9 +118,8 @@ RUN set -eux ;\
     curl -sL https://deb.nodesource.com/setup_14.x | bash -  ;\
     DEBIAN_FRONTEND=noninteractive apt-get update  ;\
     DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends  \
-        nodejs build-essential ;\
+        nodejs npm build-essential ;\
     rm -rf /var/lib/apt/lists/  ;\
-    npm config set unsafe-perm true  ;\
     npm install -g \
       @mapbox/mbtiles@0.12.1 \
       @mapbox/tilelive@6.1.1 \
