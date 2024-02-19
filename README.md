@@ -10,10 +10,10 @@ The repository hosts the code for the following Docker images. They can be built
 A collection of tools for downloading, parsing, and generating map tiles described below.
 
 ##### import-data [![](https://img.shields.io/docker/pulls/openmaptiles/import-data?label=downloads)](https://hub.docker.com/r/openmaptiles/import-data) [![](https://img.shields.io/docker/stars/openmaptiles/import-data?label=stars)](https://hub.docker.com/r/openmaptiles/import-data)
-Multiple data sources packaged for import into PostgreSQL DB, includes data from [Natural Earth](http://www.naturalearthdata.com/), [water polygons](http://osmdata.openstreetmap.de), and [lake centerlines](https://github.com/lukasmartinelli/osm-lakelines).
+Multiple data sources packaged for import into PostgreSQL DB, includes data from [Natural Earth](http://www.naturalearthdata.com/), [water polygons](http://osmdata.openstreetmap.de), and [lake centerlines](https://github.com/openmaptiles/osm-lakelines).
 
 ##### postgis [![](https://img.shields.io/docker/pulls/openmaptiles/postgis?label=downloads)](https://hub.docker.com/r/openmaptiles/postgis) [![](https://img.shields.io/docker/stars/openmaptiles/postgis?label=stars)](https://hub.docker.com/r/openmaptiles/postgis)
-An image with PostgreSQL database, Postgis, and several other extensions, custom built for OpenMapTiles project.
+An image with PostgreSQL database, PostGIS, and several other extensions, custom built for OpenMapTiles project.
 
 ##### postgis-preloaded [![](https://img.shields.io/docker/pulls/openmaptiles/postgis-preloaded?label=downloads)](https://hub.docker.com/r/openmaptiles/postgis-preloaded) [![](https://img.shields.io/docker/stars/openmaptiles/postgis-preloaded?label=stars)](https://hub.docker.com/r/openmaptiles/postgis-preloaded)
 The above `postgis` image pre-loaded with the `import-data`. This image is mostly used for testing, and may not be appropriate for production. The image has hardcoded user `openmaptiles` and password `openmaptiles`.
@@ -28,7 +28,7 @@ See [/docs](./docs)
 
 ## Usage
 
-You need either just Docker or Python 3 installed on your system. You also need Docker-compose for testing.  If running without Docker, see below for the list of additional tools and libraries.
+You need either just Docker or Python 3 installed on your system. You also need Docker-compose for testing. If running without Docker, see below for the list of additional tools and libraries.
 
 #### Usage with Docker
 
@@ -69,7 +69,7 @@ generate-imposm3 openmaptiles.yaml
 
 #### Running from source
 
-Make sure you have all dependencies from the [Usage](#Usage) section above.  You should have the latest Python (3.6+)
+Make sure you have all dependencies from the [Usage](#Usage) section above. You should have the latest Python (3.6+)
 ```bash
 # Get OpenMapTiles layer data
 git clone https://github.com/openmaptiles/openmaptiles.git
@@ -85,7 +85,7 @@ PYTHONPATH=$PWD python3 bin/generate-imposm3 ../openmaptiles/openmaptiles.yaml
 
 #### Tools Development
 
-Use `make test` to run all of the tests locally.  The Makefile will build a docker image with all the code, run all tests, and compare the build result with the files in the [testdata/expected](./testdata/expected) dir.
+Use `make test` to run all of the tests locally. The Makefile will build a docker image with all the code, run all tests, and compare the build result with the files in the [testdata/expected](./testdata/expected) dir.
 
 Run `make rebuild-expected` after you modify the output produced by the generation scripts. This will re-create the expected test results to match the actual ones, and make sure the changes are what you want.
 
@@ -220,7 +220,7 @@ Use `postserve <tileset>` to start serving. Use `--help` to get the list of Post
 * from inside the openmaptiles repo dir, run this command.
 (This assumes PostgreSQL is on the localhost:5432, but if it runs inside docker, you may want to change
  `--net=host` to `--net=openmaptiles_postgres` to match the openmaptiles quickstart, and also expose
-  port 8090 to the host with `-p 8090:8090`)
+ port 8090 to the host with `-p 8090:8090`)
 ```
 docker run -it --rm -u $(id -u ${USER}):$(id -g ${USER}) \
     -v "${PWD}:/tileset" --net=host \
@@ -258,7 +258,7 @@ $ debug-mvt openmaptiles.yaml 4/7/6 -l place
 ```
 
 ### Profile PostgreSQL functions
-Use `profile-pg-func` to compare PostgreSQL function execution speed. Each function is called thousands of times in several runs. The fastest and slowest runs are discarded.  `profile-pg-func` can import SQL files before running the test, e.g. to add the latest developer versions of the function(s).
+Use `profile-pg-func` to compare PostgreSQL function execution speed. Each function is called thousands of times in several runs. The fastest and slowest runs are discarded. `profile-pg-func` can import SQL files before running the test, e.g. to add the latest developer versions of the function(s).
 
 ### Show layer statistics for a field
 Use `layer-stats` show per zoom statistics for some column (field) in a single layer. Supports several metrics:
@@ -282,11 +282,11 @@ Various tools require these environment variables to be set
 
 ### Multi-streamed OSM Data Downloader
 `download-osm` tool can be used to download an area extract or the entire planet file,
-and validate file content.  The entire planet file is downloaded from all available
+and validate file content. The entire planet file is downloaded from all available
 OSM mirrors at the same time to distribute the load across mirrors, and makes download faster.
 The tool will ensure you get the latest version, verifies that all mirrors contain the same
 version, and validates the download with md5 hash. By default the tool will not download from
-the primary OSM site to reduce its load.  Downloader uses [aria2c](https://aria2.github.io/).
+the primary OSM site to reduce its load. Downloader uses [aria2c](https://aria2.github.io/).
 Downloader can also get files from [Geofabrik](https://download.geofabrik.de/),
 [BBBike](https://download.bbbike.org/osm/), and
 [openstreemap.fr](https://download.openstreetmap.fr/extracts), or an arbitrary URL.
@@ -309,17 +309,13 @@ download-osm list geofabrik
 
 Uses tileset definition to create a PostgreSQL
  [prepared](https://www.postgresql.org/docs/current/sql-prepare.html) or
- [create function](https://www.postgresql.org/docs/9.1/sql-createfunction.html) SQL code
+ [create function](https://www.postgresql.org/docs/14/sql-createfunction.html) SQL code
  to generate an entire vector tile in the Mapbox Vector Tile format with a single `getTile(z,x,y)` query
  using PostGIS MVT support.
 
 Use `--help` to get all parameters.
 
-**NOTE:** Current [openmaptiles/postgis](https://github.com/openmaptiles/postgis) image (v2.9 and before) has incorrect
- support for the [ST_AsMVT()](https://postgis.net/docs/ST_AsMVT.html). Until Postgis is updated, please use
- [sophox/postgis docker image](https://hub.docker.com/r/sophox/postgis) (based on the latest
- [mdillon/postgis:11](https://hub.docker.com/r/mdillon/postgis) base image). Another known bug is PostgreSQL JIT could
- make tile generation horribly slow in PG11+, and may need to be disabled.
+**NOTE:** Known bug is PostgreSQL JIT could make tile generation horribly slow in PG11+, and may need to be disabled.
 
 ```
 generate-sqltomvt <tileset>
@@ -336,7 +332,7 @@ generate-imposm3 <tileset>
 ### Generate SQL scripts
 
 Assembles all SQL referenced in the layer definitions into an SQL script that can be executed with psql.
-If `--dir` option  is given, generates `.sql` files that can be executed in parallel.
+If `--dir` option is given, generates `.sql` files that can be executed in parallel.
 
 ```
 generate-sql <tileset>
@@ -361,19 +357,19 @@ If the `LIST_FILE` and `MID_ZOOM` environment variables are not set, this script
 If `MID_ZOOM` env var is set, `generate-tiles` will first generate all tiles from `MIN_ZOOM` to `MID_ZOOM`. Afterwards, `mbtiles-tools impute` finds the most duplicated small tiles at `MID_ZOOM`, and treats them as "empty" -- it copies empty tiles to the next `MID_ZOOM+1` level as is, without regenerating them. The non-empty tiles at `MID_ZOOM+1` are then generated as before using a list of tiles generated by the `impute` command. Once done, the same steps are repeated for `MID_ZOOM+2`, etc., until the `MAX_ZOOM` (inclusive).
 
 Lastly, `generate-tiles` runs `mbtiles-tools meta-generate` to update mbtiles metadata unless `TILESET_FILE` is not set.
-   
+
 `generate-tiles` script does not take any parameters, but accepts many environment variables -- see [code](bin/generate-tiles).
 
 ### Generate ETL (Extract-Transform-Load) graph
 
-dependency:  graphviz
+dependency: graphviz
 
 Takes a source code from the imposm3 mapping file and the SQL postprocessing code,
 and parsing for the `etldoc:` graphviz based comments, and generate an svg file.
 The `.dot` and the `.svg` filename prefix is `etl_`
 
 ```
-generate-etlgraph <tileset>  <target-directory>
+generate-etlgraph <tileset> <target-directory>
 generate-etlgraph layers/landcover/landcover.yaml  ./build/devdoc
 generate-etlgraph layers/railway/railway.yaml      ./build/etlgraph
 ```
@@ -390,7 +386,7 @@ output fies:
 
 example:
 ```
-generate-sqlquery layers/landcover/landcover.yaml  14
+generate-sqlquery layers/landcover/landcover.yaml 14
 ```
 
 ### Import and Update OSM data
@@ -449,8 +445,8 @@ This utility requires PostgreSQL's PG* environment variables, and optionally use
 The `import-sql` script can execute a single SQL file in Postgres when the file is given as the first parameter.
 
 If ran without any arguments, `import-sql` executes all of the following:
-* SQL files from `$SQL_TOOLS_DIR`  - contains all SQL files to be imported before the ones generated by OpenMapTiles project. By default, contains OMT fork of the Mapbox's [postgis-vt-util.sql](https://github.com/openmaptiles/postgis-vt-util) helper functions and contains the [sql/language.sql](sql/zzz_language.sql) script. (as `10_postgis-vt-util.sql` - the file name has to be imported before files in `/sql`)
-* SQL files from `$SQL_DIR`  - defaults to `/sql` -- this directory should contain the results of the `generate-sql --dir ...` script and possibly other user-defined sql scripts. If this directory contains `parallel/` subdirectory, `import-sql` will assume the parallel/*.sql files are safe to execute in parallel, up to `MAX_PARALLEL_PSQL` at a time (defaults to 5). The script will also execute `run_first.sql` before, and `run_last.sql` after the files in `parallel/` dir (if they exist).
+* SQL files from `$SQL_TOOLS_DIR` - contains all SQL files to be imported before the ones generated by OpenMapTiles project. By default, contains OMT fork of the Mapbox's [postgis-vt-util.sql](https://github.com/openmaptiles/postgis-vt-util) helper functions and contains the [sql/language.sql](sql/zzz_language.sql) script. (as `10_postgis-vt-util.sql` - the file name has to be imported before files in `/sql`)
+* SQL files from `$SQL_DIR` - defaults to `/sql` -- this directory should contain the results of the `generate-sql --dir ...` script and possibly other user-defined sql scripts. If this directory contains `parallel/` subdirectory, `import-sql` will assume the parallel/*.sql files are safe to execute in parallel, up to `MAX_PARALLEL_PSQL` at a time (defaults to 5). The script will also execute `run_first.sql` before, and `run_last.sql` after the files in `parallel/` dir (if they exist).
 
 Generating and importing SQL could be done in a single step with `&&`, e.g.
 
