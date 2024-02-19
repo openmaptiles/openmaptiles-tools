@@ -58,6 +58,18 @@ RUN set -eux ;\
     mv /usr/src/osmborder/build/src/osmborder /build-bin ;\
     mv /usr/src/osmborder/build/src/osmborder_filter /build-bin
 
+# Build SPREET
+FROM rust:1.76 as rust-builder
+ARG SPREET_REPO="https://github.com/flother/spreet"
+ARG SPREET_VERSION="v0.11.0"
+
+RUN set -eux ;\
+    /bin/bash -c 'echo ""; echo ""; echo "##### Build Spreet -- $SPREET_REPO -- version $SPREET_VERSION"' >&2 ;\
+    git clone --quiet --depth 1 $SPREET_REPO -b $SPREET_VERSION ;\
+    cd spreet ;\
+    cargo build --release ;\
+    mkdir /build-bin ;\
+    mv target/release/spreet /build-bin
 
 # Primary image
 FROM python:3.9-slim
@@ -123,7 +135,6 @@ RUN set -eux ;\
     npm install -g \
       @mapbox/mbtiles@0.12.1 \
       @mapbox/tilelive@6.1.1 \
-      @beyondtracks/spritezero-cli@2.3.1 \
       tilelive-pgquery@1.2.0 ;\
     \
     /bin/bash -c 'echo ""; echo ""; echo "##### Cleaning up"' >&2 ;\
@@ -136,9 +147,10 @@ RUN groupadd --gid 1000 openmaptiles \
 COPY ./requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy tools, imposm, and osmborder into the app dir
+# Copy tools, imposm, osmborder and spreet into the app dir
 COPY --from=go-builder /build-bin/* ./
 COPY --from=c-builder /build-bin/* ./
+COPY --from=rust-builder /build-bin/* ./
 COPY . .
 
 RUN set -eux ;\
