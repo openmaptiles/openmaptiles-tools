@@ -6,7 +6,7 @@ The following files are under MIT license (following).
 
 The MIT License (MIT)
 
-Copyright (c) 2020, KlokanTech.com & OpenMapTiles/OSM2VectorTiles contributors.
+Copyright (c) 2024, MapTiler.com & OpenMapTiles/OSM2VectorTiles contributors.
 All rights reserved.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
