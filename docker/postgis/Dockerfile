@@ -34,6 +34,8 @@ RUN set -eux  ;\
         postgresql-server-dev-$PG_MAJOR \
         libkakasi2-dev \
         libgdal-dev \
+        clang-13 \
+        llvm-13 \
     ;\
     ## Install specific GEOS version
     #cd /opt/  ;\
