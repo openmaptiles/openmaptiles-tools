@@ -16,6 +16,16 @@ DOCKER_OPTS  ?= -i --rm -u $$(id -u $${USER}):$$(id -g $${USER})
 # Optionally pass in extra parameters to the docker build command
 DOCKER_BUILD_EXTRAS ?=
 
+# https://github.com/openmaptiles/openmaptiles/pull/1497
+# Support newer `docker compose` syntax in addition to `docker-compose`
+ifeq (, $(shell which docker-compose))
+  DOCKER_COMPOSE_COMMAND := docker compose
+  $(info Using docker compose V2 (docker compose))
+else
+  DOCKER_COMPOSE_COMMAND := docker-compose
+  $(info Using docker compose V1 (docker-compose))
+endif
+
 ifneq ($(strip $(NO_REFRESH)),)
   $(info Skipping docker image refresh)
 else
@@ -108,9 +118,9 @@ build-sql-tests: prepare build-docker
 	@echo ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"
 	@echo "   Running Postgres SQL tests"
 	@echo ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"
-	docker-compose --file tests/sql/docker-compose.yml rm -f && \
-	timeout 180 docker-compose --file tests/sql/docker-compose.yml up --abort-on-container-exit && \
-	docker-compose --file tests/sql/docker-compose.yml rm -f
+	$(DOCKER_COMPOSE_COMMAND) --file tests/sql/docker-compose.yml rm -f && \
+	$(DOCKER_COMPOSE_COMMAND) --file tests/sql/docker-compose.yml up --abort-on-container-exit --wait-timeout 180 && \
+	$(DOCKER_COMPOSE_COMMAND) --file tests/sql/docker-compose.yml rm -f
 
 .PHONY: build-bin-tests
 build-bin-tests: prepare build-docker

@@ -34,6 +34,8 @@ RUN set -eux  ;\
         postgresql-server-dev-$PG_MAJOR \
         libkakasi2-dev \
         libgdal-dev \
+        clang-11 \
+        llvm-11 \
     ;\
     ## Install specific GEOS version
     #cd /opt/  ;\
@@ -50,8 +52,6 @@ RUN set -eux  ;\
     cd /opt/  ;\
     git clone --quiet --depth 1 -b $PGSQL_GZIP_TAG $PGSQL_GZIP_REPO  ;\
     cd pgsql-gzip  ;\
-    ln -s /usr/bin/clang-13 /usr/bin/clang-11  ;\
-    ln -s /usr/lib/llvm-13 /usr/lib/llvm-11  ;\
     make  ;\
     make install  ;\
     rm -rf /opt/pgsql-gzip  ;\
