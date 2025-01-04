@@ -22,4 +22,4 @@ psycopg2-binary==2.9.3
 pyyaml==6.0
 requests==2.32.0
 tabulate==0.8.9
-tornado==6.3.3
+tornado==6.4.2
