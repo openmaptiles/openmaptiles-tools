@@ -29,6 +29,20 @@ RUN set -eux ;\
     # Older imposm executable was called imposm3 - rename it to the common name "imposm"
     ( [ -f imposm ] && mv imposm /build-bin/imposm || mv imposm3 /build-bin/imposm )
 
+# Build the clone3-workaround to support Docker < 20.10.10
+RUN set -eux ;\
+    DEBIAN_FRONTEND=noninteractive apt-get update ;\
+    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+        `# installing clone3 workaround dependencies` \
+        libseccomp-dev \
+        ;\
+    /bin/bash -c 'echo ""; echo ""; echo "##### Build clone3-workaround"' >&2 ;\
+    git clone --quiet --depth 1 https://github.com/AkihiroSuda/clone3-workaround.git \
+        $GOPATH/src/github.com/AkihiroSuda/clone3-workaround ;\
+    cd $GOPATH/src/github.com/AkihiroSuda/clone3-workaround ;\
+    make ;\
+    strip clone3-workaround ;\
+    mv clone3-workaround /build-bin/clone3-workaround
 
 # Build osmborder
 FROM python:3.9 as c-builder
@@ -149,6 +163,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy tools, imposm, osmborder and spreet into the app dir
 COPY --from=go-builder /build-bin/* ./
+COPY --from=go-builder /build-bin/clone3-workaround /
 COPY --from=c-builder /build-bin/* ./
 COPY --from=rust-builder /build-bin/* ./
 COPY . .
@@ -169,3 +184,5 @@ CMD echo "*******************************************************************" ;
     echo "  Use 'bash' to start a shell inside the tools container." ;\
     echo "*******************************************************************" ;\
     find "${TOOLS_DIR}" -maxdepth 1 -executable -type f -printf " * %f\n" | sort
+
+ENTRYPOINT ["/clone3-workaround"]
