@@ -91,7 +91,7 @@ RUN set -eux ;\
         postgresql-client-${PG_MAJOR:?} \
         postgresql-${PG_MAJOR:?}-postgis-3 \
         osmium-tool \
-        osmconvert \
+        osmctools `# contains osmconvert` \
         ;\
     apt-get clean ;\
     rm -rf /var/lib/apt/lists/*
