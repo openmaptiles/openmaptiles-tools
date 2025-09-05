@@ -358,9 +358,15 @@ class SearchResult:
     bbox: str = None
 
 
-def load_sources(sources: Iterable[Source], session: ClientSession, verbose: bool):
-    return asyncio.wait([v.load_hash(session, verbose) for v in sources]
-                        + [v.load_metadata(session, verbose) for v in sources])
+async def load_sources(sources: Iterable[Source], session: ClientSession, verbose: bool):
+    """Load hash and metadata for all sources concurrently"""
+    tasks = []
+    for source in sources:
+        tasks.append(source.load_hash(session, verbose))
+        tasks.append(source.load_metadata(session, verbose))
+    
+    # Use asyncio.gather instead of deprecated asyncio.wait
+    await asyncio.gather(*tasks, return_exceptions=True)
 
 
 async def fetch(session: ClientSession, url: str) -> str:
@@ -613,8 +619,9 @@ class AreaParamParser:
             await save_state_file(self.session, res.state_url, self.args.state)
         return [src.url], src.hash, res.repl_url, res.bbox
 
-    def load_source(self, source: Source):
-        return load_sources([source], self.session, self.args.verbose)
+    async def load_source(self, source: Source):
+        """Load source metadata and hash asynchronously"""
+        await load_sources([source], self.session, self.args.verbose)
 
 
 def make_bbox_env_file(pbf_file, bbox_file, verbose):
@@ -658,7 +665,16 @@ async def main_async(args):
 
     urls, md5, repl_url = None, None, None
     exit_code = 0
-    async with aiohttp.ClientSession(trust_env=True, headers={'User-Agent': USER_AGENT}) as session:
+    # Configure ClientSession to handle redirects properly
+    connector = aiohttp.TCPConnector(limit=100, limit_per_host=30)
+    timeout = aiohttp.ClientTimeout(total=300, connect=30)
+
+    async with aiohttp.ClientSession(
+        trust_env=True, 
+        headers={'User-Agent': USER_AGENT},
+        connector=connector,
+        timeout=timeout
+    ) as session:
         force_latest = args['--force-latest']
         no_cache = args['--no-cache']
         if args.list:
