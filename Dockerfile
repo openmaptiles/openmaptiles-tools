@@ -113,7 +113,7 @@ RUN set -eux ;\
     /bin/bash -c 'source /etc/os-release && echo "deb http://apt.postgresql.org/pub/repos/apt/ ${VERSION_CODENAME:?}-pgdg main ${PG_MAJOR:?}" > /etc/apt/sources.list.d/pgdg.list' ;\
     DEBIAN_FRONTEND=noninteractive apt-get update ;\
     DEBIAN_FRONTEND=noninteractive apt-get install  -y --no-install-recommends \
-        aria2     `# multi-stream file downloader - used by download-osm` \
+        aria2c    `# multi-stream file downloader - used by download-osm` \
         graphviz  `# used by layer mapping graphs` \
         sqlite3   `# mbtiles file manipulations`   \
         gdal-bin  `# contains ogr2ogr` \
