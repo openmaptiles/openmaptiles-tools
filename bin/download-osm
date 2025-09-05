@@ -455,6 +455,18 @@ class Geofabrik(AreaSource):
 
     async def search(self, area_id: str, is_guessing: bool) -> Optional[SearchResult]:
         catalog = await self.get_catalog()
+        if area_id in catalog:
+            entry = catalog[area_id]
+            bbox = None
+            if entry['geo']:
+                bbox = Bbox.from_geometry(entry['geo']['coordinates']).bounds_str()
+
+            result = SearchResult(
+                Source(area_id, entry['url']),
+                entry['url_updates'],
+                entry['url'].replace('-latest.osm.pbf', '-updates/state.txt'),
+                bbox)
+            return result
         if area_id not in catalog:
             # If there is no exact match, find anything that ends with key
             reg = re.compile('.*' + re.escape(area_id.lstrip('/')) + '$', re.IGNORECASE)
@@ -482,11 +494,12 @@ class Geofabrik(AreaSource):
         if entry['geo']:
             bbox = Bbox.from_geometry(entry['geo']['coordinates']).bounds_str()
 
-        return SearchResult(
+        result = SearchResult(
             Source(area_id, entry['url']),
             entry['url_updates'],
-            entry['url'].replace('-latest.osm.pbf', '-updates/state.txt'),
+            entry['url'].replace('-latest.osm.pbf', '.state.txt'),
             bbox)
+        return result
 
 
 class UrlSrc(AreaSource):
@@ -604,12 +617,10 @@ class AreaParamParser:
             if res:
                 src = res.source
                 await self.load_source(src)
-                if src.file_len is not None:
+                if res and (src.file_len is not None or not self.is_guessing):
                     break
         else:
             raise SystemExit(f"Unable to auto-detect the source for '{self.area_id}'")
-        if self.is_guessing:
-            print(f"'{src.name}' was found in {src_name}.")
         print(f'Downloading {src.url} (size={src.size_str()}, md5={src.hash})',
               flush=True)
         if self.args.state:
