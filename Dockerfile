@@ -1,4 +1,4 @@
-FROM golang:1.17 as go-builder
+FROM golang:1.17 AS go-builder
 ARG IMPOSM_REPO="https://github.com/omniscale/imposm3.git"
 ARG IMPOSM_VERSION="v0.11.1"
 
@@ -31,7 +31,7 @@ RUN set -eux ;\
 
 
 # Build osmborder
-FROM python:3.9 as c-builder
+FROM python:3.9 AS c-builder
 ARG OSMBORDER_REV=e3ae8f7a2dcdcd6dc80abab4679cb5edb7dc6fa5
 
 RUN set -eux ;\
@@ -59,7 +59,7 @@ RUN set -eux ;\
     mv /usr/src/osmborder/build/src/osmborder_filter /build-bin
 
 # Build SPREET
-FROM rust:1.76 as rust-builder
+FROM rust:1.76 AS rust-builder
 ARG SPREET_REPO="https://github.com/flother/spreet"
 ARG SPREET_VERSION="v0.11.0"
 
