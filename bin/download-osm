@@ -364,7 +364,7 @@ async def load_sources(sources: Iterable[Source], session: ClientSession, verbos
     for source in sources:
         tasks.append(source.load_hash(session, verbose))
         tasks.append(source.load_metadata(session, verbose))
-    
+
     # Use asyncio.gather instead of deprecated asyncio.wait
     await asyncio.gather(*tasks, return_exceptions=True)
 
