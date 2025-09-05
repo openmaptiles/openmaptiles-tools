@@ -109,8 +109,8 @@ RUN set -eux ;\
         nano \
         procps  `# ps command` \
         gnupg2  `# TODO: not sure why gnupg2 is needed`  ;\
-    curl https://www.postgresql.org/media/keys/ACCC4CF8.asc | apt-key add - ;\
-    /bin/bash -c 'source /etc/os-release && echo "deb http://apt.postgresql.org/pub/repos/apt/ ${VERSION_CODENAME:?}-pgdg main ${PG_MAJOR:?}" > /etc/apt/sources.list.d/pgdg.list' ;\
+    curl https://www.postgresql.org/media/keys/ACCC4CF8.asc | gpg --dearmor -o /usr/share/keyrings/postgresql-keyring.gpg ;\
+    /bin/bash -c 'source /etc/os-release && echo "deb [signed-by=/usr/share/keyrings/postgresql-keyring.gpg] http://apt.postgresql.org/pub/repos/apt/ ${VERSION_CODENAME:?}-pgdg main ${PG_MAJOR:?}" > /etc/apt/sources.list.d/pgdg.list' ;\
     DEBIAN_FRONTEND=noninteractive apt-get update ;\
     DEBIAN_FRONTEND=noninteractive apt-get install  -y --no-install-recommends \
         aria2c    `# multi-stream file downloader - used by download-osm` \
