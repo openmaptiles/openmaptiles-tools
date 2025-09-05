@@ -43,7 +43,7 @@ RUN set -eux ;\
         ca-certificates \
         cmake \
         git \
-        libosmium2-dev \
+        libosmium2-dev=2.17.0-1 \
         zlib1g-dev \
         ;\
     /bin/bash -c 'echo ""; echo ""; echo "##### Building osmborder -- https://github.com/pnorman/osmborder"' >&2 ;\
@@ -52,7 +52,7 @@ RUN set -eux ;\
     git checkout ${OSMBORDER_REV:?} ;\
     mkdir -p /usr/src/osmborder/build ;\
     cd /usr/src/osmborder/build ;\
-    cmake .. ;\
+    cmake .. -DCMAKE_CXX_STANDARD=14 ;\
     make ;\
     make install ;\
     mv /usr/src/osmborder/build/src/osmborder /build-bin ;\
@@ -113,59 +113,6 @@ RUN set -eux ;\
     /bin/bash -c 'source /etc/os-release && echo "deb [signed-by=/usr/share/keyrings/postgresql-keyring.gpg] http://apt.postgresql.org/pub/repos/apt/ ${VERSION_CODENAME:?}-pgdg main ${PG_MAJOR:?}" > /etc/apt/sources.list.d/pgdg.list' ;\
     DEBIAN_FRONTEND=noninteractive apt-get update ;\
     DEBIAN_FRONTEND=noninteractive apt-get install  -y --no-install-recommends \
-        aria2c    `# multi-stream file downloader - used by download-osm` \
+        aria2     `# multi-stream file downloader - used by download-osm` \
         graphviz  `# used by layer mapping graphs` \
-        sqlite3   `# mbtiles file manipulations`   \
-        gdal-bin  `# contains ogr2ogr` \
-        osmctools `# osmconvert and other OSM tools` \
-        osmosis   `# useful toolset - https://wiki.openstreetmap.org/wiki/Osmosis` \
-        postgresql-client-${PG_MAJOR:?}  `# psql` \
-        \
-        # imposm dependencies
-        libgeos-dev \
-        libleveldb-dev \
-        libprotobuf-dev \
-        ;\
-    # generate-tiles
-    curl -sL https://deb.nodesource.com/setup_14.x | bash -  ;\
-    DEBIAN_FRONTEND=noninteractive apt-get update  ;\
-    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends  \
-        nodejs npm build-essential ;\
-    rm -rf /var/lib/apt/lists/  ;\
-    npm install -g \
-      @mapbox/mbtiles@0.12.1 \
-      @mapbox/tilelive@6.1.1 \
-      tilelive-pgquery@1.2.0 ;\
-    \
-    /bin/bash -c 'echo ""; echo ""; echo "##### Cleaning up"' >&2 ;\
-    rm -rf /var/lib/apt/lists/*
-
-RUN groupadd --gid 1000 openmaptiles \
-  && useradd --uid 1000 --gid openmaptiles --shell /bin/bash --create-home openmaptiles
-
-# Copy requirements.txt first to avoid pip install on every code change
-COPY ./requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
-
-# Copy tools, imposm, osmborder and spreet into the app dir
-COPY --from=go-builder /build-bin/* ./
-COPY --from=c-builder /build-bin/* ./
-COPY --from=rust-builder /build-bin/* ./
-COPY . .
-
-RUN set -eux ;\
-    mv bin/* . ;\
-    rm -rf bin ;\
-    rm requirements.txt ;\
-    ./download-osm list geofabrik ;\
-    ./download-osm list bbbike
-
-WORKDIR /tileset
-
-# In case there are no parameters, print a list of available scripts
-CMD echo "*******************************************************************" ;\
-    echo "  Please specify a script to run. Here are the available scripts." ;\
-    echo "  Use script name with --help to get more information." ;\
-    echo "  Use 'bash' to start a shell inside the tools container." ;\
-    echo "*******************************************************************" ;\
-    find "${TOOLS_DIR}" -maxdepth 1 -executable -type f -printf " * %f\n" | sort
+        sqlite3   `# mbtiles file manipulations` \
