@@ -33,8 +33,5 @@ Use `openmaptiles-data` image instead.  Originally migrated from [import-natural
 ## [import-water](https://hub.docker.com/r/openmaptiles/import-water)
 Use `openmaptiles-data` image instead.  Originally migrated from [import-water](https://github.com/openmaptiles/import-water) repo.
 
-## [generate-osmborder](https://hub.docker.com/r/openmaptiles/generate-osmborder) and [import-osmborder](https://hub.docker.com/r/openmaptiles/import-osmborder)
-Use [import-borders](../README.md#import-osm-borders) in the `openmaptiles-tools` image instead.  Originally migrated from [import-osmborder](https://github.com/openmaptiles/import-osmborder) repo.
-
 ## [import-osm](https://hub.docker.com/r/openmaptiles/import-osm)
 Use [import-osm](../README.md#import-and-update-osm-data) in the `openmaptiles-tools` image instead.  Originally migrated from [import-osm](https://github.com/openmaptiles/import-osm).

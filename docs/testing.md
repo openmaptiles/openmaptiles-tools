@@ -71,7 +71,6 @@ make bash           # Connect to tools to run commands directly
 
 # inside tools shell:
 download-osm monaco -o /import/monaco.pbf   # download some data
-import-borders                     # created borders based on the data file
 import-osm                         # import data file
 import-wikidata openmaptiles.yaml  # import wikidata labels for mentioned data
 import-sql                         # run sql files to update indexes

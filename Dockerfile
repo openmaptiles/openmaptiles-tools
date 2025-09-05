@@ -30,34 +30,6 @@ RUN set -eux ;\
     ( [ -f imposm ] && mv imposm /build-bin/imposm || mv imposm3 /build-bin/imposm )
 
 
-# Build osmborder
-FROM python:3.9 AS c-builder
-ARG OSMBORDER_REV=e3ae8f7a2dcdcd6dc80abab4679cb5edb7dc6fa5
-
-RUN set -eux ;\
-    mkdir /build-bin ;\
-    DEBIAN_FRONTEND=noninteractive apt-get update ;\
-    DEBIAN_FRONTEND=noninteractive apt-get install  -y --no-install-recommends \
-        `# installing osmborder dependencies` \
-        build-essential \
-        ca-certificates \
-        cmake \
-        git \
-        libosmium2-dev=2.17.0-1 \
-        zlib1g-dev \
-        ;\
-    /bin/bash -c 'echo ""; echo ""; echo "##### Building osmborder -- https://github.com/pnorman/osmborder"' >&2 ;\
-    git clone https://github.com/pnorman/osmborder.git /usr/src/osmborder ;\
-    cd /usr/src/osmborder ;\
-    git checkout ${OSMBORDER_REV:?} ;\
-    mkdir -p /usr/src/osmborder/build ;\
-    cd /usr/src/osmborder/build ;\
-    cmake .. -DCMAKE_CXX_STANDARD=14 ;\
-    make ;\
-    make install ;\
-    mv /usr/src/osmborder/build/src/osmborder /build-bin ;\
-    mv /usr/src/osmborder/build/src/osmborder_filter /build-bin
-
 # Build SPREET
 FROM rust:1.76 AS rust-builder
 ARG SPREET_REPO="https://github.com/flother/spreet"
@@ -116,3 +88,29 @@ RUN set -eux ;\
         aria2     `# multi-stream file downloader - used by download-osm` \
         graphviz  `# used by layer mapping graphs` \
         sqlite3   `# mbtiles file manipulations` \
+        postgresql-client-${PG_MAJOR:?} \
+        postgresql-${PG_MAJOR:?}-postgis-3 \
+        osmium-tool \
+        osmconvert \
+        ;\
+    apt-get clean ;\
+    rm -rf /var/lib/apt/lists/*
+
+# Copy built binaries from build stages
+COPY --from=go-builder /build-bin/imposm /usr/local/bin/
+COPY --from=rust-builder /build-bin/spreet /usr/local/bin/
+
+# Copy Python tools
+COPY . ${TOOLS_DIR}/
+
+# Install Python dependencies
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Create necessary directories
+RUN mkdir -p /cache /import /mapping
+
+# Set proper permissions
+RUN chmod +x ${TOOLS_DIR}/bin/*
+
+# Default command
+CMD ["/bin/bash"]
