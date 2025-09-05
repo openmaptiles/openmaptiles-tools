@@ -680,7 +680,7 @@ async def main_async(args):
     timeout = aiohttp.ClientTimeout(total=300, connect=30)
 
     async with aiohttp.ClientSession(
-        trust_env=True, 
+        trust_env=True,
         headers={'User-Agent': USER_AGENT},
         connector=connector,
         timeout=timeout
