@@ -457,8 +457,7 @@ class Geofabrik(AreaSource):
         catalog = await self.get_catalog()
         if area_id not in catalog:
             # If there is no exact match, find anything that ends with key
-            reg = re.compile('.*' + re.escape('/' + area_id.lstrip('/')) + '$',
-                             re.IGNORECASE)
+            reg = re.compile('.*' + re.escape(area_id.lstrip('/')) + '$', re.IGNORECASE)
             area_urls = [k for k in catalog.keys() if reg.match(k)]
             if not area_urls:
                 error = f"ID '{area_id}' was not found in Geofabrik."
