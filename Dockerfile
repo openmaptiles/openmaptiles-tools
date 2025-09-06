@@ -57,7 +57,8 @@ WORKDIR ${TOOLS_DIR}
 # SQL_TOOLS_DIR can be used to provide custom SQL files instead of the files from /sql
 #
 ENV TOOLS_DIR="$TOOLS_DIR" \
-    PATH="${TOOLS_DIR}:${PATH}" \
+    PATH="${TOOLS_DIR}/bin:${PATH}" \
+    PYTHONPATH="${TOOLS_DIR}:${PYTHONPATH}" \
     IMPOSM_CONFIG_FILE=${TOOLS_DIR}/config/repl_config.json \
     IMPOSM_MAPPING_FILE=/mapping/mapping.yaml \
     IMPOSM_CACHE_DIR=/cache \
