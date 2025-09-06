@@ -60,7 +60,7 @@ echo "++++++++++++++++++++++++"
 
 # Using a fake cache/geofabrik.json so that downloader wouldn't need to download the real one from Geofabrik site
 download-osm planet --imposm-cfg "$BUILD/planet-cfg.json" --dry-run
-download-osm michigan --imposm-cfg "$BUILD/michigan-cfg.json" --dry-run
+download-osm geofabrik michigan --imposm-cfg "$BUILD/michigan-cfg.json" --dry-run
 
 
 # Run background http server, and stop it when this script exits
