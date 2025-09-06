@@ -112,9 +112,13 @@ run-python-tests: build-docker
 		   python -m flake8 openmaptiles tests/python `grep -rIzl "^#!.*python" bin`; \
 		 else \
 		   python -m flake8 openmaptiles `grep -rIzl "^#!.*python" bin`; \
-		 fi \
-		 && (python -m unittest discover 2>&1 | \
-		     awk -v s="Ran 0 tests in" '\''$$0~s{print; print "\n*** No Python unit tests found, aborting"; exit(1)} 1'\'')'
+		 fi && \
+		 if [ -d "tests/python" ]; then \
+		   cd tests/python && python -m unittest discover -p "test_*.py" 2>&1 | \
+		   awk -v s="Ran 0 tests in" '\''$$0~s{print; print "\n*** No Python unit tests found, aborting"; exit(1)} 1'\''; \
+		 else \
+		   echo "No Python tests found, skipping"; \
+		 fi'
 
 .PHONY: build-sql-tests
 build-sql-tests: prepare build-docker
