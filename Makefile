@@ -107,7 +107,12 @@ run-python-tests: build-docker
 	@echo "   Running Python unit tests"
 	@echo ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"
 	@$(RUN_CMD) $(DOCKER_IMAGE)  bash -c \
-		'cd /usr/src/app && python -m flake8 openmaptiles tests/python `grep -rIzl "^#!.*python" bin` \
+		'cd /usr/src/app && \
+		 if [ -d "tests/python" ]; then \
+		   python -m flake8 openmaptiles tests/python `grep -rIzl "^#!.*python" bin`; \
+		 else \
+		   python -m flake8 openmaptiles `grep -rIzl "^#!.*python" bin`; \
+		 fi \
 		 && (python -m unittest discover 2>&1 | \
 		     awk -v s="Ran 0 tests in" '\''$$0~s{print; print "\n*** No Python unit tests found, aborting"; exit(1)} 1'\'')'
 
