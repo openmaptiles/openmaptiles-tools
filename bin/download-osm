@@ -67,6 +67,7 @@ where the 3rd parameter is the name of the PDF file. Will run bbox command.
 
 import asyncio
 import json
+import os
 import re
 import subprocess
 import sys
@@ -388,7 +389,8 @@ class AreaSource:
         raise ValueError(f'Search is not implemented for {self.name}')
 
     async def get_catalog(self) -> dict:
-        list_path = Path(__file__).parent / 'cache' / f'{self.name}.json'
+        cache_dir = os.environ.get('IMPOSM_CACHE_DIR', '/usr/src/app/cache')
+        list_path = Path(cache_dir) / f'{self.name}.json'
         list_path.parent.mkdir(parents=True, exist_ok=True)
         data = None
         if not self.force_latest:

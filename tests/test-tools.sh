@@ -11,6 +11,8 @@ TEMP_DIR="/tmp"
 DEVDOC=${BUILD:?}/devdoc
 mkdir -p "$DEVDOC"
 
+cd /tileset
+
 set -x
 
 generate-tm2source "$TESTLAYERS/testmaptiles.yaml" \
