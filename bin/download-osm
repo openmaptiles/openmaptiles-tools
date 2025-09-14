@@ -549,7 +549,6 @@ class Osmfr(AreaSource):
             poly = await fetch(self.session, f'https://download.openstreetmap.fr/polygons/{area_id}.poly')
         except ValueError as e:
             if is_guessing:
-                print(f"Albania not available from openstreetmap.fr: {e}")
                 return None
             else:
                 raise
@@ -622,12 +621,20 @@ class AreaParamParser:
             print('Area source has not been specified. Auto-detecting...')
         for src_name, src_type in self.sources.items():
             site = src_type(self.session, self.force_latest, self.no_cache)
-            res = await site.search(self.area_id, self.is_guessing)
-            if res:
-                src = res.source
-                await self.load_source(src)
-                if res and (src.file_len is not None or not self.is_guessing):
-                    break
+            try:
+                res = await site.search(self.area_id, self.is_guessing)
+                if res:
+                    src = res.source
+                    await self.load_source(src)
+                    # In guessing mode, use the first source that returns a valid result
+                    # In non-guessing mode, only use if we have file metadata
+                    if self.is_guessing or src.file_len is not None:
+                        print(f'Using source: {src_name}')
+                        break
+            except Exception as e:
+                print(f'Source {src_name} failed with error: {e}')
+                if not self.is_guessing:
+                    raise
         else:
             raise SystemExit(f"Unable to auto-detect the source for '{self.area_id}'")
         print(f'Downloading {src.url} (size={src.size_str()}, md5={src.hash})',
