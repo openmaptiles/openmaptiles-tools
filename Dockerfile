@@ -108,11 +108,11 @@ COPY . ${TOOLS_DIR}/
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Create necessary directories
-RUN mkdir -p /cache /import /mapping /usr/src/app/data
+RUN mkdir -p /cache /import /mapping /usr/src/app/data /usr/src/app/build/openmaptiles.tm2source
 
 # Set proper permissions
 RUN chmod +x ${TOOLS_DIR}/bin/*
-RUN chmod 777 /cache /import /mapping /usr/src/app/data
+RUN chmod 777 /cache /import /mapping /usr/src/app/data /usr/src/app/build/openmaptiles.tm2source
 
 # Default command
 CMD ["/bin/bash"]
