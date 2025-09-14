@@ -114,6 +114,16 @@ RUN mkdir -p ${TOOLS_DIR}/config && \
 # Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
+# Install Node.js 18 and essential tilelive packages
+RUN curl -fsSL https://deb.nodesource.com/setup_18.x | bash - && \
+    apt-get update && \
+    apt-get install -y nodejs build-essential python3-dev libsqlite3-dev && \
+    npm install -g \
+        @mapbox/mbtiles@0.11.0 \
+        @mapbox/tilelive@6.1.0 \
+        nyurik/tilelive-pgquery \
+        --unsafe-perm
+
 # Create necessary directories
 RUN mkdir -p /cache /import /mapping /usr/src/app/data /usr/src/app/build/openmaptiles.tm2source
 
