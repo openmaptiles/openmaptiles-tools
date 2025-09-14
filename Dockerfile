@@ -93,6 +93,9 @@ RUN set -eux ;\
         postgresql-${PG_MAJOR:?}-postgis-3 \
         osmium-tool \
         osmctools `# contains osmconvert` \
+        libgeos-dev `# Imposm dependency` \
+        libleveldb-dev `# Imposm dependency` \
+        libprotobuf-dev `# Imposm dependency` \
         ;\
     apt-get clean ;\
     rm -rf /var/lib/apt/lists/*
