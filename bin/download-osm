@@ -753,7 +753,7 @@ async def run_aria2c(aria2c_args, md5, urls, args):
         assert_conflict_args(
             '--output', aria2c_args, '-d', '--dir', '-o', '--out', '-i', '--input-file',
             '--auto-file-renaming', '-Z', '--force-sequential', '--allow-overwrite')
-        out_path = Path(args['--output']).resolve()
+        out_path = Path(args['--output'])
         out_path.parent.mkdir(parents=True, exist_ok=True)
         params.append(f'--dir={out_path.parent}')
         params.append(f'--out={out_path.name}')

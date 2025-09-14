@@ -108,10 +108,11 @@ COPY . ${TOOLS_DIR}/
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Create necessary directories
-RUN mkdir -p /cache /import /mapping
+RUN mkdir -p /cache /import /mapping /usr/src/app/data
 
 # Set proper permissions
 RUN chmod +x ${TOOLS_DIR}/bin/*
+RUN chmod 777 /cache /import /mapping /usr/src/app/data
 
 # Default command
 CMD ["/bin/bash"]
