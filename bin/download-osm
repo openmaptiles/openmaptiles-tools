@@ -545,7 +545,14 @@ class Bbbike(AreaSource):
 class Osmfr(AreaSource):
     async def search(self, area_id: str, is_guessing: bool) -> Optional[SearchResult]:
         url = f'http://download.openstreetmap.fr/extracts/{area_id}-latest.osm.pbf'
-        poly = await fetch(self.session, f'https://download.openstreetmap.fr/polygons/{area_id}.poly')
+        try:
+            poly = await fetch(self.session, f'https://download.openstreetmap.fr/polygons/{area_id}.poly')
+        except ValueError as e:
+            if is_guessing:
+                print(f"Albania not available from openstreetmap.fr: {e}")
+                return None
+            else:
+                raise
         return SearchResult(
             Source(area_id, url),
             f'http://download.openstreetmap.fr/replication/{area_id}/minute/',
