@@ -547,7 +547,7 @@ class Osmfr(AreaSource):
         url = f'http://download.openstreetmap.fr/extracts/{area_id}-latest.osm.pbf'
         try:
             poly = await fetch(self.session, f'https://download.openstreetmap.fr/polygons/{area_id}.poly')
-        except ValueError as e:
+        except ValueError:
             if is_guessing:
                 return None
             else:
