@@ -59,7 +59,7 @@ WORKDIR ${TOOLS_DIR}
 ENV TOOLS_DIR="$TOOLS_DIR" \
     PATH="${TOOLS_DIR}/bin:${PATH}" \
     PYTHONPATH="${TOOLS_DIR}:${PYTHONPATH}" \
-    IMPOSM_CONFIG_FILE=${TOOLS_DIR}/config/repl_config.json \
+    IMPOSM_CONFIG_FILE=${TOOLS_DIR}/bin/config/repl_config.json \
     IMPOSM_MAPPING_FILE=/mapping/mapping.yaml \
     IMPOSM_CACHE_DIR=/usr/src/app/cache \
     IMPOSM_DIFF_DIR=/import \
@@ -106,6 +106,10 @@ COPY --from=rust-builder /build-bin/spreet /usr/local/bin/
 
 # Copy Python tools
 COPY . ${TOOLS_DIR}/
+
+# Copy config file to expected location
+RUN mkdir -p ${TOOLS_DIR}/config && \
+    cp ${TOOLS_DIR}/bin/config/repl_config.json ${TOOLS_DIR}/config/repl_config.json
 
 # Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
