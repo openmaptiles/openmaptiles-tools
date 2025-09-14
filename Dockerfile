@@ -50,7 +50,7 @@ LABEL maintainer="Yuri Astrakhan <YuriAstrakhan@gmail.com>"
 ARG PG_MAJOR=14
 ARG TOOLS_DIR=/usr/src/app
 
-WORKDIR ${TOOLS_DIR}
+WORKDIR /tileset
 
 #
 # IMPOSM_CONFIG_FILE can be used to provide custom IMPOSM config file
@@ -112,7 +112,7 @@ RUN mkdir -p ${TOOLS_DIR}/config && \
     cp ${TOOLS_DIR}/bin/config/repl_config.json ${TOOLS_DIR}/config/repl_config.json
 
 # Install Python dependencies
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir -r ${TOOLS_DIR}/requirements.txt
 
 # Install Node.js 18 and essential tilelive packages
 RUN curl -fsSL https://deb.nodesource.com/setup_18.x | bash - && \
