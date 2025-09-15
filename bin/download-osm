@@ -333,16 +333,24 @@ class Source:
 
     async def load_metadata(self, session: ClientSession, verbose: bool):
         if not self.url:
+            print(f"DEBUG: No URL to load metadata for")
             return
         try:
             if verbose:
                 print(f'Getting content length for {self.url}')
+            print(f"DEBUG: Making HEAD request to {self.url}")
             async with session.head(self.url) as resp:
+                print(f"DEBUG: HEAD response status: {resp.status}")
+                print(f"DEBUG: HEAD response headers: {dict(resp.headers)}")
                 if resp.status >= 400:
                     raise ValueError(f'Status={resp.status} for HEAD request')
                 if 'Content-Length' in resp.headers:
                     self.file_len = int(resp.headers['Content-Length'])
+                    print(f"DEBUG: Set file_len to {self.file_len}")
+                else:
+                    print(f"DEBUG: No Content-Length header found")
         except Exception as ex:
+            print(f"DEBUG: Exception in load_metadata: {ex}")
             print_err(f'Unable to load metadata for {self}: {ex}')
 
     def size_str(self):
@@ -389,21 +397,28 @@ class AreaSource:
         raise ValueError(f'Search is not implemented for {self.name}')
 
     async def get_catalog(self) -> dict:
+        print(f"DEBUG: AreaSource.get_catalog called for {self.name}")
         cache_dir = os.environ.get('IMPOSM_CACHE_DIR', '/usr/src/app/cache')
         list_path = Path(cache_dir) / f'{self.name}.json'
+        print(f"DEBUG: Cache directory: {cache_dir}, list_path: {list_path}")
         list_path.parent.mkdir(parents=True, exist_ok=True)
         data = None
         if not self.force_latest:
             try:
                 data = list_path.read_text(encoding='utf-8')
+                print(f"DEBUG: Loaded cached catalog data ({len(data)} chars)")
             except FileNotFoundError:
+                print(f"DEBUG: No cached catalog found")
                 pass
         if data is None:
             print(f'Downloading the list of available {self.name} areas...')
             data = await self.fetch_catalog()
+            print(f"DEBUG: Fetched catalog data ({len(data)} chars)")
             if not self.no_cache:
                 list_path.write_text(data, encoding='utf-8')
+                print(f"DEBUG: Cached catalog data to {list_path}")
         catalog, warnings = await self.parse_catalog(data)
+        print(f"DEBUG: Parsed catalog with {len(catalog)} entries, {len(warnings)} warnings")
         if warnings:
             print(f'ERRORS parsing {self.name} catalog file:', file=sys.stderr)
             for warn in warnings:
@@ -469,36 +484,54 @@ class Geofabrik(AreaSource):
         )
 
     async def search(self, area_id: str, is_guessing: bool) -> Optional[SearchResult]:
+        print(f"DEBUG: Geofabrik.search called with area_id='{area_id}', is_guessing={is_guessing}")
         catalog = await self.get_catalog()
+        print(f"DEBUG: Catalog loaded with {len(catalog)} entries")
+        
+        # Show some sample entries for debugging
+        sample_entries = list(catalog.keys())[:10]
+        print(f"DEBUG: Sample catalog entries: {sample_entries}")
+        
+        # Look for entries that contain 'michigan' (case insensitive)
+        michigan_entries = [k for k in catalog.keys() if 'michigan' in k.lower()]
+        print(f"DEBUG: Entries containing 'michigan': {michigan_entries}")
 
         if area_id in catalog:
+            print(f"DEBUG: Found exact match for '{area_id}' in catalog")
             return self._create_search_result(area_id, catalog[area_id])
         
         # If there is no exact match, find anything that ends with key
         reg = re.compile('.*' + re.escape(area_id.lstrip('/')) + '$', re.IGNORECASE)
         area_urls = [k for k in catalog.keys() if reg.match(k)]
+        print(f"DEBUG: Regex search for '{area_id}' found {len(area_urls)} matches: {area_urls}")
         
         if not area_urls:
             error = f"ID '{area_id}' was not found in Geofabrik."
             if not is_guessing:
                 error += "\nUse 'list geofabrik' to see available extract, or try --force-latest to refresh the list of extracts."
+            print(f"DEBUG: No matches found, error: {error}")
         elif len(area_urls) > 1:
             variants = [(v, catalog[v]['full_name']) for v in area_urls]
             error = (f"More than one ID '{area_id}' was found in "
                      f'Geofabrik, use longer ID:\n{tabulate(variants)}')
+            print(f"DEBUG: Multiple matches found: {variants}")
         else:
             # Single match found
+            print(f"DEBUG: Single match found: '{area_urls[0]}'")
             area_id = area_urls[0]
             return self._create_search_result(area_id, catalog[area_id])
 
         if error:
             if is_guessing:
+                print(f"DEBUG: In guessing mode, returning None due to error: {error}")
                 print(error)
                 return None
             else:
+                print(f"DEBUG: Not in guessing mode, raising SystemExit: {error}")
                 raise SystemExit(error)
         
         # This should never be reached due to the logic above, but keeping for safety
+        print(f"DEBUG: Fallback case reached - this should not happen")
         return self._create_search_result(area_id, catalog[area_id])
 
 
@@ -614,25 +647,37 @@ class AreaParamParser:
         self.is_guessing = len(self.sources) > 1
 
     async def parse(self):
+        print(f"DEBUG: AreaParamParser.parse called with area_id='{self.area_id}'")
+        print(f"DEBUG: Available sources: {list(self.sources.keys())}")
+        print(f"DEBUG: is_guessing={self.is_guessing}")
+        
         if self.is_guessing:
             print('Area source has not been specified. Auto-detecting...')
         for src_name, src_type in self.sources.items():
+            print(f"DEBUG: Trying source '{src_name}' of type {src_type.__name__}")
             site = src_type(self.session, self.force_latest, self.no_cache)
             try:
                 res = await site.search(self.area_id, self.is_guessing)
+                print(f"DEBUG: Source '{src_name}' search returned: {res}")
                 if res:
                     src = res.source
+                    print(f"DEBUG: Loading source metadata for {src}")
                     await self.load_source(src)
-                    # In guessing mode, use the first source that returns a valid result
-                    # In non-guessing mode, only use if we have file metadata
-                    if self.is_guessing or src.file_len is not None:
+                    print(f"DEBUG: Source metadata loaded - file_len={src.file_len}, hash={src.hash}")
+                    # If not in guessing mode (specific source specified), use it regardless of metadata
+                    # If in guessing mode, only use sources with metadata
+                    if not self.is_guessing or src.file_len is not None or not self.is_guessing:
                         print(f'Using source: {src_name}')
                         break
+                    else:
+                        print(f"DEBUG: Skipping source '{src_name}' - in guessing mode but no file metadata")
             except Exception as e:
+                print(f'DEBUG: Source {src_name} failed with error: {e}')
                 print(f'Source {src_name} failed with error: {e}')
                 if not self.is_guessing:
                     raise
         else:
+            print(f"DEBUG: No sources succeeded, raising SystemExit")
             raise SystemExit(f"Unable to auto-detect the source for '{self.area_id}'")
         print(f'Downloading {src.url} (size={src.size_str()}, md5={src.hash})',
               flush=True)
