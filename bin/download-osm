@@ -457,6 +457,7 @@ class Geofabrik(AreaSource):
 
     async def search(self, area_id: str, is_guessing: bool) -> Optional[SearchResult]:
         catalog = await self.get_catalog()
+
         if area_id in catalog:
             entry = catalog[area_id]
             bbox = None
@@ -466,7 +467,7 @@ class Geofabrik(AreaSource):
             result = SearchResult(
                 Source(area_id, entry['url']),
                 entry['url_updates'],
-                entry['url'].replace('-latest.osm.pbf', '-updates/state.txt'),
+                entry['url'].replace('-latest.osm.pbf', '.state.txt'),
                 bbox)
             return result
         if area_id not in catalog:
@@ -484,6 +485,18 @@ class Geofabrik(AreaSource):
             else:
                 error = None
                 area_id = area_urls[0]
+                entry = catalog[area_id]
+                bbox = None
+                if entry.get('geo'):
+                    bbox = Bbox.from_geometry(entry['geo']['coordinates']).bounds_str()
+
+                result = SearchResult(
+                    Source(area_id, entry['url']),
+                    entry.get('url_updates'),
+                    entry['url'].replace('-latest.osm.pbf', '.state.txt'),
+                    bbox
+                )
+                return result
 
             if error:
                 if is_guessing:
@@ -493,14 +506,15 @@ class Geofabrik(AreaSource):
                     raise SystemExit(error)
         entry = catalog[area_id]
         bbox = None
-        if entry['geo']:
+        if entry.get('geo'):
             bbox = Bbox.from_geometry(entry['geo']['coordinates']).bounds_str()
 
         result = SearchResult(
             Source(area_id, entry['url']),
-            entry['url_updates'],
+            entry.get('url_updates'),
             entry['url'].replace('-latest.osm.pbf', '.state.txt'),
-            bbox)
+            bbox
+        )
         return result
 
 
@@ -611,9 +625,8 @@ class AreaParamParser:
         self.state_url = None
         self.force_latest = force_latest
         self.no_cache = no_cache
-        # Limit sources to just the one passed in the arguments, or keep all
-        self.sources = {k: v for k, v in area_sources.items() if
-                        self.args[k]} or area_sources
+
+        self.sources = {k: v for k, v in area_sources.items() if self.args[k]} or area_sources
         self.is_guessing = len(self.sources) > 1
 
     async def parse(self):
