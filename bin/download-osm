@@ -455,67 +455,51 @@ class Geofabrik(AreaSource):
         return {v['full_id']: v
                 for v in sorted(entries.values(), key=lambda v: v['full_id'])}, warnings
 
-    async def search(self, area_id: str, is_guessing: bool) -> Optional[SearchResult]:
-        catalog = await self.get_catalog()
-
-        if area_id in catalog:
-            entry = catalog[area_id]
-            bbox = None
-            if entry['geo']:
-                bbox = Bbox.from_geometry(entry['geo']['coordinates']).bounds_str()
-
-            result = SearchResult(
-                Source(area_id, entry['url']),
-                entry['url_updates'],
-                entry['url'].replace('-latest.osm.pbf', '.state.txt'),
-                bbox)
-            return result
-        if area_id not in catalog:
-            # If there is no exact match, find anything that ends with key
-            reg = re.compile('.*' + re.escape(area_id.lstrip('/')) + '$', re.IGNORECASE)
-            area_urls = [k for k in catalog.keys() if reg.match(k)]
-            if not area_urls:
-                error = f"ID '{area_id}' was not found in Geofabrik."
-                if not is_guessing:
-                    error += "\nUse 'list geofabrik' to see available extract, or try --force-latest to refresh the list of extracts."
-            elif len(area_urls) > 1:
-                variants = [(v, catalog[v]['full_name']) for v in area_urls]
-                error = (f"More than one ID '{area_id}' was found in "
-                         f'Geofabrik, use longer ID:\n{tabulate(variants)}')
-            else:
-                error = None
-                area_id = area_urls[0]
-                entry = catalog[area_id]
-                bbox = None
-                if entry.get('geo'):
-                    bbox = Bbox.from_geometry(entry['geo']['coordinates']).bounds_str()
-
-                result = SearchResult(
-                    Source(area_id, entry['url']),
-                    entry.get('url_updates'),
-                    entry['url'].replace('-latest.osm.pbf', '.state.txt'),
-                    bbox
-                )
-                return result
-
-            if error:
-                if is_guessing:
-                    print(error)
-                    return None
-                else:
-                    raise SystemExit(error)
-        entry = catalog[area_id]
+    def _create_search_result(self, area_id: str, entry: dict) -> SearchResult:
+        """Create a SearchResult from an area_id and catalog entry."""
         bbox = None
         if entry.get('geo'):
             bbox = Bbox.from_geometry(entry['geo']['coordinates']).bounds_str()
-
-        result = SearchResult(
+        
+        return SearchResult(
             Source(area_id, entry['url']),
             entry.get('url_updates'),
             entry['url'].replace('-latest.osm.pbf', '.state.txt'),
             bbox
         )
-        return result
+
+    async def search(self, area_id: str, is_guessing: bool) -> Optional[SearchResult]:
+        catalog = await self.get_catalog()
+
+        if area_id in catalog:
+            return self._create_search_result(area_id, catalog[area_id])
+        
+        # If there is no exact match, find anything that ends with key
+        reg = re.compile('.*' + re.escape(area_id.lstrip('/')) + '$', re.IGNORECASE)
+        area_urls = [k for k in catalog.keys() if reg.match(k)]
+        
+        if not area_urls:
+            error = f"ID '{area_id}' was not found in Geofabrik."
+            if not is_guessing:
+                error += "\nUse 'list geofabrik' to see available extract, or try --force-latest to refresh the list of extracts."
+        elif len(area_urls) > 1:
+            variants = [(v, catalog[v]['full_name']) for v in area_urls]
+            error = (f"More than one ID '{area_id}' was found in "
+                     f'Geofabrik, use longer ID:\n{tabulate(variants)}')
+        else:
+            # Single match found
+            area_id = area_urls[0]
+            return self._create_search_result(area_id, catalog[area_id])
+
+        if error:
+            if is_guessing:
+                print(error)
+                return None
+            else:
+                raise SystemExit(error)
+        
+        # This should never be reached due to the logic above, but keeping for safety
+        return self._create_search_result(area_id, catalog[area_id])
 
 
 class UrlSrc(AreaSource):
