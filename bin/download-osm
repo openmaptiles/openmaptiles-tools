@@ -400,15 +400,24 @@ class AreaSource:
                 pass
         if data is None:
             print(f'Downloading the list of available {self.name} areas...')
-            data = await self.fetch_catalog()
-            if not self.no_cache:
-                list_path.write_text(data, encoding='utf-8')
-        catalog, warnings = await self.parse_catalog(data)
-        if warnings:
-            print(f'ERRORS parsing {self.name} catalog file:', file=sys.stderr)
-            for warn in warnings:
-                print(f' * {warn}', file=sys.stderr)
-        return catalog
+            try:
+                data = await self.fetch_catalog()
+                if not self.no_cache:
+                    list_path.write_text(data, encoding='utf-8')
+            except Exception as e:
+                print(f'Failed to fetch catalog for {self.name}: {e}')
+                raise
+        
+        try:
+            catalog, warnings = await self.parse_catalog(data)
+            if warnings:
+                print(f'Warnings parsing {self.name} catalog file:')
+                for warn in warnings:
+                    print(f' * {warn}')
+            return catalog
+        except Exception as e:
+            print(f'Failed to parse catalog for {self.name}: {e}')
+            raise
 
     def fetch_catalog(self) -> Future:
         raise ValueError(f'Catalog is not supported for {self.name}')
@@ -469,7 +478,11 @@ class Geofabrik(AreaSource):
         )
 
     async def search(self, area_id: str, is_guessing: bool) -> Optional[SearchResult]:
-        catalog = await self.get_catalog()
+        try:
+            catalog = await self.get_catalog()
+        except Exception as e:
+            print(f'Failed to get Geofabrik catalog: {e}')
+            raise
 
         if area_id in catalog:
             return self._create_search_result(area_id, catalog[area_id])
@@ -532,7 +545,12 @@ class Bbbike(AreaSource):
         }, []
 
     async def search(self, area_id: str, is_guessing: bool) -> Optional[SearchResult]:
-        catalog = await self.get_catalog()
+        try:
+            catalog = await self.get_catalog()
+        except Exception as e:
+            print(f'Failed to get Bbbike catalog: {e}')
+            raise
+        
         area_id = area_id.lower()
         for k, v in catalog.items():
             if area_id == k.lower():
@@ -623,13 +641,10 @@ class AreaParamParser:
                 if res:
                     src = res.source
                     await self.load_source(src)
-                    # If not in guessing mode (specific source specified), use it regardless of metadata
-                    # If in guessing mode, only use sources with metadata
-                    if not self.is_guessing or src.file_len is not None or not self.is_guessing:
-                        print(f'Using source: {src_name}')
-                        break
-                    else:
-                        pass  # Skip source in guessing mode but no file metadata
+                    print(f'Using source: {src_name}')
+                    break
+                else:
+                    pass
             except Exception as e:
                 print(f'Source {src_name} failed with error: {e}')
                 if not self.is_guessing:
