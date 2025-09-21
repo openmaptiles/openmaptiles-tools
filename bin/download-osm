@@ -70,7 +70,6 @@ import json
 import os
 import re
 import subprocess
-import sys
 from asyncio import sleep, Future
 from collections import defaultdict
 from dataclasses import dataclass
@@ -407,7 +406,7 @@ class AreaSource:
             except Exception as e:
                 print(f'Failed to fetch catalog for {self.name}: {e}')
                 raise
-        
+
         try:
             catalog, warnings = await self.parse_catalog(data)
             if warnings:
@@ -550,7 +549,7 @@ class Bbbike(AreaSource):
         except Exception as e:
             print(f'Failed to get Bbbike catalog: {e}')
             raise
-        
+
         area_id = area_id.lower()
         for k, v in catalog.items():
             if area_id == k.lower():
