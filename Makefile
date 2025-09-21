@@ -137,7 +137,7 @@ build-bin-tests: prepare build-docker
 	@echo "   Running tools integration tests"
 	@echo ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"
 	$(RUN_CMD) -e "BUILD=/tileset/$(BUILD_DIR)" \
-		-v "$(WORKDIR)/tests/cache:/usr/src/app/cache" \
+		-v "$(WORKDIR)/tests/cache:/cache" \
 		$(DOCKER_IMAGE) /tileset/tests/test-tools.sh
 
 .PHONY: build-tests
