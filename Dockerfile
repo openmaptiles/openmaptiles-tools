@@ -96,6 +96,7 @@ RUN set -eux ;\
         libgeos-dev `# Imposm dependency` \
         libleveldb-dev `# Imposm dependency` \
         libprotobuf-dev `# Imposm dependency` \
+        unzip \
         ;\
     apt-get clean ;\
     rm -rf /var/lib/apt/lists/*
