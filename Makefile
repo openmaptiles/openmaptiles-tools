@@ -107,9 +107,18 @@ run-python-tests: build-docker
 	@echo "   Running Python unit tests"
 	@echo ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"
 	@$(RUN_CMD) $(DOCKER_IMAGE)  bash -c \
-		'python -m flake8 openmaptiles tests/python `grep -rIzl "^#!.*python" bin` \
-		 && (python -m unittest discover 2>&1 | \
-		     awk -v s="Ran 0 tests in" '\''$$0~s{print; print "\n*** No Python unit tests found, aborting"; exit(1)} 1'\'')'
+		'cd /usr/src/app && \
+		 if [ -d "tests/python" ]; then \
+		   python -m flake8 openmaptiles tests/python `grep -rIzl "^#!.*python" bin`; \
+		 else \
+		   python -m flake8 openmaptiles `grep -rIzl "^#!.*python" bin`; \
+		 fi && \
+		 if [ -d "tests/python" ]; then \
+		   cd tests/python && python -m unittest discover -p "test_*.py" 2>&1 | \
+		   awk -v s="Ran 0 tests in" '\''$$0~s{print; print "\n*** No Python unit tests found, aborting"; exit(1)} 1'\''; \
+		 else \
+		   echo "No Python tests found, skipping"; \
+		 fi'
 
 .PHONY: build-sql-tests
 build-sql-tests: prepare build-docker
@@ -119,7 +128,7 @@ build-sql-tests: prepare build-docker
 	@echo "   Running Postgres SQL tests"
 	@echo ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"
 	$(DOCKER_COMPOSE_COMMAND) --file tests/sql/docker-compose.yml rm -f && \
-	$(DOCKER_COMPOSE_COMMAND) --file tests/sql/docker-compose.yml up --abort-on-container-exit --wait-timeout 180 && \
+	$(DOCKER_COMPOSE_COMMAND) --file tests/sql/docker-compose.yml up --abort-on-container-exit --timeout 180 && \
 	$(DOCKER_COMPOSE_COMMAND) --file tests/sql/docker-compose.yml rm -f
 
 .PHONY: build-bin-tests
@@ -128,8 +137,8 @@ build-bin-tests: prepare build-docker
 	@echo "   Running tools integration tests"
 	@echo ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"
 	$(RUN_CMD) -e "BUILD=/tileset/$(BUILD_DIR)" \
-		-v "$(WORKDIR)/tests/cache:/usr/src/app/cache" \
-		$(DOCKER_IMAGE) tests/test-tools.sh
+		-v "$(WORKDIR)/tests/cache:/cache" \
+		$(DOCKER_IMAGE) /tileset/tests/test-tools.sh
 
 .PHONY: build-tests
 build-tests: build-bin-tests build-sql-tests

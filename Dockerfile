@@ -1,4 +1,4 @@
-FROM golang:1.17 as go-builder
+FROM golang:1.17 AS go-builder
 ARG IMPOSM_REPO="https://github.com/omniscale/imposm3.git"
 ARG IMPOSM_VERSION="v0.11.1"
 
@@ -30,36 +30,8 @@ RUN set -eux ;\
     ( [ -f imposm ] && mv imposm /build-bin/imposm || mv imposm3 /build-bin/imposm )
 
 
-# Build osmborder
-FROM python:3.9 as c-builder
-ARG OSMBORDER_REV=e3ae8f7a2dcdcd6dc80abab4679cb5edb7dc6fa5
-
-RUN set -eux ;\
-    mkdir /build-bin ;\
-    DEBIAN_FRONTEND=noninteractive apt-get update ;\
-    DEBIAN_FRONTEND=noninteractive apt-get install  -y --no-install-recommends \
-        `# installing osmborder dependencies` \
-        build-essential \
-        ca-certificates \
-        cmake \
-        git \
-        libosmium2-dev \
-        zlib1g-dev \
-        ;\
-    /bin/bash -c 'echo ""; echo ""; echo "##### Building osmborder -- https://github.com/pnorman/osmborder"' >&2 ;\
-    git clone https://github.com/pnorman/osmborder.git /usr/src/osmborder ;\
-    cd /usr/src/osmborder ;\
-    git checkout ${OSMBORDER_REV:?} ;\
-    mkdir -p /usr/src/osmborder/build ;\
-    cd /usr/src/osmborder/build ;\
-    cmake .. ;\
-    make ;\
-    make install ;\
-    mv /usr/src/osmborder/build/src/osmborder /build-bin ;\
-    mv /usr/src/osmborder/build/src/osmborder_filter /build-bin
-
 # Build SPREET
-FROM rust:1.76 as rust-builder
+FROM rust:1.76 AS rust-builder
 ARG SPREET_REPO="https://github.com/flother/spreet"
 ARG SPREET_VERSION="v0.11.0"
 
@@ -78,15 +50,16 @@ LABEL maintainer="Yuri Astrakhan <YuriAstrakhan@gmail.com>"
 ARG PG_MAJOR=14
 ARG TOOLS_DIR=/usr/src/app
 
-WORKDIR ${TOOLS_DIR}
+WORKDIR /tileset
 
 #
 # IMPOSM_CONFIG_FILE can be used to provide custom IMPOSM config file
 # SQL_TOOLS_DIR can be used to provide custom SQL files instead of the files from /sql
 #
 ENV TOOLS_DIR="$TOOLS_DIR" \
-    PATH="${TOOLS_DIR}:${PATH}" \
-    IMPOSM_CONFIG_FILE=${TOOLS_DIR}/config/repl_config.json \
+    PATH="${TOOLS_DIR}/bin:${PATH}" \
+    PYTHONPATH="${TOOLS_DIR}:${PYTHONPATH}" \
+    IMPOSM_CONFIG_FILE=${TOOLS_DIR}/bin/config/repl_config.json \
     IMPOSM_MAPPING_FILE=/mapping/mapping.yaml \
     IMPOSM_CACHE_DIR=/cache \
     IMPOSM_DIFF_DIR=/import \
@@ -109,63 +82,55 @@ RUN set -eux ;\
         nano \
         procps  `# ps command` \
         gnupg2  `# TODO: not sure why gnupg2 is needed`  ;\
-    curl https://www.postgresql.org/media/keys/ACCC4CF8.asc | apt-key add - ;\
-    /bin/bash -c 'source /etc/os-release && echo "deb http://apt.postgresql.org/pub/repos/apt/ ${VERSION_CODENAME:?}-pgdg main ${PG_MAJOR:?}" > /etc/apt/sources.list.d/pgdg.list' ;\
+    curl https://www.postgresql.org/media/keys/ACCC4CF8.asc | gpg --dearmor -o /usr/share/keyrings/postgresql-keyring.gpg ;\
+    /bin/bash -c 'source /etc/os-release && echo "deb [signed-by=/usr/share/keyrings/postgresql-keyring.gpg] http://apt.postgresql.org/pub/repos/apt/ ${VERSION_CODENAME:?}-pgdg main ${PG_MAJOR:?}" > /etc/apt/sources.list.d/pgdg.list' ;\
     DEBIAN_FRONTEND=noninteractive apt-get update ;\
     DEBIAN_FRONTEND=noninteractive apt-get install  -y --no-install-recommends \
         aria2     `# multi-stream file downloader - used by download-osm` \
         graphviz  `# used by layer mapping graphs` \
-        sqlite3   `# mbtiles file manipulations`   \
-        gdal-bin  `# contains ogr2ogr` \
-        osmctools `# osmconvert and other OSM tools` \
-        osmosis   `# useful toolset - https://wiki.openstreetmap.org/wiki/Osmosis` \
-        postgresql-client-${PG_MAJOR:?}  `# psql` \
-        \
-        # imposm dependencies
-        libgeos-dev \
-        libleveldb-dev \
-        libprotobuf-dev \
+        sqlite3   `# mbtiles file manipulations` \
+        postgresql-client-${PG_MAJOR:?} \
+        postgresql-${PG_MAJOR:?}-postgis-3 \
+        osmium-tool \
+        osmctools `# contains osmconvert` \
+        libgeos-dev `# Imposm dependency` \
+        libleveldb-dev `# Imposm dependency` \
+        libprotobuf-dev `# Imposm dependency` \
+        unzip \
         ;\
-    # generate-tiles
-    curl -sL https://deb.nodesource.com/setup_14.x | bash -  ;\
-    DEBIAN_FRONTEND=noninteractive apt-get update  ;\
-    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends  \
-        nodejs npm build-essential ;\
-    rm -rf /var/lib/apt/lists/  ;\
-    npm install -g \
-      @mapbox/mbtiles@0.12.1 \
-      @mapbox/tilelive@6.1.1 \
-      tilelive-pgquery@1.2.0 ;\
-    \
-    /bin/bash -c 'echo ""; echo ""; echo "##### Cleaning up"' >&2 ;\
+    apt-get clean ;\
     rm -rf /var/lib/apt/lists/*
 
-RUN groupadd --gid 1000 openmaptiles \
-  && useradd --uid 1000 --gid openmaptiles --shell /bin/bash --create-home openmaptiles
+# Copy built binaries from build stages
+COPY --from=go-builder /build-bin/imposm /usr/local/bin/
+COPY --from=rust-builder /build-bin/spreet /usr/local/bin/
 
-# Copy requirements.txt first to avoid pip install on every code change
-COPY ./requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+# Copy Python tools
+COPY . ${TOOLS_DIR}/
 
-# Copy tools, imposm, osmborder and spreet into the app dir
-COPY --from=go-builder /build-bin/* ./
-COPY --from=c-builder /build-bin/* ./
-COPY --from=rust-builder /build-bin/* ./
-COPY . .
+# Copy config file to expected location
+RUN mkdir -p ${TOOLS_DIR}/config && \
+    cp ${TOOLS_DIR}/bin/config/repl_config.json ${TOOLS_DIR}/config/repl_config.json
 
-RUN set -eux ;\
-    mv bin/* . ;\
-    rm -rf bin ;\
-    rm requirements.txt ;\
-    ./download-osm list geofabrik ;\
-    ./download-osm list bbbike
+# Install Python dependencies
+RUN pip install --no-cache-dir -r ${TOOLS_DIR}/requirements.txt
 
-WORKDIR /tileset
+# Install Node.js 18 and essential tilelive packages
+RUN curl -fsSL https://deb.nodesource.com/setup_18.x | bash - && \
+    apt-get update && \
+    apt-get install -y nodejs build-essential python3-dev libsqlite3-dev && \
+    npm install -g \
+        @mapbox/mbtiles@0.11.0 \
+        @mapbox/tilelive@6.1.0 \
+        nyurik/tilelive-pgquery \
+        --unsafe-perm
 
-# In case there are no parameters, print a list of available scripts
-CMD echo "*******************************************************************" ;\
-    echo "  Please specify a script to run. Here are the available scripts." ;\
-    echo "  Use script name with --help to get more information." ;\
-    echo "  Use 'bash' to start a shell inside the tools container." ;\
-    echo "*******************************************************************" ;\
-    find "${TOOLS_DIR}" -maxdepth 1 -executable -type f -printf " * %f\n" | sort
+# Create necessary directories
+RUN mkdir -p /cache /import /mapping /usr/src/app/data /usr/src/app/build/openmaptiles.tm2source
+
+# Set proper permissions
+RUN chmod +x ${TOOLS_DIR}/bin/*
+RUN chmod 777 /cache /import /mapping /usr/src/app/data /usr/src/app/build/openmaptiles.tm2source
+
+# Default command
+CMD ["/bin/bash"]

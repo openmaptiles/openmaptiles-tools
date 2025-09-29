@@ -67,9 +67,9 @@ where the 3rd parameter is the name of the PDF file. Will run bbox command.
 
 import asyncio
 import json
+import os
 import re
 import subprocess
-import sys
 from asyncio import sleep, Future
 from collections import defaultdict
 from dataclasses import dataclass
@@ -358,9 +358,15 @@ class SearchResult:
     bbox: str = None
 
 
-def load_sources(sources: Iterable[Source], session: ClientSession, verbose: bool):
-    return asyncio.wait([v.load_hash(session, verbose) for v in sources]
-                        + [v.load_metadata(session, verbose) for v in sources])
+async def load_sources(sources: Iterable[Source], session: ClientSession, verbose: bool):
+    """Load hash and metadata for all sources concurrently"""
+    tasks = []
+    for source in sources:
+        tasks.append(source.load_hash(session, verbose))
+        tasks.append(source.load_metadata(session, verbose))
+
+    # Use asyncio.gather instead of deprecated asyncio.wait
+    await asyncio.gather(*tasks, return_exceptions=True)
 
 
 async def fetch(session: ClientSession, url: str) -> str:
@@ -382,7 +388,8 @@ class AreaSource:
         raise ValueError(f'Search is not implemented for {self.name}')
 
     async def get_catalog(self) -> dict:
-        list_path = Path(__file__).parent / 'cache' / f'{self.name}.json'
+        cache_dir = os.environ.get('IMPOSM_CACHE_DIR', '/cache')
+        list_path = Path(cache_dir) / f'{self.name}.json'
         list_path.parent.mkdir(parents=True, exist_ok=True)
         data = None
         if not self.force_latest:
@@ -392,15 +399,24 @@ class AreaSource:
                 pass
         if data is None:
             print(f'Downloading the list of available {self.name} areas...')
-            data = await self.fetch_catalog()
-            if not self.no_cache:
-                list_path.write_text(data, encoding='utf-8')
-        catalog, warnings = await self.parse_catalog(data)
-        if warnings:
-            print(f'ERRORS parsing {self.name} catalog file:', file=sys.stderr)
-            for warn in warnings:
-                print(f' * {warn}', file=sys.stderr)
-        return catalog
+            try:
+                data = await self.fetch_catalog()
+                if not self.no_cache:
+                    list_path.write_text(data, encoding='utf-8')
+            except Exception as e:
+                print(f'Failed to fetch catalog for {self.name}: {e}')
+                raise
+
+        try:
+            catalog, warnings = await self.parse_catalog(data)
+            if warnings:
+                print(f'Warnings parsing {self.name} catalog file:')
+                for warn in warnings:
+                    print(f' * {warn}')
+            return catalog
+        except Exception as e:
+            print(f'Failed to parse catalog for {self.name}: {e}')
+            raise
 
     def fetch_catalog(self) -> Future:
         raise ValueError(f'Catalog is not supported for {self.name}')
@@ -447,41 +463,55 @@ class Geofabrik(AreaSource):
         return {v['full_id']: v
                 for v in sorted(entries.values(), key=lambda v: v['full_id'])}, warnings
 
-    async def search(self, area_id: str, is_guessing: bool) -> Optional[SearchResult]:
-        catalog = await self.get_catalog()
-        if area_id not in catalog:
-            # If there is no exact match, find anything that ends with key
-            reg = re.compile('.*' + re.escape('/' + area_id.lstrip('/')) + '$',
-                             re.IGNORECASE)
-            area_urls = [k for k in catalog.keys() if reg.match(k)]
-            if not area_urls:
-                error = f"ID '{area_id}' was not found in Geofabrik."
-                if not is_guessing:
-                    error += "\nUse 'list geofabrik' to see available extract, or try --force-latest to refresh the list of extracts."
-            elif len(area_urls) > 1:
-                variants = [(v, catalog[v]['full_name']) for v in area_urls]
-                error = (f"More than one ID '{area_id}' was found in "
-                         f'Geofabrik, use longer ID:\n{tabulate(variants)}')
-            else:
-                error = None
-                area_id = area_urls[0]
-
-            if error:
-                if is_guessing:
-                    print(error)
-                    return None
-                else:
-                    raise SystemExit(error)
-        entry = catalog[area_id]
+    def _create_search_result(self, area_id: str, entry: dict) -> SearchResult:
+        """Create a SearchResult from an area_id and catalog entry."""
         bbox = None
-        if entry['geo']:
+        if entry.get('geo'):
             bbox = Bbox.from_geometry(entry['geo']['coordinates']).bounds_str()
 
         return SearchResult(
             Source(area_id, entry['url']),
-            entry['url_updates'],
-            entry['url'].replace('-latest.osm.pbf', '-updates/state.txt'),
-            bbox)
+            entry.get('url_updates'),
+            entry['url'].replace('-latest.osm.pbf', '.state.txt'),
+            bbox
+        )
+
+    async def search(self, area_id: str, is_guessing: bool) -> Optional[SearchResult]:
+        try:
+            catalog = await self.get_catalog()
+        except Exception as e:
+            print(f'Failed to get Geofabrik catalog: {e}')
+            raise
+
+        if area_id in catalog:
+            return self._create_search_result(area_id, catalog[area_id])
+
+        # If there is no exact match, find anything that ends with key
+        reg = re.compile('.*' + re.escape(area_id.lstrip('/')) + '$', re.IGNORECASE)
+        area_urls = [k for k in catalog.keys() if reg.match(k)]
+
+        if not area_urls:
+            error = f"ID '{area_id}' was not found in Geofabrik."
+            if not is_guessing:
+                error += "\nUse 'list geofabrik' to see available extract, or try --force-latest to refresh the list of extracts."
+        elif len(area_urls) > 1:
+            variants = [(v, catalog[v]['full_name']) for v in area_urls]
+            error = (f"More than one ID '{area_id}' was found in "
+                     f'Geofabrik, use longer ID:\n{tabulate(variants)}')
+        else:
+            # Single match found
+            area_id = area_urls[0]
+            return self._create_search_result(area_id, catalog[area_id])
+
+        if error:
+            if is_guessing:
+                print(error)
+                return None
+            else:
+                raise SystemExit(error)
+
+        # This should never be reached due to the logic above, but keeping for safety
+        return self._create_search_result(area_id, catalog[area_id])
 
 
 class UrlSrc(AreaSource):
@@ -514,7 +544,12 @@ class Bbbike(AreaSource):
         }, []
 
     async def search(self, area_id: str, is_guessing: bool) -> Optional[SearchResult]:
-        catalog = await self.get_catalog()
+        try:
+            catalog = await self.get_catalog()
+        except Exception as e:
+            print(f'Failed to get Bbbike catalog: {e}')
+            raise
+
         area_id = area_id.lower()
         for k, v in catalog.items():
             if area_id == k.lower():
@@ -525,7 +560,13 @@ class Bbbike(AreaSource):
 class Osmfr(AreaSource):
     async def search(self, area_id: str, is_guessing: bool) -> Optional[SearchResult]:
         url = f'http://download.openstreetmap.fr/extracts/{area_id}-latest.osm.pbf'
-        poly = await fetch(self.session, f'https://download.openstreetmap.fr/polygons/{area_id}.poly')
+        try:
+            poly = await fetch(self.session, f'https://download.openstreetmap.fr/polygons/{area_id}.poly')
+        except ValueError:
+            if is_guessing:
+                return None
+            else:
+                raise
         return SearchResult(
             Source(area_id, url),
             f'http://download.openstreetmap.fr/replication/{area_id}/minute/',
@@ -585,9 +626,8 @@ class AreaParamParser:
         self.state_url = None
         self.force_latest = force_latest
         self.no_cache = no_cache
-        # Limit sources to just the one passed in the arguments, or keep all
-        self.sources = {k: v for k, v in area_sources.items() if
-                        self.args[k]} or area_sources
+
+        self.sources = {k: v for k, v in area_sources.items() if self.args[k]} or area_sources
         self.is_guessing = len(self.sources) > 1
 
     async def parse(self):
@@ -595,16 +635,21 @@ class AreaParamParser:
             print('Area source has not been specified. Auto-detecting...')
         for src_name, src_type in self.sources.items():
             site = src_type(self.session, self.force_latest, self.no_cache)
-            res = await site.search(self.area_id, self.is_guessing)
-            if res:
-                src = res.source
-                await self.load_source(src)
-                if src.file_len is not None:
+            try:
+                res = await site.search(self.area_id, self.is_guessing)
+                if res:
+                    src = res.source
+                    await self.load_source(src)
+                    print(f'Using source: {src_name}')
                     break
+                else:
+                    pass
+            except Exception as e:
+                print(f'Source {src_name} failed with error: {e}')
+                if not self.is_guessing:
+                    raise
         else:
             raise SystemExit(f"Unable to auto-detect the source for '{self.area_id}'")
-        if self.is_guessing:
-            print(f"'{src.name}' was found in {src_name}.")
         print(f'Downloading {src.url} (size={src.size_str()}, md5={src.hash})',
               flush=True)
         if self.args.state:
@@ -613,8 +658,9 @@ class AreaParamParser:
             await save_state_file(self.session, res.state_url, self.args.state)
         return [src.url], src.hash, res.repl_url, res.bbox
 
-    def load_source(self, source: Source):
-        return load_sources([source], self.session, self.args.verbose)
+    async def load_source(self, source: Source):
+        """Load source metadata and hash asynchronously"""
+        await load_sources([source], self.session, self.args.verbose)
 
 
 def make_bbox_env_file(pbf_file, bbox_file, verbose):
@@ -658,7 +704,16 @@ async def main_async(args):
 
     urls, md5, repl_url = None, None, None
     exit_code = 0
-    async with aiohttp.ClientSession(trust_env=True, headers={'User-Agent': USER_AGENT}) as session:
+    # Configure ClientSession to handle redirects properly
+    connector = aiohttp.TCPConnector(limit=100, limit_per_host=30)
+    timeout = aiohttp.ClientTimeout(total=300, connect=30)
+
+    async with aiohttp.ClientSession(
+        trust_env=True,
+        headers={'User-Agent': USER_AGENT},
+        connector=connector,
+        timeout=timeout
+    ) as session:
         force_latest = args['--force-latest']
         no_cache = args['--no-cache']
         if args.list:
@@ -725,7 +780,7 @@ async def run_aria2c(aria2c_args, md5, urls, args):
         assert_conflict_args(
             '--output', aria2c_args, '-d', '--dir', '-o', '--out', '-i', '--input-file',
             '--auto-file-renaming', '-Z', '--force-sequential', '--allow-overwrite')
-        out_path = Path(args['--output']).resolve()
+        out_path = Path(args['--output'])
         out_path.parent.mkdir(parents=True, exist_ok=True)
         params.append(f'--dir={out_path.parent}')
         params.append(f'--out={out_path.name}')
