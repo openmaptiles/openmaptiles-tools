@@ -9,7 +9,7 @@
 ##     this file should now be updated
 aiohttp==3.13.3
 ascii_graph==1.5.1
-asyncpg==0.25.0
+asyncpg==0.27.0
 beautifulsoup4==4.10.0
 betterproto==1.2.5
 dataclasses-json==0.5.6
