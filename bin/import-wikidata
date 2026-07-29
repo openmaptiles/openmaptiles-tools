@@ -37,6 +37,7 @@ These legacy environment variables should not be used, but they are still suppor
 """
 import json
 import re
+import time
 from collections import defaultdict
 
 import asyncio
@@ -52,11 +53,30 @@ from openmaptiles.pgutils import parse_pg_args, PgWarnings
 from openmaptiles.tileset import Tileset
 from openmaptiles.utils import batches
 
+# Maximum number of retry attempts for a single WDQS request before giving up.
+WDQS_MAX_RETRIES = 5
+# Base delay in seconds for exponential backoff between retries
+# (5, 10, 20, 40, 80 seconds). The Retry-After header is honored when present.
+WDQS_BACKOFF_BASE = 5
+# Delay between consecutive WDQS batches to respect rate limits.
+WDQS_INTER_BATCH_DELAY = 1
+# HTTP request timeout in seconds.
+WDQS_TIMEOUT = 120
+# Retryable HTTP status codes from the WDQS endpoint.
+WDQS_RETRY_STATUS = {429, 500, 502, 503, 504}
+
 
 def validate_table_name(table, param):
     if not re.match(r'^[a-zA-Z_.0-9]+$', table):
         raise DocoptExit(f'{param} must be a valid table name (letters/digits)')
     return table
+
+
+def save_cache(cache, cache_file):
+    if cache is not None and cache_file is not None:
+        print(f'Saving {len(cache):,} items to cache {cache_file}')
+        with cache_file.open('w', encoding='utf-8') as fp:
+            json.dump(cache, fp, ensure_ascii=False, sort_keys=True, indent=1)
 
 
 async def main(args):
@@ -127,28 +147,37 @@ CREATE TABLE IF NOT EXISTS {storage_table}(
     use_wdqs = not args['--no-wdqs']
     if new_ids and use_wdqs:
         print(f'Query Wikidata Query Service for {len(new_ids):,} IDs...')
-        dups = await create_ids_from_wdqs(conn, new_ids, cache, storage_table, verbose)
-        if dups:
-            redirs = resolve_redirects(dups, verbose)
-            if redirs:
-                print(f'Querying Wikidata for {len(redirs):,} redirect IDs...')
-                await create_ids_from_wdqs(conn, redirs, cache, storage_table, verbose)
+        try:
+            dups = await create_ids_from_wdqs(conn, new_ids, cache, storage_table, verbose)
+            if dups:
+                redirs = resolve_redirects(dups, verbose)
+                if redirs:
+                    print(f'Querying Wikidata for {len(redirs):,} redirect IDs...')
+                    await create_ids_from_wdqs(conn, redirs, cache, storage_table, verbose)
+        except Exception as e:
+            # On persistent WDQS failure, persist whatever was cached so far
+            # so that a re-run can skip the IDs already retrieved.
+            print(f'WDQS query failed permanently: {e}')
+            save_cache(cache, cache_file)
+            raise
     elif new_ids:
         print(f'There were {len(new_ids):,} new Wikidata IDs found, but they were not '
               f'retrieved from WDQS because of the --no-wdqs parameter')
 
-    if cache is not None and use_wdqs and new_ids:
+    if use_wdqs and new_ids:
         # If using cache and there might have been changes, save them
-        print(f'Saving {len(cache):,} items to cache {cache_file}')
-        with cache_file.open('w', encoding='utf-8') as fp:
-            json.dump(cache, fp, ensure_ascii=False, sort_keys=True, indent=1)
+        save_cache(cache, cache_file)
 
 
 async def create_ids_from_wdqs(conn, ids, cache, storage_table, verbose):
     is_redirects = isinstance(ids, dict)
     missing = set(ids)
+    first_batch = True
 
-    for batch in batches(ids, 5000, lambda v: f'wd:{v}'):
+    for batch in batches(ids, 1000, lambda v: f'wd:{v}'):
+        if not first_batch and WDQS_INTER_BATCH_DELAY > 0:
+            time.sleep(WDQS_INTER_BATCH_DELAY)
+        first_batch = False
         records = defaultdict(dict)
 
         def add_item(_qid, _lang, _label):
@@ -193,7 +222,11 @@ def resolve_redirects(ids, verbose) -> Dict[str, List[str]]:
     missing = set(ids)
     redirects = defaultdict(list)
     print(f'Resolving {len(ids):,} possible Wikidata redirects...')
-    for batch in batches(ids, 1000, lambda v: f'wd:{v}'):
+    first_batch = True
+    for batch in batches(ids, 500, lambda v: f'wd:{v}'):
+        if not first_batch and WDQS_INTER_BATCH_DELAY > 0:
+            time.sleep(WDQS_INTER_BATCH_DELAY)
+        first_batch = False
         query = f"""\
     SELECT ?id ?id2 WHERE {{
       VALUES ?id {{ {' '.join(batch)} }}
@@ -262,22 +295,95 @@ def entity_id(column):
 
 
 def wd_query(sparql):
-    r = requests.post(
-        'https://query.wikidata.org/bigdata/namespace/wdq/sparql',
-        data={'query': sparql},
-        headers={
-            'Accept': 'application/sparql-results+json',
-            'User-Agent': f'OpenMapTiles OSM name resolver {openmaptiles.__version__}'
-                          '(https://github.com/openmaptiles/openmaptiles)'
-        })
-    try:
-        if not r.ok:
-            print(r.reason)
-            print(sparql)
-            raise Exception(r.reason)
-        return r.json()['results']['bindings']
-    finally:
-        r.close()
+    """Execute a SPARQL query against the Wikidata Query Service.
+
+    Retries on transient failures (connection errors, timeouts, 429/5xx
+    responses, and malformed/truncated JSON bodies) using exponential backoff.
+    Raises the last exception if all retries are exhausted.
+    """
+    last_exc = None
+    for attempt in range(WDQS_MAX_RETRIES + 1):
+        r = None
+        try:
+            r = requests.post(
+                'https://query.wikidata.org/bigdata/namespace/wdq/sparql',
+                data={'query': sparql},
+                headers={
+                    'Accept': 'application/sparql-results+json',
+                    'User-Agent': f'OpenMapTiles OSM name resolver {openmaptiles.__version__}'
+                                  '(https://github.com/openmaptiles/openmaptiles)'
+                },
+                timeout=WDQS_TIMEOUT)
+        except requests.exceptions.RequestException as e:
+            # Connection error, timeout, DNS failure, etc. -- retryable.
+            print(f'WDQS request failed: {e} '
+                  f'(attempt {attempt + 1}/{WDQS_MAX_RETRIES + 1})')
+            if attempt < WDQS_MAX_RETRIES:
+                last_exc = e
+                _backoff_sleep(None, attempt)
+                continue
+            raise
+        try:
+            if not r.ok:
+                print(f'WDQS returned HTTP {r.status_code} {r.reason} '
+                      f'(attempt {attempt + 1}/{WDQS_MAX_RETRIES + 1})')
+                if r.status_code in WDQS_RETRY_STATUS and attempt < WDQS_MAX_RETRIES:
+                    last_exc = Exception(f'{r.status_code} {r.reason}')
+                    _backoff_sleep(r, attempt)
+                    continue
+                # Non-retryable HTTP error -- raise immediately
+                print(sparql)
+                raise Exception(r.reason)
+            # Validate content before parsing -- WDQS can return a 200 with a
+            # truncated/garbled body under load, which surfaces as JSONDecodeError.
+            content_type = r.headers.get('Content-Type', '')
+            if not content_type.startswith('application/sparql-results+json') \
+                    and not content_type.startswith('application/json'):
+                print(f'WDQS returned unexpected Content-Type {content_type!r} '
+                      f'(attempt {attempt + 1}/{WDQS_MAX_RETRIES + 1})')
+                if attempt < WDQS_MAX_RETRIES:
+                    last_exc = Exception(f'unexpected Content-Type {content_type!r}')
+                    _backoff_sleep(r, attempt)
+                    continue
+                raise Exception(f'unexpected Content-Type {content_type!r}')
+            if not r.content or not r.content.strip():
+                print(f'WDQS returned empty body '
+                      f'(attempt {attempt + 1}/{WDQS_MAX_RETRIES + 1})')
+                if attempt < WDQS_MAX_RETRIES:
+                    last_exc = Exception('empty response body')
+                    _backoff_sleep(r, attempt)
+                    continue
+                raise Exception('WDQS returned empty body')
+            try:
+                return r.json()['results']['bindings']
+            except (ValueError, KeyError) as e:
+                # JSONDecodeError (a ValueError subclass) or malformed structure.
+                # This handles the truncated-response case (e.g. char 12881888).
+                print(f'WDQS returned unparseable JSON: {e} '
+                      f'(attempt {attempt + 1}/{WDQS_MAX_RETRIES + 1})')
+                if attempt < WDQS_MAX_RETRIES:
+                    last_exc = e
+                    _backoff_sleep(r, attempt)
+                    continue
+                raise
+        finally:
+            if r is not None:
+                r.close()
+    # Should not reach here, but guard defensively
+    raise last_exc if last_exc else Exception('WDQS query failed')
+
+
+def _backoff_sleep(response, attempt):
+    """Sleep before retrying a failed WDQS request, honoring Retry-After."""
+    delay = WDQS_BACKOFF_BASE * (2 ** attempt)
+    retry_after = response.headers.get('Retry-After') if response is not None else None
+    if retry_after:
+        try:
+            delay = max(delay, int(retry_after))
+        except ValueError:
+            pass
+    print(f'Retrying WDQS query in {delay}s...')
+    time.sleep(delay)
 
 
 if __name__ == '__main__':
