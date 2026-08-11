@@ -126,7 +126,7 @@ $$ LANGUAGE 'plpgsql';\n
 
 
 def get_slice_language_tags(tileset):
-    include_tags = list(map(lambda l: 'name:' + l, tileset.languages))
+    include_tags = list(map(lambda lang: 'name:' + lang, tileset.languages))
     include_tags.append('int_name')
     include_tags.append('loc_name')
     include_tags.append('name')

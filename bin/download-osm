@@ -81,7 +81,7 @@ import aiohttp
 from aiohttp import ClientSession
 from bs4 import BeautifulSoup
 # noinspection PyProtectedMember
-from docopt import docopt, __all__ as docopt_funcs
+from docopt import docopt
 from tabulate import tabulate
 
 import openmaptiles
@@ -128,7 +128,8 @@ class Catalog:
         print('Retrieving available files...')
         await sleep(0.01)  # Make sure the above print statement prints first
         sources_by_hash: Dict[str, List[Source]] = defaultdict(list)
-        await asyncio.wait([v.init(session, verbose) for v in self.mirrors])
+        # Used gather instead of await, because we just wait for mirror init
+        await asyncio.gather(*(v.init(session, verbose) for v in self.mirrors))
         for mirror in self.mirrors:
             for s in mirror.sources:
                 sources_by_hash[s.hash].append(s)
@@ -808,14 +809,6 @@ def assert_conflict_args(info, aria2c_args, *conflicted_args):
 
 
 def main():
-    if 'magic' not in docopt_funcs:
-        print("""
-Found invalid version of docopt. Must use docopt_ng instead. Uninstall it with
-  $ python3 -m pip uninstall docopt
-and re-install all required dependencies with
-  $ python3 -m pip install -r requirements.txt
-""")
-        exit(1)
     exit(asyncio.run(main_async(docopt(__doc__, version=openmaptiles.__version__))))
 
 
