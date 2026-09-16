@@ -240,7 +240,7 @@ def parse_tags(feature: TileFeature, layer: TileLayer, show_names: bool,
         show_names = True
     geo_size = len(feature.geometry)
     res = {'*ID*': feature.id,
-           'GeoSize': f'{geo_size :,}' if not summary else geo_size,
+           'GeoSize': f'{geo_size:,}' if not summary else geo_size,
            'GeoType': TileGeomType(feature.type).name}
     tags = {
         layer.keys[feature.tags[i]]:
@@ -334,7 +334,7 @@ def print_tile(data: bytes, show_names: bool, summary: bool, info: str, sort_out
                 'Layer': layer.name,
                 'Extent': layer.extent,
                 'Ver': layer.version,
-                'Features': f'{features :,}',
+                'Features': f'{features:,}',
                 'GeoType': format_stats(geo_stats),
                 'GeoSize': f'{geo_size:,}',
                 'AVG GeoSize': f'{geo_size / features:,.1f}',

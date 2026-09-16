@@ -1,7 +1,8 @@
 import shutil
-from importlib.machinery import SourceFileLoader
 from pathlib import Path
 from unittest import IsolatedAsyncioTestCase, main
+import importlib.util
+import importlib.machinery
 
 test_dir = Path(__file__).parent
 
@@ -11,7 +12,15 @@ if not wd_path:
     if not wd_path:
         raise ValueError('Unable to locate import-wikidata script')
 
-importer = SourceFileLoader('import-wikidata', wd_path).load_module()
+# For Python 3.12+
+loader = importlib.machinery.SourceFileLoader('import-wikidata', wd_path)
+spec = importlib.util.spec_from_file_location(
+    'import-wikidata', wd_path, loader=loader
+)
+if spec is None or spec.loader is None:
+    raise ImportError
+importer = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(importer)
 
 
 class UtilsTestCase(IsolatedAsyncioTestCase):

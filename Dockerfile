@@ -44,7 +44,7 @@ RUN set -eux ;\
     mv target/release/spreet /build-bin
 
 # Primary image
-FROM python:3.9-slim
+FROM python:3.14-slim
 LABEL maintainer="Yuri Astrakhan <YuriAstrakhan@gmail.com>"
 
 ARG PG_MAJOR=14

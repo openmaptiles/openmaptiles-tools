@@ -18,8 +18,8 @@ def create_imposm3_mapping(tileset_filename):
 
     pixel_scale = tileset.definition['pixel_scale']
 
-    languages = map(lambda l: str(l), definition.get('languages', []))
-    include_tags = list(map(lambda l: 'name:' + l, languages))
+    languages = map(lambda lang: str(lang), definition.get('languages', []))
+    include_tags = list(map(lambda lang: 'name:' + lang, languages))
     include_tags.append('int_name')
     include_tags.append('loc_name')
     include_tags.append('name')
