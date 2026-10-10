@@ -1,0 +1,186 @@
+#!/usr/bin/env python
+"""
+Usage:
+  run-psql <path>...
+           [--parallel=<num> [--print-err=<num>]]
+           [--pghost=<host>] [--pgport=<port>] [--dbname=<db>]
+           [--user=<user>] [--password=<password>] [--verbose]
+           [-- <psql-args>...]
+  run-psql --help
+  run-psql --version
+
+Options:
+  <path>                One or more SQL files or directories to run using psql.
+  <psql-args>           Override default psql parameters.
+  -p --parallel=<num>   Run all files/dirs specified with <path>... in parallel,
+                        up to <num> at the same time. [default: 1]
+  -e --print-err=<num>  If psql exits with an error, print last <num> output lines
+                        after all other psql imports finish. Disabled if 0. [default: 10]
+  -v --verbose          Print additional debugging information
+  --help                Show this screen.
+  --version             Show version.
+
+PostgreSQL Options:
+  -h --pghost=<host>    Postgres hostname. By default uses PGHOST env or "localhost" if not set.
+  -P --pgport=<port>    Postgres port. By default uses PGPORT env or "5432" if not set.
+  -d --dbname=<db>      Postgres db name. By default uses PGDATABASE env or "openmaptiles" if not set.
+  -U --user=<user>      Postgres user. By default uses PGUSER env or "openmaptiles" if not set.
+  --password=<password> Postgres password. By default uses PGPASSWORD env or "openmaptiles" if not set.
+
+These legacy environment variables should not be used, but they are still supported:
+  POSTGRES_HOST, POSTGRES_PORT, POSTGRES_DB, POSTGRES_USER, POSTGRES_PASSWORD
+"""
+import collections
+import os
+from dataclasses import dataclass
+from hashlib import md5
+from multiprocessing import Pool, Value
+from pathlib import Path
+from select import select
+from subprocess import Popen, PIPE, list2cmdline
+from sys import stdout, stderr
+from typing import List, Optional
+
+# noinspection PyProtectedMember
+from docopt import docopt, DocoptExit
+
+import openmaptiles
+from openmaptiles.pgutils import parse_pg_args
+
+
+@dataclass
+class Params:
+    print_on_err: int
+    psql_args: Optional[List[str]]
+    pghost: str
+    pgport: str
+    dbname: str
+    user: str
+    password: str
+    verbose: bool
+
+
+stop_value: Optional[Value] = None
+
+
+def last_lines(output: List[bytes], count: int, name: str) -> str:
+    if output and count > 0:
+        text = b''.join(output).decode('utf-8').strip()
+        if text:
+            lines = text.split('\n')[-count:]
+            out = '\n'.join(lines)
+            return f'\n###### Last {len(lines)} lines of {name}:\n{out}'
+    return ''
+
+
+def run_psql(file: Path, params: Params):
+    if stop_value.value != 0:
+        print(f'Skipping {file}', file=stderr)
+        return None
+
+    cmd = ['stdbuf', '-oL', '-e0', 'psql', '-f', file]
+    if params.psql_args is None:
+        cmd.extend(['-v', 'ON_ERROR_STOP=1', '-c', r'\timing on'])
+    else:
+        cmd.extend(params.psql_args)
+
+    env = {
+        'PGHOST': params.pghost,
+        'PGDATABASE': params.dbname,
+        'PGUSER': params.user,
+        'PGPASSWORD': params.password,
+        'PGPORT': params.pgport,
+    }
+
+    sql_content = file.read_bytes()
+    md5sum = md5(sql_content).hexdigest()
+    lines = sql_content.decode('utf-8').count('\n')
+    print(f'Importing {file} (md5 {md5sum}  {lines} lines) into Postgres...')
+    if params.verbose:
+        print(f'   {list2cmdline(cmd)}')
+        print('Environment Variables:')
+        for k, v in sorted(env.items()):
+            print(f'  {k}={v}')
+
+    stderr_buf = []
+    with Popen(cmd, stdout=PIPE, stderr=PIPE, env=env) as proc:
+        readable = {
+            proc.stdout.fileno(): stdout.buffer,
+            proc.stderr.fileno(): stderr.buffer,
+        }
+        while readable:
+            for fd in select(readable, [], [])[0]:
+                data = os.read(fd, 1024)  # read available
+                if not data:
+                    del readable[fd]
+                else:
+                    if params.print_on_err > 0 and fd == proc.stderr.fileno():
+                        stderr_buf.append(data)
+                    readable[fd].write(data)
+                    readable[fd].flush()
+        # there should be no more output, should be safe to wait
+        exit_code = proc.wait()
+        if exit_code == 0:
+            print(f'Finished importing {file}...')
+            return None
+
+    stop_value.value = 1
+    result = f'File {file} failed with error {exit_code}'
+    print(result)
+    return result + last_lines(stderr_buf, params.print_on_err, 'STDERR')
+
+
+def main(args):
+    pghost, pgport, dbname, user, password = parse_pg_args(args)
+    paths = args['<path>']
+    if '--' in paths:
+        pos = paths.index('--')
+        psql_args = paths[pos + 1:]
+        paths = paths[:pos]
+    else:
+        psql_args = None
+    params = Params(int(args['--print-err']), psql_args, pghost, pgport, dbname, user, password, args['--verbose'])
+
+    paths = [Path(v).resolve() for v in paths]
+    dups = [vv for vv, cnt in collections.Counter((str(v) for v in paths)).items() if cnt > 1]
+    if dups:
+        raise DocoptExit(f'ERROR: Duplicate paths: [{"], [".join(dups)}]')
+    missing = []
+    files = []
+    for path in paths:
+        if not path.exists():
+            missing.append(path)
+        elif path.is_dir():
+            for file in path.glob('*.sql'):
+                if file.is_file():
+                    files.append(file)
+        else:
+            files.append(path)
+    if missing:
+        raise DocoptExit(f'ERROR: Path does not exist: [{"], [".join(str(v) for v in missing)}]')
+    if not files:
+        # For compatibility, allow empty dir import
+        print('No .sql files were found')
+        exit(0)
+
+    global stop_value
+    stop_value = Value('b', 0)
+
+    parallel = int(args['--parallel'])
+    with Pool(processes=parallel) as pool:
+        print(f'Importing {len(files)} files...')
+        tasks = [(file, params) for file in sorted(files)]
+        async_result = pool.starmap_async(run_psql, tasks, chunksize=1)
+        results = async_result.get()
+
+    if stop_value.value != 0:
+        if parallel > 1:
+            print('-------------------------- ERROR SUMMARY ---------------------------------')
+            print('\n'.join(v for v in results if v))
+        exit(1)
+    else:
+        print('All SQL files successfully executed')
+
+
+if __name__ == '__main__':
+    main(docopt(__doc__, version=openmaptiles.__version__))

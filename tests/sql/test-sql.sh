@@ -28,6 +28,7 @@ done
 sleep 1
 
 # Import all pre-required SQL code
+mkdir -p "$SQL_DIR"
 source import-sql
 
 echo "++++++++++++++++++++++++"
