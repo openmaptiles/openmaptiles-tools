@@ -323,7 +323,12 @@ class Source:
         try:
             if verbose:
                 print(f'Getting md5 checksum from {self.url_hash}')
-            hsh = (await fetch(session, self.url_hash)).strip().split(' ')[0]
+            try:
+                text = await fetch(session, self.url_hash)
+            except ValueError:
+                async with session.head(self.url, allow_redirects=True) as resp:
+                    text = await fetch(session, f'{resp.url}.md5')
+            hsh = text.strip().split(' ')[0]
             if not re.match(r'^[a-fA-F0-9]{32}$', hsh):
                 raise ValueError(f"Invalid md5 hash '{hsh}'")
             self.hash = hsh
@@ -336,7 +341,7 @@ class Source:
         try:
             if verbose:
                 print(f'Getting content length for {self.url}')
-            async with session.head(self.url) as resp:
+            async with session.head(self.url, allow_redirects=True) as resp:
                 if resp.status >= 400:
                     raise ValueError(f'Status={resp.status} for HEAD request')
                 if 'Content-Length' in resp.headers:
@@ -444,7 +449,7 @@ class Geofabrik(AreaSource):
                 full_name = entry['name']
                 current = entry
                 for idx in range(10):  # avoids infinite recursion
-                    if 'parent' in current:
+                    if current.get('parent'):
                         current = entries[current['parent']]
                         full_id = f"{current['id']}/{full_id}"
                         full_name = f"{current['name']} / {full_name}"
