@@ -67,6 +67,8 @@ download-osm list geofabrik --force-latest --no-cache > "$TEMP_DIR/geofabrik-lis
 if grep -q "Warnings parsing" "$TEMP_DIR/geofabrik-list.txt"; then cat "$TEMP_DIR/geofabrik-list.txt"; exit 1; fi
 grep -qE "^europe +Europe *$" "$TEMP_DIR/geofabrik-list.txt"
 grep -qE "^europe/monaco +Europe / Monaco *$" "$TEMP_DIR/geofabrik-list.txt"
+download-osm geofabrik monaco --force-latest --no-cache --dry-run > "$TEMP_DIR/geofabrik-monaco.txt"
+grep -qE "md5=[0-9a-f]{32}\)" "$TEMP_DIR/geofabrik-monaco.txt"
 
 
 # Run background http server, and stop it when this script exits
