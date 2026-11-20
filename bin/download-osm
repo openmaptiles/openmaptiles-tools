@@ -444,7 +444,7 @@ class Geofabrik(AreaSource):
                 full_name = entry['name']
                 current = entry
                 for idx in range(10):  # avoids infinite recursion
-                    if 'parent' in current:
+                    if current.get('parent'):
                         current = entries[current['parent']]
                         full_id = f"{current['id']}/{full_id}"
                         full_name = f"{current['name']} / {full_name}"

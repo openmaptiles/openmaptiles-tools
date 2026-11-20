@@ -62,6 +62,12 @@ echo "++++++++++++++++++++++++"
 download-osm planet --imposm-cfg "$BUILD/planet-cfg.json" --dry-run
 download-osm geofabrik michigan --imposm-cfg "$BUILD/michigan-cfg.json" --dry-run
 
+# Using the live Geofabrik catalog without replacing the fake cached one
+download-osm list geofabrik --force-latest --no-cache > "$TEMP_DIR/geofabrik-list.txt"
+if grep -q "Warnings parsing" "$TEMP_DIR/geofabrik-list.txt"; then cat "$TEMP_DIR/geofabrik-list.txt"; exit 1; fi
+grep -qE "^europe +Europe *$" "$TEMP_DIR/geofabrik-list.txt"
+grep -qE "^europe/monaco +Europe / Monaco *$" "$TEMP_DIR/geofabrik-list.txt"
+
 
 # Run background http server, and stop it when this script exits
 python -m http.server 8555 -d "$HTTPDIR" &
